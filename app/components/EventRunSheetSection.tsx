@@ -9,6 +9,7 @@ import {
   EVENT_DETAIL_FEEDBACK_CLASS,
 } from "@/app/components/event-detail/eventDetailUi";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
@@ -45,7 +46,7 @@ import {
   mapRunSheetRowsFromDb,
   mergeAcceptedDjsIntoRunSheetRows,
   moveRunSheetRow,
-  notifyRunSheetUpdatesForChangedBookings,
+  notifyCrewChatOfRunSheetUpdate,
   reorderRunSheetRows,
   resolveRunSheetRowDjDisplay,
   saveEventRunSheet,
@@ -639,9 +640,7 @@ function RunSheetEntry({
         onClick={onToggleExpanded}
         aria-expanded={isExpanded}
         aria-controls={panelId}
-        // `py-1` is the tap target's own padding and is deliberately left
-        // alone; only the margin above it tightens.
-        className="mt-0.5 flex w-full items-center gap-2 rounded-md py-1 text-left"
+        className="mt-0 flex w-full items-center gap-2 rounded-md py-1 text-left"
       >
         <span className="min-w-0 flex-1 truncate text-xs text-ftc-text-muted">
           {!isExpanded && collapsedSummary
@@ -776,6 +775,7 @@ function RunSheetNotCompletedEmptyState({
 
 export default function EventRunSheetSection({
   eventId,
+  eventName,
   canEdit,
   lineup,
   profiles,
@@ -787,6 +787,7 @@ export default function EventRunSheetSection({
   calendarOrigin = null,
 }: {
   eventId: string;
+  eventName: string;
   canEdit: boolean;
   lineup: BookingRequest[];
   profiles: Map<string, BookingRecipientProfile>;
@@ -821,24 +822,21 @@ export default function EventRunSheetSection({
         filterRunSheetRowsToAcceptedBookings(currentRows, lineup, profiles);
 
       if (syncInFlightRef.current) {
-        const unchanged = currentFiltered();
-        return { rows: unchanged, persistedRows: unchanged };
+        return !canEdit
+          ? { rows: currentRows, persistedRows: currentRows }
+          : { rows: currentFiltered(), persistedRows: currentFiltered() };
       }
 
       const { addedCount } = mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles);
 
       if (addedCount === 0) {
-        const unchanged = currentFiltered();
-        return { rows: unchanged, persistedRows: unchanged };
+        return !canEdit
+          ? { rows: currentRows, persistedRows: currentRows }
+          : { rows: currentFiltered(), persistedRows: currentFiltered() };
       }
 
       if (!canEdit) {
-        const merged = filterRunSheetRowsToAcceptedBookings(
-          mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows,
-          lineup,
-          profiles,
-        );
-        return { rows: merged, persistedRows: merged };
+        return { rows: currentRows, persistedRows: currentRows };
       }
 
       syncInFlightRef.current = true;
@@ -872,7 +870,10 @@ export default function EventRunSheetSection({
   );
 
   const loadRunSheet = useCallback(async () => {
-    setLoading(true);
+    // Don't show loading state immediately after save — we already have the data
+    if (!justSavedRef.current) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -888,12 +889,37 @@ export default function EventRunSheetSection({
       setError(getRunSheetLoadErrorMessage(loadError));
     } finally {
       setLoading(false);
+      justSavedRef.current = false;
     }
   }, [eventId, syncAcceptedDjs]);
 
   useEffect(() => {
     void loadRunSheet();
   }, [loadRunSheet]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`run-sheet:${eventId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "event_run_sheet_rows",
+          filter: `event_id=eq.${eventId}`,
+        },
+        () => {
+          if (!justSavedRef.current) {
+            void loadRunSheet();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [eventId, loadRunSheet]);
 
   function updateRow(rowId: string, patch: Partial<RunSheetRowInput>) {
     setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
@@ -928,6 +954,7 @@ export default function EventRunSheetSection({
    * is which of the two presentations of that possibility is on screen.
    */
   const [isEditing, setIsEditing] = useState(false);
+  const justSavedRef = useRef(false);
 
   function handleEnterEditMode() {
     setError(null);
@@ -961,11 +988,10 @@ export default function EventRunSheetSection({
   // dedicated empty state below, distinct from partial completion (which
   // shows the normal list with individual rows muted; see RunSheetEntry).
   const allRowsIncomplete = rows.length > 0 && completedRowCount === 0;
-  // View mode only: "N of M completed" is a browsing aid, not something a
-  // planner mid-edit needs restated back to them while they are the one
-  // actively changing that number -- and it would otherwise sit directly
-  // above a "Save" button appearing for the same reason, doubling up.
-  const showRunSheetProgress = !isEditing && rows.length > 0 && !allRowsIncomplete;
+  // View mode only, planner only: "N of M completed" is a planner browsing aid.
+  // Not shown to DJs (canEdit === planner). Hidden while editing or when no rows.
+  const showRunSheetProgress =
+    canEdit && !isEditing && rows.length > 0 && !allRowsIncomplete;
   // The header cluster (Edit, or Cancel + Save) is suppressed for exactly the
   // same window the empty state above owns: while browsing an all-incomplete
   // sheet, "Create Run Sheet" is the only action on screen, not a duplicate of
@@ -1022,20 +1048,26 @@ export default function EventRunSheetSection({
 
       setRows(persistedRows);
       setSavedRows(persistedRows);
-      // View -> Edit -> Save -> View: a successful save returns to the
-      // read-only presentation, collapsed, exactly like opening the sheet
-      // fresh. Left out of `finally` deliberately -- a failed save keeps the
-      // planner in edit mode, with the error and their unsaved rows intact,
-      // so they can retry rather than losing the edit.
-      setIsEditing(false);
-      setExpandedRowIds(new Set());
+      // Show save confirmation with expanded form still visible (no collapse
+      // flicker). After 1.5s, return to view mode.
       onSaved?.("Run sheet saved");
 
-      // Soft: Save already succeeded. DM only the DJs whose rows changed —
-      // never crew chat. Failures are logged inside the helper.
-      await notifyRunSheetUpdatesForChangedBookings({
-        lineup,
+      // Flag prevents realtime subscription from reloading (and showing loading
+      // state) immediately after our local save. Cleared when next load completes.
+      justSavedRef.current = true;
+      setTimeout(() => {
+        setIsEditing(false);
+        setExpandedRowIds(new Set());
+      }, 1500);
+
+      // Soft: Save already succeeded. Post to crew chat.
+      // Failures are logged inside the helper.
+      await notifyCrewChatOfRunSheetUpdate({
+        eventId,
+        eventName,
         changes: runSheetChanges,
+        lineup,
+        profiles,
       });
     } catch (saveError) {
       logRunSheetSaveError(saveError);

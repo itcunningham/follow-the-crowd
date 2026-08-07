@@ -60,8 +60,8 @@ export default function CancelAcceptedBookingButton({
   const title = role === "planner" ? "Cancel booking?" : "Withdraw booking?";
   const description =
     role === "planner"
-      ? "This DJ will be removed from the event run sheet and notified in the group chat"
-      : "You will be removed from the event run sheet and the planner will be notified in the group chat";
+      ? "This DJ will be removed from the event run sheet and notified in the crew chat"
+      : "You will be removed from the event run sheet and the planner will be notified in the crew chat";
   const confirmLabel = role === "planner" ? "Cancel booking" : "Withdraw";
 
   const resolvedReason = useMemo(
@@ -103,7 +103,7 @@ export default function CancelAcceptedBookingButton({
         onClick={() => setOpen(true)}
         className={`${compact ? COMPACT_TRIGGER_CLASS : DEFAULT_TRIGGER_CLASS} ${className}`}
       >
-        {loading ? `${confirmLabel}...` : triggerLabel}
+        {triggerLabel}
       </button>
 
       <BookingSheetDialog

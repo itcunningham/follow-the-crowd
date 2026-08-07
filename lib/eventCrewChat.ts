@@ -80,7 +80,19 @@ export function getEventCrewChatBackHref(
   tab?: string | null,
   eventDetailReturn?: string | null,
   dmConversationId?: string | null,
-  dmThreadContext?: any | null,
+  dmThreadContext?: {
+    from?: string | null;
+    tab?: string | null;
+    eventId?: string | null;
+    eventReturn?: string | null;
+    calendarDate?: string | null;
+    calendarView?: string | null;
+    calendarMonth?: string | null;
+    profileUserId?: string | null;
+    profileFrom?: string | null;
+    profileReturnTo?: string | null;
+    fromTab?: string | null;
+  } | null,
 ): string {
   if (from === "dm") {
     if (dmConversationId) {
@@ -110,6 +122,15 @@ export function getEventCrewChatBackHref(
         }
         if (dmThreadContext.profileUserId) {
           params.set("profileUserId", dmThreadContext.profileUserId);
+        }
+        if (dmThreadContext.profileFrom) {
+          params.set("profileFrom", dmThreadContext.profileFrom);
+        }
+        if (dmThreadContext.profileReturnTo) {
+          params.set("profileReturnTo", dmThreadContext.profileReturnTo);
+        }
+        if (dmThreadContext.fromTab) {
+          params.set("fromTab", dmThreadContext.fromTab);
         }
       }
 
@@ -247,6 +268,68 @@ export async function getEventCrewParticipantIds(eventId: string): Promise<strin
   }
 
   return [...new Set(((data ?? []) as string[]).filter(Boolean))];
+}
+
+/**
+ * After crew chat unlocks (manual Start or auto-start on 2nd accept): notify
+ * every other crew member so their Messages → Crew Chats inbox can refetch.
+ * Start only writes `events.crew_chat_started_at` — without this there is no
+ * realtime signal on the DJ side. Also inserts a system message and ensures
+ * the crew chat shows as unread. Soft-fail per recipient.
+ */
+export async function notifyCrewChatStarted(options: {
+  eventId: string;
+  eventName: string;
+}): Promise<void> {
+  const { eventId } = options;
+  const eventName = options.eventName.trim() || "Crew chat";
+  const link = getEventCrewChatLink(eventId);
+
+  let senderId: string;
+  let participants: string[];
+  let senderProfile;
+
+  try {
+    senderId = await getCurrentUserId();
+    senderProfile = await getCurrentUserProfile();
+    participants = await getEventCrewParticipantIds(eventId);
+  } catch (loadError) {
+    console.error("[eventCrewChat] Crew chat start notify setup failed:", loadError);
+    return;
+  }
+
+  const senderName = senderProfile?.display_name?.trim() || "Planner";
+
+  // Insert system message for crew start and notify participants
+  const insertPromise = supabase.from("messages").insert({
+    event_id: eventId,
+    user_id: senderId,
+    text: `${senderName} started the crew`,
+  }).catch((error) => {
+    console.error("[eventCrewChat] Failed to insert crew started system message:", error);
+  });
+
+  const notifyPromises = participants
+    .filter((participantId) => participantId !== senderId)
+    .map(async (participantId) => {
+      try {
+        await createNotification(
+          participantId,
+          "message",
+          eventName,
+          "Crew started",
+          link,
+        );
+      } catch (notificationError) {
+        console.error(
+          "[eventCrewChat] Crew started but notification failed:",
+          participantId,
+          notificationError,
+        );
+      }
+    });
+
+  await Promise.all([insertPromise, ...notifyPromises]);
 }
 
 export async function sendEventCrewChatMessage(

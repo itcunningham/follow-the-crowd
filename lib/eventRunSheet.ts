@@ -8,6 +8,11 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 import { getCurrentUserId } from "@/lib/user/currentUser";
+import { sendEventCrewChatMessage } from "@/lib/eventCrewChat";
+import {
+  formatRunSheetUpdateMessage,
+  type RunSheetUpdateChange,
+} from "@/lib/events/runSheetUpdateMessage";
 
 export type RunSheetRow = {
   id: string;
@@ -835,6 +840,62 @@ export function collectChangedRunSheetBookingIds(
   return collectRunSheetBookingChanges(savedRows, currentRows).map(
     (change) => change.bookingRequestId,
   );
+}
+
+/**
+ * After a successful Save: post a system message to crew chat about the runsheet update.
+ * Soft-fail — never throws; Save already succeeded.
+ */
+export async function notifyCrewChatOfRunSheetUpdate(options: {
+  eventId: string;
+  eventName: string;
+  changes: RunSheetBookingChange[];
+  lineup?: BookingRequest[];
+  profiles?: Map<string, BookingRecipientProfile>;
+}): Promise<void> {
+  const { eventId, eventName, changes, lineup = [], profiles = new Map() } = options;
+
+  if (changes.length === 0) {
+    return;
+  }
+
+  try {
+    const formattedChanges: RunSheetUpdateChange[] = changes
+      .map((change) => {
+        const booking = lineup.find((b) => b.id === change.bookingRequestId);
+        if (!booking) return null;
+
+        const profile = profiles.get(booking.recipient_id);
+        const djName = profile?.display_name?.trim() || "DJ";
+
+        // Split comma-separated changes and format each
+        const individualChanges = change.changeSummary
+          .split(", ")
+          .filter((item) => !item.toLowerCase().includes("notes"))
+          .map((item) => {
+            // Remove "updated" suffix if present
+            return item.replace(/\s+updated$/, "");
+          });
+
+        return {
+          djName,
+          changes: individualChanges,
+        };
+      })
+      .filter((item): item is RunSheetUpdateChange => item !== null);
+
+    if (formattedChanges.length === 0) {
+      return;
+    }
+
+    const messageText = formatRunSheetUpdateMessage(formattedChanges);
+
+    await sendEventCrewChatMessage(eventId, messageText, eventName, {
+      notifyParticipants: true,
+    });
+  } catch (notifyError) {
+    console.warn("[run-sheet] Crew chat notification failed:", notifyError);
+  }
 }
 
 /**

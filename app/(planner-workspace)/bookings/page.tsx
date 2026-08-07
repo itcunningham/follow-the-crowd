@@ -2560,7 +2560,9 @@ function ReceivedBookingCard({
   const rateLabel = getGigCardOfferSummary(booking);
   const isConfirmed = gigsTab === "accepted";
   const plannerLabel = senderName ? `From ${senderName}` : undefined;
-  const showChevron = isConfirmed && Boolean(eventHref);
+  // Any linked event: whole card opens Event Details (Confirmed already did;
+  // Incoming used to be Message-only, which hid the details path).
+  const showChevron = Boolean(eventHref);
 
   function renderOpenDmLink() {
     return (
@@ -2608,7 +2610,7 @@ function ReceivedBookingCard({
     </div>
   );
 
-  if (isConfirmed && eventHref) {
+  if (eventHref) {
     return (
       <li className="min-w-0">
         <Link

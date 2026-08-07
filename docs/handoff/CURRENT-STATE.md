@@ -1,13 +1,41 @@
-# Current state (last updated: 2026-08-05)
+# Current state (last updated: 2026-08-06)
 
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
-**Accept/Decline buttons styled consistently (`0646edbd` on `claude/new-session-xj7b0u`, pending ship):** Accept/decline buttons across Event Details "Your booking" card and DM booking cards now use matching solid styling. Accept = solid primary background with black text, rounded-xl. Decline = red destructive outline with matching dimensions, no uppercase text or hover effects. Updated `EVENT_DETAIL_BTN_DESTRUCTIVE` in `eventDetailUi.ts` and DM booking card button classes in `BookingRequestCard.tsx`.
+**Full Claude handover doc (`docs/handoff/CLAUDE-FULL-HANDOVER.md`, 2026-08-06):** single paste/start file for Claude — product, brand, Isaac prefs (brutal honesty + always ship `main`), stack, routes, traps, ship checklist. Prefer over older `CLAUDE-CODE-BUILDER-HANDOVER.md` for day-one.
+
+**Crew Chats inbox flicker fixed (on `main`, 2026-08-06):** Messages → Crew Chats oscillated skeleton ↔ empty ~0.5s. Unread sync called `markNotificationsReadForLink` on already-read DMs; that always fired `ftc-notifications-updated`, and `/dm` hard-reloaded group chats treating empty as still-loading. Fix: notify only when rows actually updated; settle empty first load (no skeleton on refetch); badge bus soft-reloads; crew unlock INSERTs still hard-reload.
+
+**Profile→Message→Crew→Back keeps chat context (`f3ceb893` on `main`, 2026-08-06):** Crew chat Back rebuilt the DM as `from=profile` but dropped `profileFrom` / `profileReturnTo`, so the next Back landed on a bare profile (no Back button, CTA became **Message / Book DJ**). Those fields now ride DM→crew (`dmThreadProfileFrom` / `dmThreadProfileReturnTo`) and restore on crew→DM; same for View event via `parseDmThreadEntryContext`.
+
+**Own chat bubbles font-medium (`9fbf54b5` on `main`, 2026-08-06):** sent (dark-on-cyan) text bumped to font-medium so it optically matches received light-on-dark. Same helper for DM + crew chat.
+
+**DM booking details: drop Booking type label; Cancelled by uses DJ name (`3676a4ce` on `main`, 2026-08-06):** Expanded details no longer show a **Booking type** eyebrow above Fixed/$amount. **Cancelled by** resolves the DJ via `resolveUserDisplayName` (display name → username) and DM cards load profiles for all booking parties (not only the other chat member), so it no longer falls back to the bare role **DJ** when the name is available.
+
+**DM accepted card: Crew chat above Withdraw (`6f9c7945` on `main`, 2026-08-06):** DM booking card label **Group chat → Crew chat**; accepted action order is **View event → Crew chat → Withdraw** (destructive last). Locked pending copy also says Crew chat.
+
+**Crew chat start reaches DJ inbox live (`624fed1d` on `main`, 2026-08-06):** Start only wrote `events.crew_chat_started_at` — no message, no notification — so Messages → Crew Chats never refetched until hard refresh. Claude’s `cecc61c8` only subscribed the open `/events/[id]/chat` page (and `events` may not be in Realtime). Fix: `notifyCrewChatStarted` after manual Start and first auto-start; NavBadge fans recipient `notifications` INSERTs into `ftc-notifications-updated`; `/dm` reloads group chats (not soft-throttled) on that signal / crew-chat notification links. Stripped Claude debug `console.log`s on the chat page.
+
+**"Group chat" → "Crew chat" UI terminology (`36eea5a9` on `main`, 2026-08-06):** Unified terminology across Event Details pages and chat headers. Changed "Start group chat" → "Start crew chat", "GROUP CHAT" button → "CREW CHAT", error messages, and redirect messages to use crew instead of group. Matches Messages tab which already used "Crew Chats". Deployed to Production.
+
+**DM peer notify hardened (`ec781b25` on `main`, 2026-08-06):** Claude’s Seen pass (`3f4e9c8c`) gated `otherUserId` on `members.length === 2`, so `createNotification` was skipped after send (message insert still succeeded — soft silent). `48e07a7d` restored the find, but send still trusted React state only. Now `resolveDmOtherUserId` / `notifyDmPeerOfMessage` re-resolve the peer at send time for text + attachments. Seen stays disabled (`ad488ebf`).
+
+**Run sheet update card styling and centering (`c3d9b64` on `main`, 2026-08-06):** Refined runsheet update system messages in crew chat. Increased max-width to 90% (85% mobile) for better centering, added subtle top/bottom borders for visual separation, changed heading to font-medium, increased spacing (my-3→my-4, space-y-1.5), and bumped item text to text-sm with leading-snug for readability. Card now looks balanced and easy on the eyes — good enough for beta.
+
+**Run sheet crew-chat notify build fix (`def3897` on `main`, 2026-08-06):** Claude’s `05b3b05` broke Production (`eventData.name` does not exist in `EventRunSheetSection`). Pass `eventName={event.name}` from Event Details into the section and into `notifyCrewChatOfRunSheetUpdate`.
+
+**DM View event label restored (`7f8a0bd` on `main`, 2026-08-06):** Claude’s `756f5ff` shortened **View event → View** (and crew-chat context **View Event → View**), which left a full-width primary looking empty. Restored **View event** / **View Event**. Kept **Group chat** nav-row label (not “Open group chat”); heading stays removed. Do not shrink View horizontally — fill the label instead.
+
+**Decline is two-tap CONFIRM (`9f7678b` on `main`, 2026-08-06):** removes the 5s undo toast (`b698b87`). First tap arms Decline → **CONFIRM** + solid red; second tap declines. Disarms on outside tap, Accept, navigate away, or ~3s. Shared `DeclineConfirmButton` in DM `BookingRequestCard` (paired, open-offer stack, pending-proposal) and Event Details Your booking. Idle style stays Cancel-family outlined red (`d7f8dd5`).
+
+**DM Decline|Accept restored to outlined + primary (`d7f8dd5` on `main`, 2026-08-06):** supersedes the solid-fill / visibility pass (`0646edb`→`d86401a`). Decline is Cancel-family outlined red + uppercase again; Accept is `ftc-btn-primary` uppercase. Event Details pending pair uses the same tokens.
+
+**Incoming Gigs card opens Event Details (`791f59a` on `main`, 2026-08-06):** whole card is the Event Details link when `event_id` exists (Confirmed already did). Message stays a nested link with `stopPropagation`. Chevron shows whenever the card is navigable.
 
 **DJ already-booked shows for cancelled events (`b45bdc1` on `claude/new-session-xj7b0u`, pending ship):** `getPlannerDjAvailabilityHints` was marking DJs as "already booked" if they had an accepted booking for a cancelled event on the same date. The planner cancels event → accepted bookings stay `status = "accepted"` but event gets `status = "cancelled"`. When planning a new event, the query found those stale bookings and blocked the DJ. Fix: query events table and filter out bookings where `status = "cancelled"` before marking DJ unavailable.
 
-**Standing deploy preference locked (2026-08-04):** small approved bug fixes / polish ship to **`main` (Production)**, not Preview-only. Branch deploys show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. Saved in `USER-PREFERENCES.md`, `HOW-WE-WORK.md`, and `.cursor/rules/ship-small-fixes-to-main.mdc`.
+**Standing deploy preference locked (2026-08-06):** **Always push finished work to Vercel Production via `main`.** Do not leave completed fixes on Preview-only branches ("No target"). Same-turn merge/FF to `main` after build green. Saved in `USER-PREFERENCES.md`, `HOW-WE-WORK.md`, and `.cursor/rules/ship-small-fixes-to-main.mdc`.
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
@@ -922,6 +950,16 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
 
 ## Recent commits (reference)
+- `9fbf54b5` — fix(chat): bump own bubble text to font-medium
+- `3676a4ce` — fix(dm): drop Booking type label; Cancelled by shows DJ name
+- `6f9c7945` — fix(dm): Crew chat label; Withdraw below nav on accepted cards
+- `624fed1d` — fix(crew-chat): fan out Start so DJ inbox updates live
+- `ec781b25` — fix(dm): always resolve peer before message notification
+- `def3897` — fix(run-sheet): pass eventName into crew chat notify
+- `7f8a0bd` — fix(copy): restore View event label on DM and crew chat
+- `9f7678b` — fix(booking): replace Decline undo toast with two-tap CONFIRM
+- `791f59a` — fix(gigs): Incoming card opens Event Details on tap
+- `d7f8dd5` — fix(ui): restore outlined Decline + solid Accept on DM booking cards
 - `675d2fe` — fix(dm): refresh open DM when planner cancels the event
 - `a6b3c5f` — fix(bookings): sync Event Details + Messages unread on DJ accept
 - `da181f3` — fix(events): show withdraw feedback in header toast above flyer

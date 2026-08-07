@@ -25,9 +25,40 @@ export type DmThreadEntryContext = {
   calendarView?: string | null;
   calendarMonth?: string | null;
   profileUserId?: string | null;
+  /** How the profile opened this DM — `chat` or `event-detail`. */
+  profileFrom?: string | null;
+  /** Crew/DM returnTo when profileFrom=chat — keep Back → Message CTA context. */
+  profileReturnTo?: string | null;
+  fromTab?: string | null;
   eventId?: string | null;
   eventReturn?: string | null;
 };
+
+const PROFILE_FROM_CHAT = "chat";
+const PROFILE_FROM_EVENT_DETAIL = "event-detail";
+
+function isSafeInAppReturnPath(value: string | null | undefined): value is string {
+  const trimmed = value?.trim();
+
+  return Boolean(
+    trimmed &&
+      trimmed.startsWith("/") &&
+      !trimmed.startsWith("//") &&
+      !trimmed.startsWith("/profile/"),
+  );
+}
+
+function readValidatedProfileFrom(
+  value: string | null | undefined,
+): typeof PROFILE_FROM_CHAT | typeof PROFILE_FROM_EVENT_DETAIL | null {
+  const trimmed = value?.trim();
+
+  if (trimmed === PROFILE_FROM_CHAT || trimmed === PROFILE_FROM_EVENT_DETAIL) {
+    return trimmed;
+  }
+
+  return null;
+}
 
 const DM_THREAD_ENTRY_FROM_VALUES = new Set([
   "bookings",
@@ -53,6 +84,12 @@ export function parseDmThreadEntryContext(
     calendarView: getParam("calendarView"),
     calendarMonth: getParam("calendarMonth"),
     profileUserId: getParam("profileUserId"),
+    profileFrom: readValidatedProfileFrom(getParam("profileFrom")),
+    profileReturnTo: (() => {
+      const raw = getParam("profileReturnTo");
+      return isSafeInAppReturnPath(raw) ? raw.trim() : null;
+    })(),
+    fromTab: getParam("fromTab"),
     eventId: getParam("eventId"),
     eventReturn: getParam(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM),
   };
@@ -106,6 +143,26 @@ export function appendDmReturnContextToEventDetailParams(
       params.set("profileUserId", profileUserId);
     }
 
+    const profileFrom = readValidatedProfileFrom(entryContext?.profileFrom);
+
+    if (profileFrom) {
+      params.set("profileFrom", profileFrom);
+    }
+
+    if (
+      profileFrom === PROFILE_FROM_CHAT &&
+      isSafeInAppReturnPath(entryContext?.profileReturnTo)
+    ) {
+      params.set("profileReturnTo", entryContext.profileReturnTo.trim());
+    }
+
+    if (
+      profileFrom === PROFILE_FROM_EVENT_DETAIL &&
+      entryContext?.fromTab?.trim() === "history"
+    ) {
+      params.set("fromTab", "history");
+    }
+
     return;
   }
 
@@ -125,6 +182,9 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
   calendarView?: string | null;
   calendarMonth?: string | null;
   profileUserId?: string | null;
+  profileFrom?: string | null;
+  profileReturnTo?: string | null;
+  fromTab?: string | null;
   bookingRequestId?: string | null;
   /** Set when the originating "View event" link was built from a DM conversation — see buildEventDetailFromDmHref. */
   restoreScroll?: string | null;
@@ -138,6 +198,9 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
   calendarView?: CalendarOriginState["calendarView"];
   calendarMonth?: string;
   profileUserId?: string;
+  profileFrom?: string;
+  profileReturnTo?: string;
+  fromTab?: string;
   bookingRequestId?: string;
   bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
   restoreScroll?: string;
@@ -163,6 +226,9 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
     calendarView?: CalendarOriginState["calendarView"];
     calendarMonth?: string;
     profileUserId?: string;
+    profileFrom?: string;
+    profileReturnTo?: string;
+    fromTab?: string;
     bookingRequestId?: string;
     bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
     restoreScroll?: string;
@@ -201,6 +267,20 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
 
     if (profileUserId) {
       hrefOptions.profileUserId = profileUserId;
+    }
+
+    const profileFrom = readValidatedProfileFrom(options.profileFrom);
+
+    if (profileFrom) {
+      hrefOptions.profileFrom = profileFrom;
+    }
+
+    if (profileFrom === PROFILE_FROM_CHAT && isSafeInAppReturnPath(options.profileReturnTo)) {
+      hrefOptions.profileReturnTo = options.profileReturnTo.trim();
+    }
+
+    if (profileFrom === PROFILE_FROM_EVENT_DETAIL && options.fromTab?.trim() === "history") {
+      hrefOptions.fromTab = "history";
     }
   }
 
@@ -381,6 +461,9 @@ export function buildDmThreadHref(
     tab?: string;
     eventId?: string;
     profileUserId?: string;
+    profileFrom?: string;
+    profileReturnTo?: string;
+    fromTab?: string;
     bookingRequestId?: string;
     bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
     calendarDate?: string;
@@ -408,6 +491,20 @@ export function buildDmThreadHref(
 
   if (options?.profileUserId?.trim()) {
     params.set("profileUserId", options.profileUserId.trim());
+  }
+
+  const profileFrom = readValidatedProfileFrom(options?.profileFrom);
+
+  if (profileFrom) {
+    params.set("profileFrom", profileFrom);
+  }
+
+  if (profileFrom === PROFILE_FROM_CHAT && isSafeInAppReturnPath(options?.profileReturnTo)) {
+    params.set("profileReturnTo", options.profileReturnTo.trim());
+  }
+
+  if (profileFrom === PROFILE_FROM_EVENT_DETAIL && options?.fromTab?.trim() === "history") {
+    params.set("fromTab", "history");
   }
 
   if (options?.bookingRequestId?.trim()) {

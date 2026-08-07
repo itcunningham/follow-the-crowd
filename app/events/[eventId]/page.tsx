@@ -22,6 +22,7 @@ import {
 } from "@/app/components/event-detail/EventDetailLayout";
 import {
   EVENT_DETAIL_BTN_DESTRUCTIVE,
+  EVENT_DETAIL_BTN_DESTRUCTIVE_ARMED,
   EVENT_DETAIL_BTN_PRIMARY_WIDE,
   EVENT_DETAIL_BTN_SECONDARY,
   EVENT_DETAIL_CARD_CLASS,
@@ -34,6 +35,7 @@ import {
 } from "@/app/components/event-detail/eventDetailUi";
 import EventLineupBookingCard from "@/app/components/event-detail/EventLineupBookingCard";
 import { EventDetailBookingCancellationDetails } from "@/app/components/event-detail/EventDetailBookingCancellationDetails";
+import DeclineConfirmButton from "@/app/components/booking/DeclineConfirmButton";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { EventDetailLoadingShell, EventDetailPlannerLowerSectionsSkeleton } from "@/app/components/skeleton/Skeleton";
@@ -99,6 +101,7 @@ import {
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
   listSentBookingRequests,
+  updateBookingRequestStatus,
   type ActiveBookingStatusFilter,
   type BookingRequest,
   type BookingRequestStatus,
@@ -122,7 +125,8 @@ import {
   type CrewChatUnlockState,
 } from "@/lib/events/crewChatUnlock";
 import { computeCrewChatEventActions } from "@/lib/events/crewChatEventActions";
-import { getEventCrewChatLink } from "@/lib/eventCrewChat";
+import { getEventCrewChatLink, notifyCrewChatStarted } from "@/lib/eventCrewChat";
+import { loadEventRunSheet } from "@/lib/eventRunSheet";
 import { getEventCoverUploadErrorMessage, normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
 import {
@@ -238,6 +242,9 @@ function EventDetailPageView() {
         fromDmConversation: searchParams.get("fromDmConversation"),
         dmReturnFrom: searchParams.get("dmReturnFrom"),
         profileUserId: searchParams.get("profileUserId"),
+        profileFrom: searchParams.get("profileFrom"),
+        profileReturnTo: searchParams.get("profileReturnTo"),
+        fromTab: searchParams.get("fromTab"),
         restoreScroll: searchParams.get(DM_CHAT_SCROLL_RESTORE_PARAM),
         eventReturn: searchParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM),
         eventId,
@@ -397,6 +404,7 @@ function EventDetailPageView() {
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [hidingBookingId, setHidingBookingId] = useState<string | null>(null);
+  const [respondingToPendingBookingId, setRespondingToPendingBookingId] = useState<string | null>(null);
   const [deletingEvent, setDeletingEvent] = useState(false);
   const [cancellingEvent, setCancellingEvent] = useState(false);
   const [startingCrewChat, setStartingCrewChat] = useState(false);
@@ -442,8 +450,15 @@ function EventDetailPageView() {
           booking.recipient_id === currentUserId && booking.status === "accepted",
       ),
   );
+  const hasPendingBooking = Boolean(
+    currentUserId &&
+      lineup.some(
+        (booking) =>
+          booking.recipient_id === currentUserId && booking.status === "pending",
+      ),
+  );
   const canOpenCrewChat = isOwner || hasAcceptedBooking;
-  const canViewRunSheet = canOpenCrewChat;
+  const canViewRunSheet = canOpenCrewChat || hasPendingBooking;
   const canEditRunSheet = isOwner && isPlanner && !isHistoryEventDetail;
   const eventIsCancelled = event ? isEventCancelled(event) : false;
   const hasLinkedBookings = lineup.length > 0;
@@ -594,7 +609,24 @@ function EventDetailPageView() {
       setCrewChatUnlock(unlock);
 
       const recipientIds = bookings.map((booking) => booking.recipient_id);
-      const profileIds = collectEventDetailProfileIds(recipientIds, loadedEvent.owner_id);
+      let profileIds = collectEventDetailProfileIds(recipientIds, loadedEvent.owner_id);
+
+      try {
+        const runSheet = await loadEventRunSheet(eventId);
+        const runSheetRecipientIds = runSheet.rows
+          .map((row) => {
+            if (row.custom_data && typeof row.custom_data === "object") {
+              const recipientId = (row.custom_data as { booking_recipient_id?: unknown })
+                .booking_recipient_id;
+              return typeof recipientId === "string" ? recipientId : null;
+            }
+            return null;
+          })
+          .filter((id): id is string => id !== null);
+
+        profileIds = [...new Set([...profileIds, ...runSheetRecipientIds])];
+      } catch {
+      }
 
       if (profileIds.length > 0) {
         const profileMap = await getBookingRecipientProfilesByIds(profileIds);
@@ -842,7 +874,7 @@ function EventDetailPageView() {
         try {
           await postEventGroupChatUpdate(savedEvent.id, savedEvent.name, groupChatFieldChanges);
         } catch (groupChatError) {
-          console.error("Failed to post event group chat update:", groupChatError);
+          console.error("Failed to post event crew chat update:", groupChatError);
           scrollToTopAfterSuccessfulSaveRef.current = true;
           setEvent(savedEvent);
           setEditOpen(false);
@@ -850,7 +882,7 @@ function EventDetailPageView() {
           resetEditCoverState();
           setEditConfirmOpen(false);
           setHeaderFeedbackMessage("Event updated. Remember to let affected DJs know.");
-          setError("Event saved, but the group chat update could not be posted");
+          setError("Event saved, but the crew chat update could not be posted");
           return;
         }
       }
@@ -863,7 +895,7 @@ function EventDetailPageView() {
       setEditConfirmOpen(false);
       setHeaderFeedbackMessage(
         shouldNotifyGroupChat && groupChatFieldChanges.length > 0
-          ? "Event updated. A summary was posted in the group chat."
+          ? "Event updated. A summary was posted in the crew chat."
           : EVENT_UPDATED_SUCCESS_MESSAGE,
       );
     } catch (saveError) {
@@ -1122,6 +1154,23 @@ function EventDetailPageView() {
     }
   }
 
+  async function handleRespondToPendingBooking(booking: BookingRequest, status: "accepted" | "declined") {
+    setRespondingToPendingBookingId(booking.id);
+    setError(null);
+
+    try {
+      await updateBookingRequestStatus(booking.id, status);
+      await reloadEventLineup();
+      const message = status === "accepted" ? "Booking accepted" : "Booking declined";
+      setHeaderFeedbackMessage(message);
+    } catch (respondError) {
+      console.error("Failed to respond to pending booking:", respondError);
+      setError(getBookingMutationErrorMessage(respondError));
+    } finally {
+      setRespondingToPendingBookingId(null);
+    }
+  }
+
   async function handleDeleteEvent() {
     if (!event) {
       return;
@@ -1188,10 +1237,18 @@ function EventDetailPageView() {
     setError(null);
 
     try {
+      const wasStarted = Boolean(event.crew_chat_started_at?.trim());
       const updatedEvent = await startEventCrewChat(event.id);
       setEvent(updatedEvent);
       const unlock = await getCrewChatUnlockStateForEvent(event.id);
       setCrewChatUnlock(unlock);
+
+      if (!wasStarted && updatedEvent.crew_chat_started_at) {
+        await notifyCrewChatStarted({
+          eventId: event.id,
+          eventName: updatedEvent.name || event.name,
+        });
+      }
     } catch (startError) {
       console.error("Failed to start crew chat:", startError);
       setError(getEventsLoadErrorMessage(startError));
@@ -1361,12 +1418,12 @@ function EventDetailPageView() {
                       href={getEventCrewChatLink(event.id, {
                         eventDetailReturn: searchParams.toString() || null,
                       })}
-                      aria-label="Group chat"
+                      aria-label="Crew chat"
                       className={HEADER_GROUP_CHAT_ACTION_CLASS}
                       onClick={() => markCrewChatOpenedFromEventDetail(event.id)}
                     >
                       <EventHeaderChatIcon />
-                      <span className={HEADER_GROUP_CHAT_LABEL_CLASS}>Group chat</span>
+                      <span className={HEADER_GROUP_CHAT_LABEL_CLASS}>Crew chat</span>
                     </Link>
                   )}
                   {showCrewChatHelpUi ? (
@@ -1569,6 +1626,7 @@ function EventDetailPageView() {
                       <div className={showRunSheetSendBookingsAction ? "mt-4" : "mt-8"}>
                         <EventRunSheetSection
                           eventId={event.id}
+                          eventName={event.name}
                           canEdit={canEditRunSheet}
                           lineup={lineup}
                           profiles={profiles}
@@ -1589,32 +1647,95 @@ function EventDetailPageView() {
 
                   {!isOwner && viewerBooking ? (
                     <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
-                      <EventDetailSectionTitle>Your booking</EventDetailSectionTitle>
-                      <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="mb-3 flex items-center justify-between">
+                        <EventDetailSectionTitle>Your booking</EventDetailSectionTitle>
+                        {viewerBooking.status === "pending" ? (
+                          <BookingStatusBadge status="pending" variant="compact" />
+                        ) : null}
+                      </div>
+                      <div className="flex min-w-0 items-end justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <BookingStatusBadge status={viewerBooking.status} variant="compact" />
-                          <p className="mt-2 text-sm text-ftc-text-secondary">
-                            {viewerBooking.set_time || "TBC"}
-                            {viewerBooking.fee ? ` · ${formatRateDisplay(viewerBooking.fee)}` : ""}
-                          </p>
+                          {viewerBooking.status !== "pending" ? (
+                            <BookingStatusBadge status={viewerBooking.status} variant="compact" />
+                          ) : null}
+                          {viewerBooking.fee && viewerBooking.status !== "cancelled" ? (
+                            <p className={`${viewerBooking.status !== "pending" ? "mt-2" : ""} text-sm text-ftc-text-secondary`}>
+                              {formatRateDisplay(viewerBooking.fee)}
+                            </p>
+                          ) : null}
                           {viewerBooking.status === "cancelled" ? (
-                            <EventDetailBookingCancellationDetails
-                              cancelledByLabel={resolveBookingCancelledByLabel(viewerBooking, profiles)}
-                              cancellationReasonLabel={resolveBookingCancellationReasonLabel(viewerBooking)}
-                            />
+                            <div className="mt-2">
+                              <EventDetailBookingCancellationDetails
+                                cancelledByLabel={resolveBookingCancelledByLabel(viewerBooking, profiles)}
+                                cancellationReasonLabel={resolveBookingCancellationReasonLabel(viewerBooking)}
+                              />
+                            </div>
                           ) : null}
                         </div>
-                        {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
-                          <div className="flex w-full min-w-0 shrink-0 sm:w-auto sm:max-w-[14rem] sm:items-end">
+                        <div className="flex gap-2">
+                          {viewerBooking.status === "pending" ? (
+                            <>
+                              <DeclineConfirmButton
+                                onConfirm={() => handleRespondToPendingBooking(viewerBooking, "declined")}
+                                disabled={respondingToPendingBookingId === viewerBooking.id}
+                                loading={respondingToPendingBookingId === viewerBooking.id}
+                                idleClassName={EVENT_DETAIL_BTN_DESTRUCTIVE}
+                                armedClassName={EVENT_DETAIL_BTN_DESTRUCTIVE_ARMED}
+                                className="flex-[0.92]"
+                              />
+                              <button
+                                onClick={() => handleRespondToPendingBooking(viewerBooking, "accepted")}
+                                disabled={respondingToPendingBookingId === viewerBooking.id}
+                                className={`${EVENT_DETAIL_BTN_PRIMARY_WIDE} flex-[1.08] !w-auto px-3`}
+                              >
+                                {respondingToPendingBookingId === viewerBooking.id ? "..." : "Accept"}
+                              </button>
+                            </>
+                          ) : null}
+                          {viewerBooking.conversation_id && !hideOpenBookingConversation && viewerBooking.status !== "pending" ? (
                             <Link
                               href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
-                              className={`${EVENT_DETAIL_BTN_SECONDARY} w-full min-w-0 sm:min-w-[7.5rem]`}
+                              className={`${EVENT_DETAIL_BTN_SECONDARY} text-xs`}
                             >
                               <span className="block truncate">{djBookingMessageLabel}</span>
                             </Link>
-                          </div>
-                        ) : null}
+                          ) : null}
+                        </div>
                       </div>
+                    </section>
+                  ) : null}
+
+                  {!isOwner && (hasPendingBooking || hasAcceptedBooking) && lineup.length > 1 ? (
+                    <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
+                      <EventDetailSectionTitle>Lineup</EventDetailSectionTitle>
+                      <ul className="mt-3 space-y-2.5">
+                        {lineup.map((booking) => {
+                          const profile = profiles.get(booking.recipient_id);
+                          return (
+                            <li key={booking.id}>
+                              <EventLineupBookingCard
+                                booking={booking}
+                                profile={profile}
+                                currentUserId={currentUserId}
+                                eventDetailId={eventId}
+                                readOnly
+                                cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
+                                cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
+                                canHideFromLineup={false}
+                                hiding={false}
+                                hideDisabled={true}
+                                cancelling={false}
+                                proposalLoading={false}
+                                onHideFromLineup={() => {}}
+                                onCancelBooking={() => {}}
+                                onCancelAccepted={() => {}}
+                                onAcceptProposal={() => {}}
+                                onKeepOriginalOffer={() => {}}
+                              />
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </section>
                   ) : null}
 

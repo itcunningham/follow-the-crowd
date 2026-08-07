@@ -28,7 +28,7 @@ Day-one handover: `PRODUCT-HANDOVER.md`. Brand: `BRAND-PHILOSOPHY.md`.
 
 - SQL has **not** been run unless Isaac says so
 - Do not force-push `main`
-- **Small approved fixes belong on `main` (Production), not Preview-only.** Vercel branch deploys show **"No target"** — Isaac cannot QA them on `follow-the-crowd.vercel.app`. When a bugfix or polish is done and Isaac wants it live (or standing preference: ship small fixes to Production), merge/fast-forward to `main` in the same turn. Large/risky work may use a PR first; still land on `main` once approved.
+- **Always land finished work on `main` (Production / Vercel).** Branch Previews show **"No target"** — Isaac cannot QA them on `follow-the-crowd.vercel.app`. When a bug fix or polish is done, merge/fast-forward to `main` in the **same turn**. Do not wait for a separate ship ask. Large/risky work may use a PR first; still land on `main` once done.
 - Do not add features beyond the task
 - Do not write long reports unless asked
 - A Preview deploy is **not** Production

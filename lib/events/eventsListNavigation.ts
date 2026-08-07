@@ -239,6 +239,9 @@ export function resolveEventDetailBackHref(
     fromDmConversation?: string | null;
     dmReturnFrom?: string | null;
     profileUserId?: string | null;
+    profileFrom?: string | null;
+    profileReturnTo?: string | null;
+    fromTab?: string | null;
     restoreScroll?: string | null;
     eventReturn?: string | null;
     /**
@@ -285,6 +288,9 @@ export function resolveEventDetailBackHref(
         calendarView: options?.calendarView,
         calendarMonth: options?.calendarMonth,
         profileUserId: options?.profileUserId,
+        profileFrom: options?.profileFrom,
+        profileReturnTo: options?.profileReturnTo,
+        fromTab: options?.fromTab,
         bookingRequestId: options?.bookingRequestId,
         restoreScroll: options?.restoreScroll,
         eventId: options?.eventId ?? options?.crewChatEventId,

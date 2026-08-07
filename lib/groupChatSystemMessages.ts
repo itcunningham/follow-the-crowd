@@ -4,11 +4,17 @@ function isGroupChatCrewOpenedNotice(text: string): boolean {
   return /^.+ joined the event crew\. Crew chat is now open\.$/.test(text.trim());
 }
 
+function isGroupChatCrewStartedNotice(text: string): boolean {
+  return /^.+ started the crew$/.test(text.trim());
+}
+
 export function isGroupChatSystemUpdateMessage(text: string): boolean {
   const trimmed = text.trim();
 
   return (
-    trimmed.startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX) || isGroupChatCrewOpenedNotice(trimmed)
+    trimmed.startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX) ||
+    isGroupChatCrewOpenedNotice(trimmed) ||
+    isGroupChatCrewStartedNotice(trimmed)
   );
 }
 
@@ -46,6 +52,13 @@ export function isHiddenCrewRosterNotice(text: string): boolean {
 
 export function formatGroupChatSystemNoticeText(text: string): string {
   const trimmed = text.trim();
+
+  const crewStartedMatch = trimmed.match(/^(.+?) started the crew$/);
+
+  if (crewStartedMatch) {
+    const name = crewStartedMatch[1]?.trim() || "Planner";
+    return `${name} started the crew`;
+  }
 
   const crewOpenedMatch = trimmed.match(/^(.+?) joined the event crew\. Crew chat is now open\.$/);
 

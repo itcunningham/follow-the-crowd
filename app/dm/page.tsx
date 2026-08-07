@@ -323,6 +323,8 @@ function DmInboxPageContent() {
   const groupChatsLoadGenerationRef = useRef(0);
   const groupChatsLoadInFlightRef = useRef<Promise<void> | null>(null);
   const groupChatsHasDataRef = useRef(false);
+  /** First fetch finished (even if empty) — stop treating empty as "still loading". */
+  const groupChatsSettledRef = useRef(false);
   const groupChatsLastFetchedAtRef = useRef(0);
   const groupChatsCacheHydratedRef = useRef(false);
 
@@ -398,7 +400,9 @@ function DmInboxPageContent() {
 
     const loadPromise = (async () => {
       const generation = ++groupChatsLoadGenerationRef.current;
-      const showLoading = options?.forceLoading || !groupChatsHasDataRef.current;
+      const showLoading =
+        Boolean(options?.forceLoading) ||
+        (!groupChatsSettledRef.current && !groupChatsHasDataRef.current);
 
       if (showLoading) {
         setGroupChatsLoading(true);
@@ -421,10 +425,15 @@ function DmInboxPageContent() {
           return;
         }
 
+        groupChatsSettledRef.current = true;
         groupChatsHasDataRef.current = loaded.length > 0;
         groupChatsLastFetchedAtRef.current = Date.now();
 
         setGroupChats((previous) => {
+          if (previous.length === 0 && loaded.length === 0) {
+            return previous;
+          }
+
           const next =
             previous.length === 0
               ? loaded
@@ -439,6 +448,8 @@ function DmInboxPageContent() {
         }
 
         console.error("Failed to load group chats:", loadError);
+
+        groupChatsSettledRef.current = true;
 
         if (!groupChatsHasDataRef.current) {
           setGroupChats([]);
@@ -727,6 +738,7 @@ function DmInboxPageContent() {
     }
 
     setGroupChats(cached);
+    groupChatsSettledRef.current = true;
     groupChatsHasDataRef.current = true;
     groupChatsLastFetchedAtRef.current = Date.now();
     setGroupChatsLoading(false);
@@ -735,6 +747,54 @@ function DmInboxPageContent() {
   useEffect(() => {
     void loadGroupChats();
   }, [loadGroupChats]);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      return;
+    }
+
+    function reloadGroupChatsForCrewUnlock() {
+      // Hard reload (not soft): unlock must beat the 30s soft throttle.
+      void loadGroupChats();
+    }
+
+    function softReloadGroupChatsFromBadgeBus() {
+      // Badge bus fires often (including mark-read). Soft avoids skeleton spam;
+      // crew unlock INSERTs use reloadGroupChatsForCrewUnlock instead.
+      void loadGroupChats({ soft: true });
+    }
+
+    window.addEventListener("ftc-notifications-updated", softReloadGroupChatsFromBadgeBus);
+
+    const channel = supabase
+      .channel(`dm-inbox:crew-chat-unlock:${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          const link =
+            payload.new && typeof payload.new === "object" && "link" in payload.new
+              ? String((payload.new as { link?: string | null }).link ?? "")
+              : "";
+
+          // Crew chat start (and crew messages) use /events/{id}/chat links.
+          if (/^\/events\/[0-9a-fA-F-]{36}\/chat/.test(link)) {
+            reloadGroupChatsForCrewUnlock();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("ftc-notifications-updated", softReloadGroupChatsFromBadgeBus);
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, loadGroupChats]);
 
   useEffect(() => {
     if (activeTab !== "group") {

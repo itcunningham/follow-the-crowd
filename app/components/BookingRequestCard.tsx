@@ -8,13 +8,17 @@ import BookingCardCompactSummary, {
 import BookingRateProposalPanel, {
   BookingRateProposalNotice,
 } from "@/app/components/booking/BookingRateProposalPanel";
+import DeclineConfirmButton from "@/app/components/booking/DeclineConfirmButton";
 import ProposeBookingRateSheet from "@/app/components/booking/ProposeBookingRateSheet";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import { EventDetailSecondaryAction } from "@/app/components/event-detail/EventDetailBottomBar";
 import {
+  DM_BOOKING_CARD_ACCEPT_BUTTON_CLASS,
   DM_BOOKING_CARD_ACTIONS_CLASS,
+  DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS,
+  DM_BOOKING_CARD_DECLINE_BUTTON_CLASS,
   DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS,
   DM_BOOKING_CARD_PAIRED_CANCEL_CLASS,
   DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS,
@@ -298,6 +302,11 @@ export default function BookingRequestCard({
               >
                 View event
               </Link>
+              {groupChatAccess?.kind === "open" ? (
+                <EventDetailSecondaryAction href={groupChatAccess.href}>
+                  Crew chat
+                </EventDetailSecondaryAction>
+              ) : null}
               {showAcceptedCancel ? (
                 <CancelAcceptedBookingButton
                   role={acceptedCancellationRole}
@@ -337,18 +346,15 @@ export default function BookingRequestCard({
         ) : null}
 
         {/*
-          Group chat is a place to go, not a third call to action: View event
-          stays the primary CTA and Cancel stays the destructive one, so this
-          reuses the same tappable nav row the event detail screens use
-          (icon + title + chevron) rather than a second primary button. The
-          bordered box that used to wrap it is gone — the booking card is
-          already a card, so boxing a section inside it was a level of nesting
-          that bought nothing.
+          Crew chat is a place to go, not a third primary CTA. On accepted
+          cards the open row sits between View event and Withdraw. Elsewhere
+          (planner pending, locked DJ) it stays a nav row / muted line below.
         */}
         {booking.event_id &&
         !showAsCancelled &&
         groupChatAccess &&
-        groupChatAccess.kind !== "hidden" ? (
+        groupChatAccess.kind !== "hidden" &&
+        !(isAccepted && eventHref && groupChatAccess.kind === "open") ? (
           <div className="mt-4">
             {groupChatAccess.kind === "open" ? (
               <div>
@@ -376,7 +382,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onAccept}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-ftc-text transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${DM_BOOKING_CARD_ACCEPT_BUTTON_CLASS} w-full`}
                 >
                   Accept offer
                 </button>
@@ -390,30 +396,28 @@ export default function BookingRequestCard({
                     Propose rate
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={onDecline}
+                <DeclineConfirmButton
+                  onConfirm={onDecline}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Decline
-                </button>
+                  idleClassName={DM_BOOKING_CARD_DECLINE_BUTTON_CLASS}
+                  armedClassName={DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS}
+                  className="w-full"
+                />
               </>
             ) : (
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={onDecline}
+                <DeclineConfirmButton
+                  onConfirm={onDecline}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 flex-[0.92] items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Decline
-                </button>
+                  idleClassName={DM_BOOKING_CARD_DECLINE_BUTTON_CLASS}
+                  armedClassName={DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS}
+                  className="flex-[0.92]"
+                />
                 <button
                   type="button"
                   onClick={onAccept}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 flex-[1.08] items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-ftc-text transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${DM_BOOKING_CARD_ACCEPT_BUTTON_CLASS} flex-[1.08]`}
                 >
                   Accept
                 </button>
@@ -428,14 +432,13 @@ export default function BookingRequestCard({
         pendingProposal &&
         booking.recipient_id === currentUserId ? (
           <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
-            <button
-              type="button"
-              onClick={onDecline}
+            <DeclineConfirmButton
+              onConfirm={onDecline}
               disabled={actionDisabled}
-              className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Decline
-            </button>
+              idleClassName={DM_BOOKING_CARD_DECLINE_BUTTON_CLASS}
+              armedClassName={DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS}
+              className="w-full"
+            />
           </div>
         ) : null}
 

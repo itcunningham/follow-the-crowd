@@ -16,7 +16,19 @@
 - Commit only when I ask (or task explicitly says commit and push).
 - Use clear commit messages I provide or sensible one-line messages.
 - Do not force push main.
-- **Ship small approved fixes to `main` for Production.** Branch Previews show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. Do not leave a finished bugfix / polish PR sitting only on a Preview branch — merge (or fast-forward) to `main` so Vercel Production picks it up. Large/risky work can still use a PR first; once Isaac says ship / merge / "to main", land it on `main` the same turn.
+- **Always push finished work to Vercel Production via `main`.** Do not leave completed fixes on a feature/Preview branch. Branch Previews show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. When the task is done and the build is green: commit → push branch → fast-forward / merge to **`main`** in the **same turn** so Production deploys. Do not wait for a separate "ship it" unless Isaac said the work is Preview-only or large/risky and needs review first.
+- **Auto-merge finished work to `main`.** When a task is done and code is working: merge to main and deploy. Do not wait for approval or ask permission. Small fixes / polish go to main right away. Large/risky work can use a PR first, but once done, merge to main the same turn.
+- **Always merge feature branches to main for Vercel deploy.** When working on branches (e.g., `claude/new-session-*`, `cursor/*`), merge them to main so changes are viewable on Vercel Production. Do this automatically.
+
+## Debugging
+
+- **After 2 failed fix attempts:** stop guessing and investigate. Gather diagnostics first: browser console errors, network requests (Fetch/XHR tab), database queries, data flow logs. Do not guess a third time.
+- **Do detective work yourself.** Do not ask Isaac for diagnostics/screenshots. Read the code, trace the flow, find the issue. He wants to minimize effort — investigation is yours to do.
+
+## Shipping & Perfection
+
+- **Ship for beta, iterate later.** Good enough is better than perfect. Don't over-polish or endlessly tweak — get it working and deployed, then refine based on real usage.
+- **Bias toward launching.** If it works and looks reasonable, ship it. Perfectionism is the enemy of progress.
 
 ## Code
 

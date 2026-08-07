@@ -1373,7 +1373,8 @@ function testDmBookingCardBookingTypePresentation() {
   assert.doesNotMatch(cardSource, /renderHeaderBadges/);
   assert.doesNotMatch(cardSource, /showOpenOfferLabel/);
   assert.doesNotMatch(cardSource, /text-ftc-primary[\s\S]*Ask for rate/);
-  assert.match(summarySource, /Booking type/);
+  // Rate line only — no Booking type eyebrow (3676a4ce).
+  assert.doesNotMatch(summarySource, /Booking type/);
   assert.match(summarySource, /text-ftc-text-secondary/);
   assert.doesNotMatch(summarySource, /FtcMetaTextRow/);
 }
@@ -2370,6 +2371,9 @@ function testGigsIncomingDmEventDetailReturnChain() {
     calendarView: null,
     calendarMonth: null,
     profileUserId: null,
+    profileFrom: null,
+    profileReturnTo: null,
+    fromTab: null,
     eventId: null,
     eventReturn: null,
   });
@@ -2440,6 +2444,9 @@ function testGigsIncomingDmEventDetailReturnChain() {
     calendarView: null,
     calendarMonth: null,
     profileUserId: null,
+    profileFrom: null,
+    profileReturnTo: null,
+    fromTab: null,
     eventId,
     eventReturn: gigsConfirmedReturn,
   });
@@ -4505,7 +4512,7 @@ function testBookingCardGroupChatIsANavigationRow() {
 
   assert.ok(groupChatBlock.length > 0, "expected to find the group chat section");
 
-  // Group chat is navigation, not a third CTA: View event stays the primary
+  // Crew chat is navigation, not a third CTA: View event stays the primary
   // action and Cancel stays destructive, so this must reuse the shared
   // tappable nav row (icon + title + chevron) rather than a primary button.
   assert.match(
@@ -4514,7 +4521,7 @@ function testBookingCardGroupChatIsANavigationRow() {
   );
   assert.match(
     groupChatBlock,
-    /<EventDetailSecondaryAction href=\{groupChatAccess\.href\}>\s*Open group chat/,
+    /<EventDetailSecondaryAction href=\{groupChatAccess\.href\}>\s*Crew chat/,
   );
   assert.doesNotMatch(
     groupChatBlock,
@@ -4532,7 +4539,7 @@ function testBookingCardGroupChatIsANavigationRow() {
 
   // Label matches the card's own muted section-label convention (used by the
   // two "Booking request" labels in this same file), not the cyan planner one.
-  assert.match(
+  assert.doesNotMatch(
     groupChatBlock,
     /text-\[10px\] font-semibold uppercase tracking-wide text-ftc-text-muted">\s*Group chat/,
   );
@@ -4540,7 +4547,7 @@ function testBookingCardGroupChatIsANavigationRow() {
 
   // Behaviour preserved: same access states, same locked copy, same href.
   assert.match(groupChatBlock, /groupChatAccess\.kind === "open"/);
-  assert.match(groupChatBlock, /Group chat unlocks after you accept\./);
+  assert.match(groupChatBlock, /Crew chat unlocks after you accept\./);
 }
 
 function testCombinedRoleLabelIsConsistentEverywhere() {
@@ -4669,13 +4676,18 @@ function testIncomingGigsCardDetailsNavigation() {
     pageSource.indexOf("function BookingHistoryCard"),
   );
 
+  // Incoming + Confirmed: whole card is the Event Details link when event_id
+  // exists. Message stays a nested link with stopPropagation so it does not
+  // steal the card navigation.
   assert.doesNotMatch(
     receivedCardSource,
     /if \(eventHref\) \{[\s\S]*absolute inset-0 z-0[\s\S]*pointer-events-none/,
   );
-  assert.match(receivedCardSource, /showChevron = isConfirmed && Boolean\(eventHref\)/);
-  assert.match(receivedCardSource, /if \(isConfirmed && eventHref\)/);
+  assert.match(receivedCardSource, /showChevron = Boolean\(eventHref\)/);
+  assert.match(receivedCardSource, /if \(eventHref\) \{/);
+  assert.doesNotMatch(receivedCardSource, /if \(isConfirmed && eventHref\)/);
   assert.match(receivedCardSource, /event\.stopPropagation\(\)/);
+  assert.match(receivedCardSource, /buildGigsEventDetailHref\(booking\.event_id, gigsTab\)/);
 }
 
 function testGigsIncomingEventArtwork() {
@@ -13665,6 +13677,15 @@ function testChatBubbleCannotCollapseToOneCharacterColumn() {
     /break-words/,
     "long unbroken text must wrap, not overflow",
   );
+  assert.match(
+    resolveChatMessageBubbleTextClass("Ho", { isOwnMessage: true }),
+    /font-medium/,
+    "own (dark-on-cyan) text bumps weight to match received optically",
+  );
+  assert.match(
+    resolveChatMessageBubbleTextClass("Ho", { isOwnMessage: false }),
+    /font-normal/,
+  );
 
   // Short messages stay compact — the fix must not widen ordinary chat.
   const shortBranch = resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "ok" });
@@ -14501,6 +14522,41 @@ function testCrewChatBackPreservesEventDetailOrigin() {
     getEventCrewChatBackHref(eventId, null, null, calendarReturn),
     `/events/${eventId}?${calendarReturn}`,
   );
+
+  // Profile → Message → Crew chat → Back must restore profileFrom/profileReturnTo
+  // so the next Back keeps chat context (Back button + Message, not Message / Book DJ).
+  const profileUserId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee";
+  const conversationId = "cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee";
+  const crewReturnTo = `/events/${eventId}/chat?from=dm&dmConversation=${conversationId}&memberSheetOpen=true`;
+  const crewBackToDm = getEventCrewChatBackHref(
+    eventId,
+    "dm",
+    null,
+    null,
+    conversationId,
+    {
+      from: "profile",
+      profileUserId,
+      profileFrom: "chat",
+      profileReturnTo: crewReturnTo,
+    },
+  );
+  assert.match(crewBackToDm, new RegExp(`^/dm/${conversationId}\\?`));
+  assert.match(crewBackToDm, /from=profile/);
+  assert.match(crewBackToDm, /profileFrom=chat/);
+  assert.match(crewBackToDm, /profileReturnTo=/);
+  assert.equal(
+    resolveDmThreadBackHref({
+      from: "profile",
+      profileUserId,
+      profileFrom: new URLSearchParams(crewBackToDm.split("?")[1] ?? "").get("profileFrom"),
+      profileReturnTo: new URLSearchParams(crewBackToDm.split("?")[1] ?? "").get(
+        "profileReturnTo",
+      ),
+    }),
+    buildProfileHref(profileUserId, { returnTo: crewReturnTo }),
+  );
+
   assert.equal(
     buildEventDetailHrefFromCrewChatReturn(eventId, calendarReturn),
     `/events/${eventId}?${calendarReturn}`,
@@ -14538,6 +14594,65 @@ function testCrewChatBackPreservesEventDetailOrigin() {
   assert.match(chatSource, /router\.back\(\)/);
   assert.match(chatSource, /CREW_CHAT_EVENT_DETAIL_RETURN_PARAM/);
   assert.match(chatSource, /backReplace=\{backReplace\}/);
+
+  const bookingSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(bookingSource, /dmThreadProfileFrom/);
+  assert.match(bookingSource, /dmThreadProfileReturnTo/);
+  assert.match(
+    chatSource,
+    /profileFrom: searchParams\.get\("dmThreadProfileFrom"\)/,
+  );
+  assert.match(
+    chatSource,
+    /profileReturnTo: searchParams\.get\("dmThreadProfileReturnTo"\)/,
+  );
+}
+
+/**
+ * Crew Chats tab was flickering skeleton ↔ empty (~0.5s). Cause: unread sync
+ * called markNotificationsReadForLink on already-read DMs → always fired
+ * ftc-notifications-updated → /dm hard-reloaded group chats (empty treated as
+ * still-loading) → new [] → unread sync again.
+ */
+function testCrewChatsInboxDoesNotFlickerOnBadgeBus() {
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  const markReadFn = notificationsSource.slice(
+    notificationsSource.indexOf("export async function markNotificationsReadForLink"),
+    notificationsSource.indexOf("export async function markNotificationsReadByType"),
+  );
+
+  assert.match(markReadFn, /\.select\("id"\)/);
+  assert.match(markReadFn, /data\?\.length/);
+  assert.match(
+    markReadFn,
+    /if \(\(data\?\.length \?\? 0\) === 0\) \{\s*return;/,
+  );
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmPageSource, /groupChatsSettledRef/);
+  assert.match(
+    dmPageSource,
+    /previous\.length === 0 && loaded\.length === 0/,
+  );
+  assert.match(dmPageSource, /softReloadGroupChatsFromBadgeBus/);
+  assert.match(
+    dmPageSource,
+    /addEventListener\("ftc-notifications-updated", softReloadGroupChatsFromBadgeBus\)/,
+  );
+  assert.match(dmPageSource, /reloadGroupChatsForCrewUnlock/);
+  assert.doesNotMatch(
+    dmPageSource,
+    /addEventListener\("ftc-notifications-updated", reloadGroupChatsFromRemote\)/,
+  );
 }
 
 function testEventDetailEditDiscardOnBackOnly() {
@@ -17091,6 +17206,7 @@ async function main() {
   testCrewChatEventCardToggleScrollCompensation();
   testEventDetailReturnsToCrewChat();
   testCrewChatBackPreservesEventDetailOrigin();
+  testCrewChatsInboxDoesNotFlickerOnBadgeBus();
   testEventDetailEditDiscardOnBackOnly();
   testEventDetailPopsCrewChatHistoryEntry();
   testCrewChatMemberSheetReopenOnProfileReturn();

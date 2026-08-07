@@ -8,9 +8,11 @@ Use this folder when starting a **new Cursor chat** so you do not re-explain the
 
 Read docs/handoff/PRODUCT-HANDOVER.md and docs/handoff/BRAND-PHILOSOPHY.md, then docs/handoff/CURRENT-STATE.md. Follow HOW-WE-WORK.md. My task: [your task]
 
-**Claude Code Builder:** open the FTC repo and say:
+**Claude (any session):** open the FTC repo and say:
 
-Read docs/handoff/CLAUDE-CODE-BUILDER-HANDOVER.md fully, then docs/handoff/CURRENT-STATE.md. Follow FTC_WORKFLOW.md. My task: [your task]
+Read docs/handoff/CLAUDE-FULL-HANDOVER.md fully, then docs/handoff/CURRENT-STATE.md. Follow FTC_WORKFLOW.md. Ship finished work to main. My task: [your task]
+
+(Older: `CLAUDE-CODE-BUILDER-HANDOVER.md` — superseded for day-one paste by `CLAUDE-FULL-HANDOVER.md`.)
 
 **Legacy:** `START-HERE-GPT.md` exists for old ChatGPT pastes — ChatGPT is **no longer** the live product partner. Prefer Cursor + this folder.
 
@@ -22,7 +24,8 @@ Read docs/handoff/CLAUDE-CODE-BUILDER-HANDOVER.md fully, then docs/handoff/CURRE
 | `BRAND-PHILOSOPHY.md` | **Source of truth — mission, enemy (friction), feature gate, brand voice. For the Culture.** |
 | `PROMOTER-INTERVIEWS.md` | **Raw promoter/planner interview notes** — themes + quotes; not a feature backlog |
 | `PRODUCT-VISION.md` | Product roadmap depth, GTM, revenue, UI/engineering standards, what not to build |
-| `CLAUDE-CODE-BUILDER-HANDOVER.md` | Claude Code Builder start — team, Isaac prefs, FTC, ship rules |
+| `CLAUDE-FULL-HANDOVER.md` | **Full Claude day-one paste** — product, brand, Isaac prefs, stack, ship rules, traps |
+| `CLAUDE-CODE-BUILDER-HANDOVER.md` | Older Claude Code Builder start (prefer `CLAUDE-FULL-HANDOVER.md`) |
 | `CLAUDE-IMPLEMENTATION-HANDOVER.md` | Deep technical architecture / debt / DM patterns for Claude |
 | `START-HERE-CURSOR.md` | Paste into new Cursor chat |
 | `START-HERE-GPT.md` | Legacy ChatGPT paste — superseded by Cursor product role |

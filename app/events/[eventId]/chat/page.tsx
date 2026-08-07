@@ -247,6 +247,9 @@ export default function EventCrewChatPage() {
     calendarView: searchParams.get("dmThreadCalendarView"),
     calendarMonth: searchParams.get("dmThreadCalendarMonth"),
     profileUserId: searchParams.get("dmThreadProfileUserId"),
+    profileFrom: searchParams.get("dmThreadProfileFrom"),
+    profileReturnTo: searchParams.get("dmThreadProfileReturnTo"),
+    fromTab: searchParams.get("dmThreadFromTab"),
   };
   const backHref = getEventCrewChatBackHref(
     eventId,
@@ -462,19 +465,26 @@ export default function EventCrewChatPage() {
    * message, so it stays cheap regardless of conversation length.
    */
   const latestMessageSeenLabel = useMemo(() => {
-    if (!lastMessage) {
+    if (!lastMessage || !currentUserId) {
       return null;
     }
+
+    // Only show "Seen" if someone OTHER than the sender has read it.
+    // Filter out current user from participants to avoid edge cases where the
+    // sender's read receipt causes the label to show incorrectly.
+    const otherParticipantIds = crewParticipantIds.filter(
+      (id) => id !== currentUserId && id !== lastMessage.user_id,
+    );
 
     return resolveCrewChatSeenLabel({
       messageCreatedAt: lastMessage.created_at,
       messageSenderId: lastMessage.user_id,
-      participantIds: crewParticipantIds,
+      participantIds: otherParticipantIds,
       ownerId,
       lastReadAtByUserId,
       profiles: crewParticipantProfiles,
     });
-  }, [lastMessage, crewParticipantIds, ownerId, lastReadAtByUserId, crewParticipantProfiles]);
+  }, [lastMessage, currentUserId, crewParticipantIds, ownerId, lastReadAtByUserId, crewParticipantProfiles]);
   const {
     scrollRef,
     bottomRef,

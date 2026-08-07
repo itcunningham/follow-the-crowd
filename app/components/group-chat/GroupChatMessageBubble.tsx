@@ -7,7 +7,9 @@ import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import IncomingChatMessageLayout from "@/app/components/chat/IncomingChatMessageLayout";
 import DmMessageAttachmentGroup from "@/app/components/dm/DmMessageAttachmentGroup";
 import EventUpdateMessageContent from "@/app/components/group-chat/EventUpdateMessageContent";
+import { RunSheetUpdateMessage } from "@/app/components/group-chat/RunSheetUpdateMessage";
 import { parseEventGroupChatUpdateMessage } from "@/lib/events/eventGroupChatUpdateMessage";
+import { parseRunSheetUpdateMessage } from "@/lib/events/runSheetUpdateMessage";
 import { buildProfileHref } from "@/lib/profileNavigation";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
 import type { DmMessageAttachment } from "@/lib/dmAttachments";
@@ -167,17 +169,22 @@ function GroupChatMessageBubble({
     : parseEventGroupChatUpdateMessage(trimmedText);
   const isEventUpdate = eventUpdateChanges !== null;
 
-  // An event update is authored by the app, not by whoever saved the edit, so
-  // it must not adopt sender styling. Treating it as "not own" everywhere it
-  // matters is what keeps it left-aligned, un-avatared, and off the primary
-  // fill for the planner who triggered it as well as for the crew.
-  const systemAuthored = isEventUpdate;
+  // Runsheet updates render as a styled card with DJ names and changes.
+  const runSheetUpdateChanges = hasAttachments
+    ? null
+    : parseRunSheetUpdateMessage(trimmedText);
+  const isRunSheetUpdate = runSheetUpdateChanges !== null;
+
+  // Event and runsheet updates are authored by the app, not by whoever saved the edit, so
+  // they must not adopt sender styling. Treating them as "not own" everywhere it
+  // matters is what keeps them left-aligned, un-avatared, and off the primary
+  // fill for the planner who triggered them as well as for the crew.
+  const systemAuthored = isEventUpdate || isRunSheetUpdate;
 
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
   const rowMaxWidthClass = systemAuthored
-    ? // Narrower than a normal message so a routine update supports the
-      // conversation rather than competing with it.
-      "max-w-[72%] sm:max-w-[56%]"
+    ? // Wider for system messages to center better in the chat
+      "max-w-[90%] sm:max-w-[85%]"
     : isOwnMessage
       ? "max-w-[85%] sm:max-w-[72%]"
       : "max-w-[88%] sm:max-w-[78%]";
@@ -191,7 +198,9 @@ function GroupChatMessageBubble({
         attachmentOnly,
         groupPosition,
       });
-  const bubbleTextClass = resolveChatMessageBubbleTextClass(trimmedText);
+  const bubbleTextClass = resolveChatMessageBubbleTextClass(trimmedText, {
+    isOwnMessage,
+  });
   const isClusterEnd = groupPosition === "last" || groupPosition === "standalone";
 
   // Same guard as DmTextMessageBubble: an attachment-only message that lost
@@ -246,6 +255,8 @@ function GroupChatMessageBubble({
       ) : null}
       {eventUpdateChanges ? (
         <EventUpdateMessageContent changes={eventUpdateChanges} />
+      ) : runSheetUpdateChanges ? (
+        <RunSheetUpdateMessage text={trimmedText} />
       ) : hasText ? (
         <p className={bubbleTextClass}>{trimmedText}</p>
       ) : null}

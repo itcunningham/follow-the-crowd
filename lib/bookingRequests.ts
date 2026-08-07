@@ -10,6 +10,7 @@ import {
 import { createNotification, getNotificationCreateErrorMessage } from "@/lib/notifications";
 import { notifyBookingRequestsChanged } from "@/lib/bookings/bookingRequestsSync";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 import {
   DM_BOOKING_CANCELLED_MESSAGE,
   formatBookingConfirmedDmMessage,
@@ -207,10 +208,10 @@ export function resolveBookingCancelledByLabel(
   }
 
   if (booking.cancelled_by === booking.recipient_id) {
-    return profiles.get(booking.recipient_id)?.display_name?.trim() || "DJ";
+    return resolveUserDisplayName(profiles.get(booking.recipient_id), { fallback: "DJ" });
   }
 
-  return profiles.get(booking.cancelled_by)?.display_name?.trim() || "Member";
+  return resolveUserDisplayName(profiles.get(booking.cancelled_by), { fallback: "Member" });
 }
 
 export function canCancelBookingRequest(
@@ -2344,8 +2345,32 @@ export function getBookingRequestHref(booking: BookingRequest): string {
 export async function listMyActiveReceivedBookings(): Promise<BookingRequest[]> {
   const bookings = await listReceivedBookingRequests();
 
-  return bookings.filter(
+  const activeBookings = bookings.filter(
     (booking) => booking.status === "pending" || booking.status === "accepted",
+  );
+
+  // Filter out bookings for cancelled events
+  const eventIds = new Set(
+    activeBookings
+      .map(b => b.event_id)
+      .filter((id): id is string => id !== null)
+  );
+
+  let cancelledEventIds = new Set<string>();
+  if (eventIds.size > 0) {
+    const { data: events } = await supabase
+      .from("events")
+      .select("id")
+      .in("id", Array.from(eventIds))
+      .eq("status", "cancelled");
+
+    if (events) {
+      cancelledEventIds = new Set(events.map(e => e.id as string));
+    }
+  }
+
+  return activeBookings.filter(
+    (booking) => !booking.event_id || !cancelledEventIds.has(booking.event_id)
   );
 }
 
@@ -2517,6 +2542,15 @@ export function getBookingGroupChatAccess(
     if (context.profileUserId) {
       params.set("dmThreadProfileUserId", context.profileUserId);
     }
+    if (context.profileFrom) {
+      params.set("dmThreadProfileFrom", context.profileFrom);
+    }
+    if (context.profileReturnTo) {
+      params.set("dmThreadProfileReturnTo", context.profileReturnTo);
+    }
+    if (context.fromTab) {
+      params.set("dmThreadFromTab", context.fromTab);
+    }
   }
 
   const query = params.toString();
@@ -2554,11 +2588,11 @@ export const ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE =
 export function getEventBookingDuplicateLabel(status: EventBookingDuplicateStatus): string {
   switch (status) {
     case "already_invited":
-      return "Already invited";
+      return "Pending";
     case "already_booked":
-      return "Already booked";
+      return "Booked";
     case "already_declined":
-      return "Already declined";
+      return "Declined";
   }
 }
 

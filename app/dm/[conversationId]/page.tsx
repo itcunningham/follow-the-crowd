@@ -112,7 +112,8 @@ import {
   notifyDmReactionRecipient,
   revokeDmReactionNotification,
 } from "@/lib/dm/dmReactionNotifications";
-import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
+import { resolveDmOtherUserId, notifyDmPeerOfMessage } from "@/lib/dm/resolveDmOtherUserId";
+import { markNotificationsReadForLink } from "@/lib/notifications";
 import { getEventArtworkByIds, isEventCancelled, type EventArtworkSnapshot } from "@/lib/events";
 import { getCrewChatUnlockStateByEventIds } from "@/lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "@/lib/events/eventBookingDisplay";
@@ -500,24 +501,50 @@ export default function DmChatPage() {
     () => new Map(bookings.map((booking) => [booking.id, booking])),
     [bookings],
   );
-  const bookingProfiles = useMemo(() => {
-    if (!otherUserId || !otherUserProfile) {
-      return new Map<string, BookingRecipientProfile>();
+  const [bookingProfiles, setBookingProfiles] = useState<
+    Map<string, BookingRecipientProfile>
+  >(() => new Map());
+
+  useEffect(() => {
+    const profileIds = new Set<string>();
+
+    for (const booking of bookings) {
+      if (booking.recipient_id) {
+        profileIds.add(booking.recipient_id);
+      }
+      if (booking.sender_id) {
+        profileIds.add(booking.sender_id);
+      }
+      if (booking.cancelled_by?.trim()) {
+        profileIds.add(booking.cancelled_by.trim());
+      }
     }
 
-    return new Map<string, BookingRecipientProfile>([
-      [
-        otherUserId,
-        {
-          user_id: otherUserId,
-          display_name: otherUserProfile.display_name,
-          avatar_url: otherUserProfile.avatar_url,
-          genre: null,
-          role: "dj",
-        },
-      ],
-    ]);
-  }, [otherUserId, otherUserProfile]);
+    if (profileIds.size === 0) {
+      setBookingProfiles(new Map());
+      return;
+    }
+
+    let cancelled = false;
+
+    void getBookingRecipientProfilesByIds([...profileIds])
+      .then((profiles) => {
+        if (!cancelled) {
+          setBookingProfiles(profiles);
+        }
+      })
+      .catch((profileError) => {
+        console.error("Failed to load booking profiles:", profileError);
+        if (!cancelled) {
+          setBookingProfiles(new Map());
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookings]);
+
   const blockBannerMessage = useMemo(
     () => getDmBlockBannerMessage(blockStatus, otherUserLabel),
     [blockStatus, otherUserLabel],
@@ -604,14 +631,12 @@ export default function DmChatPage() {
     });
   }, [attachmentsByMessageId, canShowReadReceipts, currentUserId, messages]);
   const shouldShowSeenOnMessage = useMemo(() => {
-    return (messageId: string, messageCreatedAt: string) => {
-      if (!canShowReadReceipts || messageId !== latestOwnMessageIdForReceipt) {
-        return false;
-      }
-
-      return isMessageSeenByReader(messageCreatedAt, otherUserLastReadAt);
-    };
-  }, [canShowReadReceipts, latestOwnMessageIdForReceipt, otherUserLastReadAt]);
+    // Disabled: the "Seen" indicator was showing false positives when only the
+    // sender had viewed the message. The root cause is unclear (possibly an
+    // issue with how otherUserLastReadAt is being populated or compared), but
+    // disabling it entirely is safer for beta than showing incorrect state.
+    return (_messageId: string, _messageCreatedAt: string) => false;
+  }, []);
   const refreshParticipantReadState = useCallback(async () => {
     if (!conversationId || !otherUserId) {
       setOtherUserLastReadAt(null);
@@ -825,21 +850,15 @@ export default function DmChatPage() {
 
       setCurrentUserId(currentUserIdValue);
 
-      const { data, error: membersError } = await supabase
-        .from("conversation_members")
-        .select("user_id")
-        .eq("conversation_id", conversationId);
+      const nextOtherUserId = await resolveDmOtherUserId(
+        conversationId,
+        currentUserIdValue,
+      );
 
-      if (membersError) {
-        console.error("conversation_members query failed:", membersError.message);
+      if (cancelled) {
         return;
       }
 
-      const otherMember = (data ?? []).find(
-        (member) => member.user_id !== currentUserIdValue,
-      );
-
-      const nextOtherUserId = otherMember?.user_id ?? null;
       setOtherUserId(nextOtherUserId);
 
       if (!nextOtherUserId) {
@@ -1457,21 +1476,14 @@ export default function DmChatPage() {
       return;
     }
 
-    if (otherUserId) {
-      try {
-        await createNotification(
-          otherUserId,
-          "message",
-          "New message",
-          text,
-          `/dm/${conversationId}`,
-        );
-      } catch (notificationError) {
-        console.error(
-          "[dm] Message sent but notification failed:",
-          notificationError,
-        );
-      }
+    const recipientId = await notifyDmPeerOfMessage({
+      conversationId,
+      senderUserId: userId,
+      otherUserId,
+      body: text,
+    });
+    if (recipientId && recipientId !== otherUserId) {
+      setOtherUserId(recipientId);
     }
 
     setSending(false);
@@ -1542,21 +1554,14 @@ export default function DmChatPage() {
       // send (see catch below) leaves the same photos staged for retry.
       clearPendingAttachments();
 
-      if (otherUserId) {
-        try {
-          await createNotification(
-            otherUserId,
-            "message",
-            "New message",
-            caption || getDmAttachmentNotificationBody(sentAttachments[0], sentAttachments.length),
-            `/dm/${conversationId}`,
-          );
-        } catch (notificationError) {
-          console.error(
-            "[dm] Attachment sent but notification failed:",
-            notificationError,
-          );
-        }
+      const recipientId = await notifyDmPeerOfMessage({
+        conversationId,
+        senderUserId: userId,
+        otherUserId,
+        body: caption || getDmAttachmentNotificationBody(sentAttachments[0], sentAttachments.length),
+      });
+      if (recipientId && recipientId !== otherUserId) {
+        setOtherUserId(recipientId);
       }
 
       void markConversationRead(conversationId, {

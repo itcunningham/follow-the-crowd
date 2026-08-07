@@ -109,8 +109,8 @@ export default function MessagesInboxLayout({
             />
             <InboxTabButton
               active={activeTab === "group"}
-              label="Group Chats"
-              mobileLabel="Groups"
+              label="Crew Chats"
+              mobileLabel="Crew Chats"
               unreadCount={groupUnreadCount}
               onClick={onSelectTab ? () => onSelectTab("group") : undefined}
             />

@@ -56,9 +56,7 @@ export default function BookingCardCompactSummary({
       </ul>
 
       {rateLine ? (
-        <p className="break-words text-sm leading-snug text-ftc-text-secondary">
-          {rateLine}
-        </p>
+        <p className="break-words text-sm leading-snug text-ftc-text-secondary">{rateLine}</p>
       ) : null}
 
       {booking.notes?.trim() ? (
