@@ -1080,50 +1080,54 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
         "[bookings] ❌ Failed to check event-cancellation activity duplicate:",
         existingError,
       );
-      continue;
-    }
-
-    if (existingRows?.[0]) {
-      console.log("[bookings] ❌ Skipping: message already exists");
-      continue;
-    }
-
-    console.log("[bookings] Checking for recent event-cancellation messages in window...");
-    const { data: windowRows, error: windowError } = await supabase
-      .from("messages")
-      .select("id")
-      .eq("conversation_id", booking.conversation_id)
-      .like("text", `${BOOKING_ACTIVITY_DM_PREFIX} event-cancelled ·%`)
-      .limit(1);
-
-    let messageWasInserted = false;
-
-    if (windowError) {
-      console.error(
-        "[bookings] ❌ Failed to check event-cancellation activity duplicate window:",
-        windowError,
+      // Still mark unread below — message check failure must not skip the badge.
+    } else if (existingRows?.[0]) {
+      console.log(
+        "[bookings] ⚠️  Exact cancellation message already exists - skipping insertion but marking unread",
       );
-    } else if (windowRows?.[0]) {
-      console.log("[bookings] ⚠️  Recent event-cancellation message exists - skipping insertion but marking unread");
     } else {
-      console.log("[bookings] ✓ No existing message, inserting now...");
-      console.log("[bookings] Insert payload:", {
-        conversation_id: booking.conversation_id,
-        user_id: options.plannerUserId,
-        text: messageText,
-      });
+      console.log("[bookings] Checking for recent event-cancellation messages in window...");
+      const { data: windowRows, error: windowError } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("conversation_id", booking.conversation_id)
+        .like("text", `${BOOKING_ACTIVITY_DM_PREFIX} event-cancelled ·%`)
+        .limit(1);
 
-      const { error: insertError } = await supabase.from("messages").insert({
-        conversation_id: booking.conversation_id,
-        user_id: options.plannerUserId,
-        text: messageText,
-      });
-
-      if (insertError) {
-        console.error("[bookings] ❌ Failed to insert event-cancellation activity DM message:", insertError);
+      if (windowError) {
+        console.error(
+          "[bookings] ❌ Failed to check event-cancellation activity duplicate window:",
+          windowError,
+        );
+      } else if (windowRows?.[0]) {
+        console.log(
+          "[bookings] ⚠️  Recent event-cancellation message exists - skipping insertion but marking unread",
+        );
       } else {
-        console.log("[bookings] ✅ Inserted event cancellation message for conversation:", booking.conversation_id);
-        messageWasInserted = true;
+        console.log("[bookings] ✓ No existing message, inserting now...");
+        console.log("[bookings] Insert payload:", {
+          conversation_id: booking.conversation_id,
+          user_id: options.plannerUserId,
+          text: messageText,
+        });
+
+        const { error: insertError } = await supabase.from("messages").insert({
+          conversation_id: booking.conversation_id,
+          user_id: options.plannerUserId,
+          text: messageText,
+        });
+
+        if (insertError) {
+          console.error(
+            "[bookings] ❌ Failed to insert event-cancellation activity DM message:",
+            insertError,
+          );
+        } else {
+          console.log(
+            "[bookings] ✅ Inserted event cancellation message for conversation:",
+            booking.conversation_id,
+          );
+        }
       }
     }
 

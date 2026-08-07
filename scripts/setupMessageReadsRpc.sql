@@ -1,6 +1,7 @@
 -- RPC function to mark conversations as unread for a specific user
 -- Runs with elevated permissions, bypassing RLS
 -- Used when planners cancel events to ensure DJs get notification badges
+-- Idempotent: safe to re-run.
 
 CREATE OR REPLACE FUNCTION public.mark_conversation_unread(
   p_user_id text,
@@ -23,11 +24,13 @@ BEGIN
       AND event_id = p_event_id;
   END IF;
 
-  -- Insert or update message_reads row for conversation
-  -- Set last_read_at to epoch (very old) so all messages appear unread
+  -- Insert or update message_reads row for conversation.
+  -- Partial unique index message_reads_user_conversation_idx requires
+  -- ON CONFLICT ... WHERE conversation_id IS NOT NULL.
+  -- Epoch last_read_at makes all messages in that conversation appear unread.
   INSERT INTO public.message_reads (user_id, conversation_id, event_id, last_read_at)
   VALUES (p_user_id, p_conversation_id, NULL, v_epoch_timestamp)
-  ON CONFLICT (user_id, conversation_id)
+  ON CONFLICT (user_id, conversation_id) WHERE conversation_id IS NOT NULL
   DO UPDATE SET last_read_at = v_epoch_timestamp;
 
   RETURN QUERY SELECT true, 'Conversation marked unread'::text;

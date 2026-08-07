@@ -1,32 +1,14 @@
 # Current state (last updated: 2026-08-07)
 
-## 🔴 BLOCKED: Event cancellation DM badge not appearing (claude/new-session-cpb8vu, main)
+## 🔴 BLOCKED on Isaac SQL: Event cancel → DJ DM badge (`mark_conversation_unread`)
 
-**Problem:** When a planner cancels an event, DJs should see unread DM badge in Messages tab. Currently: Crew Chat badge appears (wrong), DM badge doesn't appear (missing).
+**Problem:** Planner cancels event → DJ should get Messages (DM) unread badge. Without SQL, RPC 404/403 and no badge.
 
-**Root cause identified:** RLS (Row Level Security) policy on `message_reads` table blocks updates. The planner can't update the DJ's `message_reads` row due to `user_id = auth.uid()` constraint.
+**Root cause:** RLS on `message_reads` (`user_id = auth.uid()`) blocks planner from updating DJ’s row.
 
-**Code deployed (on main):**
-- `lib/bookingRequests.ts` - Modified `insertEventCancellationActivityMessagesIfNeeded()` to:
-  1. Always run unread marking (even if message insertion skipped due to duplicates)
-  2. Call new RPC function `mark_conversation_unread()` instead of direct Supabase query
-- `scripts/setupMessageReadsRpc.sql` - New RPC function (SECURITY DEFINER) that:
-  1. Deletes message_reads rows with event_id (removes Crew Chat badge)
-  2. Inserts/updates conversation row with epoch timestamp (marks DM as unread)
-  
-**What's NOT deployed yet:**
-- The SQL migration hasn't been run in Supabase. User needs to:
-  1. Go to Supabase SQL Editor
-  2. Copy/paste contents of `scripts/setupMessageReadsRpc.sql`
-  3. Execute it to create the `mark_conversation_unread()` function
+**App code on `main`:** `insertEventCancellationActivityMessagesIfNeeded` always calls RPC `mark_conversation_unread` (even when cancel message already exists). Script: `scripts/setupMessageReadsRpc.sql` — `SECURITY DEFINER`, deletes stale `event_id` reads (no Crew Chats badge), upserts DM row with epoch `last_read_at`. Upsert uses `ON CONFLICT … WHERE conversation_id IS NOT NULL` to match the partial unique index.
 
-**Testing shows:**
-- Diagnostic logging runs correctly
-- Message insertion works (skips on duplicates but still marks unread)
-- RPC function call still hits 403 Forbidden = function doesn't exist yet
-- Need to deploy SQL to Supabase to proceed
-
-**Next step for Cursor:** Deploy the SQL migration, test with fresh event, verify DM badge appears and Crew Chat badge doesn't.
+**Isaac must run:** full contents of `scripts/setupMessageReadsRpc.sql` in Supabase SQL Editor (once). Then cancel a fresh booked event → console `✅ Marked conversation unread for DJ via RPC` → DM unread yes, Crew Chats badge no.
 
 ---
 
@@ -983,8 +965,10 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Event Brands (per-event `event_brand` column) | `scripts/setupEventBrands.sql` — optional, app degrades gracefully without it (see Core product entry above) |
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
+| **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- *(pending)* — fix(cancel): harden mark_conversation_unread RPC + always mark DJ unread
 - `9fbf54b5` — fix(chat): bump own bubble text to font-medium
 - `3676a4ce` — fix(dm): drop Booking type label; Cancelled by shows DJ name
 - `6f9c7945` — fix(dm): Crew chat label; Withdraw below nav on accepted cards
