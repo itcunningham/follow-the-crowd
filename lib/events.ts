@@ -7,6 +7,7 @@ import {
 } from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import {
+  formatEventCancellationActivityMessage,
   getActiveEventLineupStats,
   insertEventCancellationActivityMessagesIfNeeded,
   listBookingRequestsForEvent,
@@ -810,6 +811,23 @@ async function notifyCancelledBookingsFromEventCancellation(
           "[events] Failed to notify DJ of event cancellation:",
           booking.id,
           notificationError,
+        );
+      }
+
+      try {
+        const eventCancellationMessage = formatEventCancellationActivityMessage(booking.event_name);
+        await createNotification(
+          booking.recipient_id,
+          "message",
+          "New message",
+          eventCancellationMessage,
+          `/dm/${booking.conversation_id}`,
+        );
+      } catch (messageNotificationError) {
+        console.error(
+          "[events] Failed to send message notification for event cancellation:",
+          booking.id,
+          messageNotificationError,
         );
       }
     }),
