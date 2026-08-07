@@ -1131,17 +1131,22 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     if (booking.recipient_id && booking.conversation_id) {
       try {
         // Delete any stale event_id row to prevent the badge from appearing on Crew Chats
-        console.log("[bookings] Deleting stale event_id message_reads...");
-        const { error: deleteError } = await supabase
+        console.log("[bookings] Deleting stale event_id message_reads for:", {
+          user_id: booking.recipient_id,
+          event_id: booking.event_id,
+        });
+
+        const { error: deleteError, count } = await supabase
           .from("message_reads")
           .delete()
           .eq("user_id", booking.recipient_id)
-          .eq("event_id", booking.event_id);
+          .eq("event_id", booking.event_id)
+          .select("id", { count: "exact" });
 
         if (deleteError) {
           console.error("[bookings] ❌ Failed to delete stale event_id message_reads:", deleteError);
         } else {
-          console.log("[bookings] ✓ Deleted stale event_id rows");
+          console.log("[bookings] ✓ Deleted", count, "stale event_id rows");
         }
 
         // Set last_read_at to epoch (very old) so any message is newer and marked unread
