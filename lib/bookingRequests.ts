@@ -1178,24 +1178,24 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
         // Set last_read_at to epoch (very old) so any message is newer and marked unread
         const epochTimestamp = new Date(0).toISOString();
 
-        console.log("[bookings] Upserting conversation to mark unread with last_read_at:", epochTimestamp);
+        console.log("[bookings] Inserting/updating conversation to mark unread with last_read_at:", epochTimestamp);
+
+        // Try simple upsert without onConflict to avoid partial index issues
         const { error: upsertError } = await supabase
           .from("message_reads")
-          .upsert(
-            {
-              user_id: booking.recipient_id,
-              conversation_id: booking.conversation_id,
-              event_id: null,
-              last_read_at: epochTimestamp,
-            },
-            { onConflict: "user_id,conversation_id" }
-          );
+          .upsert({
+            user_id: booking.recipient_id,
+            conversation_id: booking.conversation_id,
+            event_id: null,
+            last_read_at: epochTimestamp,
+          });
 
         if (upsertError) {
           console.error("[bookings] ❌ Failed to upsert conversation message_reads:", {
             error: upsertError,
             user_id: booking.recipient_id,
             conversation_id: booking.conversation_id,
+            last_read_at: epochTimestamp,
           });
         } else {
           console.log("[bookings] ✅ Marked conversation unread for DJ:", booking.recipient_id);
