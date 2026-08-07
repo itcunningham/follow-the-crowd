@@ -1021,6 +1021,8 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
   const seenConversationIds = new Set<string>();
 
   for (const booking of options.bookings) {
+    console.log("[bookings] ===== Processing booking:", booking.id);
+
     const idsAreSame = booking.conversation_id === booking.event_id;
     if (idsAreSame) {
       console.error("[bookings] CRITICAL: conversation_id === event_id! This is a bug.", {
@@ -1030,16 +1032,17 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       });
     }
 
-    console.log("[bookings] Checking booking:", {
+    console.log("[bookings] Booking details:", {
       id: booking.id,
       conversation_id: booking.conversation_id,
       recipient_id: booking.recipient_id,
       event_id: booking.event_id,
+      status: booking.status,
       isAffected: isBookingAffectedByWholeEventCancellation(booking),
     });
 
     if (!booking.conversation_id) {
-      console.warn("[bookings] SKIPPING: booking has NO conversation_id (null or empty):", {
+      console.warn("[bookings] ❌ SKIPPING: booking has NO conversation_id (null or empty):", {
         id: booking.id,
         event_id: booking.event_id,
         recipient_id: booking.recipient_id,
@@ -1047,18 +1050,24 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       continue;
     }
 
+    console.log("[bookings] ✓ conversation_id exists");
+
     if (!isBookingAffectedByWholeEventCancellation(booking)) {
-      console.log("[bookings] Skipping: booking not affected by event cancellation");
+      console.log("[bookings] ❌ Skipping: booking not affected by event cancellation (status:", booking.status, ")");
       continue;
     }
 
+    console.log("[bookings] ✓ booking is affected by event cancellation");
+
     if (seenConversationIds.has(booking.conversation_id)) {
-      console.log("[bookings] Skipping: conversation already processed");
+      console.log("[bookings] ❌ Skipping: conversation already processed in this batch");
       continue;
     }
 
     seenConversationIds.add(booking.conversation_id);
+    console.log("[bookings] ✓ conversation marked as processed");
 
+    console.log("[bookings] Checking for existing exact duplicate message...");
     const { data: existingRows, error: existingError } = await supabase
       .from("messages")
       .select("id")
@@ -1068,17 +1077,18 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
 
     if (existingError) {
       console.error(
-        "[bookings] Failed to check event-cancellation activity duplicate:",
+        "[bookings] ❌ Failed to check event-cancellation activity duplicate:",
         existingError,
       );
       continue;
     }
 
     if (existingRows?.[0]) {
-      console.log("[bookings] Skipping: message already exists");
+      console.log("[bookings] ❌ Skipping: message already exists");
       continue;
     }
 
+    console.log("[bookings] Checking for recent event-cancellation messages in window...");
     const { data: windowRows, error: windowError } = await supabase
       .from("messages")
       .select("id")
@@ -1088,13 +1098,20 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
 
     if (windowError) {
       console.error(
-        "[bookings] Failed to check event-cancellation activity duplicate window:",
+        "[bookings] ❌ Failed to check event-cancellation activity duplicate window:",
         windowError,
       );
     } else if (windowRows?.[0]) {
-      console.log("[bookings] Skipping: recent event-cancellation message exists");
+      console.log("[bookings] ❌ Skipping: recent event-cancellation message exists");
       continue;
     }
+
+    console.log("[bookings] ✓ No existing message, inserting now...");
+    console.log("[bookings] Insert payload:", {
+      conversation_id: booking.conversation_id,
+      user_id: options.plannerUserId,
+      text: messageText,
+    });
 
     const { error: insertError } = await supabase.from("messages").insert({
       conversation_id: booking.conversation_id,
@@ -1103,16 +1120,18 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     });
 
     if (insertError) {
-      console.error("[bookings] Failed to insert event-cancellation activity DM message:", insertError);
+      console.error("[bookings] ❌ Failed to insert event-cancellation activity DM message:", insertError);
       continue;
     }
 
-    console.log("[bookings] Inserted event cancellation message for conversation:", booking.conversation_id);
+    console.log("[bookings] ✅ Inserted event cancellation message for conversation:", booking.conversation_id);
 
     // Mark conversation as unread for the DJ recipient
+    console.log("[bookings] Marking conversation as unread for recipient...");
     if (booking.recipient_id && booking.conversation_id) {
       try {
         // Delete any stale event_id row to prevent the badge from appearing on Crew Chats
+        console.log("[bookings] Deleting stale event_id message_reads...");
         const { error: deleteError } = await supabase
           .from("message_reads")
           .delete()
@@ -1120,12 +1139,15 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
           .eq("event_id", booking.event_id);
 
         if (deleteError) {
-          console.error("[bookings] Failed to delete stale event_id message_reads:", deleteError);
+          console.error("[bookings] ❌ Failed to delete stale event_id message_reads:", deleteError);
+        } else {
+          console.log("[bookings] ✓ Deleted stale event_id rows");
         }
 
         const nowMs = Date.now();
         const pastTimestamp = new Date(nowMs - 1000).toISOString();
 
+        console.log("[bookings] Upserting conversation to mark unread...");
         const { data: upsertData, error: upsertError } = await supabase
           .from("message_reads")
           .upsert(
@@ -1140,17 +1162,22 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
           .select("*");
 
         if (upsertError) {
-          console.error("[bookings] Failed to upsert conversation message_reads:", upsertError);
+          console.error("[bookings] ❌ Failed to upsert conversation message_reads:", upsertError);
         } else {
-          console.log("[bookings] Marked conversation unread:", {
+          console.log("[bookings] ✅ Marked conversation unread:", {
             user_id: booking.recipient_id,
             conversation_id: booking.conversation_id,
             last_read_at: pastTimestamp,
           });
         }
       } catch (error) {
-        console.error("[bookings] Exception during mark unread:", error);
+        console.error("[bookings] ❌ Exception during mark unread:", error);
       }
+    } else {
+      console.warn("[bookings] ❌ Cannot mark unread: missing recipient_id or conversation_id", {
+        recipient_id: booking.recipient_id,
+        conversation_id: booking.conversation_id,
+      });
     }
   }
 }
