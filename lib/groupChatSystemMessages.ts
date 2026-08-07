@@ -28,22 +28,18 @@ export function isGroupChatSystemUpdateMessage(text: string): boolean {
 }
 
 /**
- * Crew-roster notices that are no longer written and are hidden wherever they
- * still exist: someone joining, accepting, or leaving.
+ * Notices that stay in `messages` (unread / inbox preview) but are hidden in
+ * the open crew-chat thread:
+ * - legacy roster lines (join / accept / leave) — emitters are gone
+ * - "Crew chat started" — needed so Crew Chats can show unread; once you're
+ *   in the thread the pill just restates the obvious
  *
- * The emitters are gone, but rows written before that are ordinary `messages`
- * rows and deleting them would be a data change. Hiding them at read time is
- * what makes an existing chat open on its first human message rather than on a
- * list of arrivals, and it costs nothing on a chat that never had them.
- *
- * Deliberately narrow: it matches only these three shapes, so the system-notice
- * lane stays available for the kind of update everyone genuinely needs — a run
- * sheet change, a new venue, a cancelled event.
+ * Deliberately narrow so real updates (run sheet, venue, cancel) still show.
  */
 export function isHiddenCrewRosterNotice(text: string): boolean {
   const trimmed = text.trim();
 
-  if (isGroupChatCrewOpenedNotice(trimmed)) {
+  if (isGroupChatCrewOpenedNotice(trimmed) || isGroupChatCrewStartedNotice(trimmed)) {
     return true;
   }
 

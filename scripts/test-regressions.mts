@@ -194,6 +194,7 @@ import {
   formatGroupChatInboxPreview,
   formatGroupChatSystemNoticeText,
   isGroupChatSystemUpdateMessage,
+  isHiddenCrewRosterNotice,
 } from "../lib/groupChatSystemMessages";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
@@ -14680,6 +14681,9 @@ function testCrewChatStartNotifiesAndSeedsUnread() {
     formatGroupChatInboxPreview(CREW_CHAT_STARTED_NOTICE),
     CREW_CHAT_STARTED_NOTICE,
   );
+  // In-thread pill is hidden; DB row still drives unread + inbox preview.
+  assert.equal(isHiddenCrewRosterNotice(CREW_CHAT_STARTED_NOTICE), true);
+  assert.equal(isHiddenCrewRosterNotice("Alex started the crew"), true);
 
   const plannerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
   const djId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee";
@@ -14724,6 +14728,8 @@ function testCrewChatStartNotifiesAndSeedsUnread() {
   );
   assert.match(chatSource, /isGroupChatSystemUpdateMessage\(message\.text\)/);
   assert.match(chatSource, /GroupChatSystemNotice/);
+  assert.match(chatSource, /!isHiddenCrewRosterNotice\(message\.text\)/);
+  assert.match(chatSource, /isHiddenCrewRosterNotice\(newMessage\.text\)/);
 }
 
 function testEventDetailEditDiscardOnBackOnly() {
