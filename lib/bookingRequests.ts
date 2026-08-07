@@ -1066,6 +1066,38 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
 
     if (insertError) {
       console.error("[bookings] Failed to insert event-cancellation activity DM message:", insertError);
+      continue;
+    }
+
+    // Mark conversation as unread and notify the DJ
+    if (booking.recipient_id) {
+      try {
+        const now = new Date().toISOString();
+        await supabase
+          .from("message_reads")
+          .upsert(
+            {
+              user_id: booking.recipient_id,
+              conversation_id: booking.conversation_id,
+              last_read_at: now,
+            },
+            { onConflict: "user_id,conversation_id" },
+          );
+
+        await createNotification(
+          booking.recipient_id,
+          "message",
+          `${options.eventName} cancelled`,
+          messageText,
+          `/dm/${booking.conversation_id}`,
+        );
+      } catch (notificationError) {
+        console.error(
+          "[bookings] Failed to notify DJ of event cancellation:",
+          booking.recipient_id,
+          notificationError,
+        );
+      }
     }
   }
 }
