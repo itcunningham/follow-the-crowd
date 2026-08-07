@@ -1144,10 +1144,10 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
           console.log("[bookings] ✓ Deleted stale event_id rows");
         }
 
-        const nowMs = Date.now();
-        const pastTimestamp = new Date(nowMs - 1000).toISOString();
+        // Set last_read_at to epoch (very old) so any message is newer and marked unread
+        const epochTimestamp = new Date(0).toISOString();
 
-        console.log("[bookings] Upserting conversation to mark unread...");
+        console.log("[bookings] Upserting conversation to mark unread with last_read_at:", epochTimestamp);
         const { data: upsertData, error: upsertError } = await supabase
           .from("message_reads")
           .upsert(
@@ -1155,7 +1155,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
               user_id: booking.recipient_id,
               conversation_id: booking.conversation_id,
               event_id: null,
-              last_read_at: pastTimestamp,
+              last_read_at: epochTimestamp,
             },
             { onConflict: "user_id,conversation_id" }
           )
