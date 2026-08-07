@@ -796,6 +796,19 @@ function DmInboxPageContent() {
           }
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "events",
+          filter: "status=eq.cancelled",
+        },
+        () => {
+          // Event was cancelled; remove its crew chat from DJ's list.
+          void loadGroupChats();
+        },
+      )
       .subscribe();
 
     return () => {
