@@ -1131,7 +1131,23 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     if (booking.recipient_id && booking.conversation_id) {
       try {
         // Delete any stale event_id row to prevent the badge from appearing on Crew Chats
-        console.log("[bookings] Deleting stale event_id message_reads...");
+        console.log("[bookings] Deleting stale event_id message_reads for:", {
+          user_id: booking.recipient_id,
+          event_id: booking.event_id,
+        });
+
+        // Check if row exists before deletion
+        const { data: existingRows, error: existingError } = await supabase
+          .from("message_reads")
+          .select("id")
+          .eq("user_id", booking.recipient_id)
+          .eq("event_id", booking.event_id);
+
+        console.log("[bookings] Existing message_reads rows before deletion:", {
+          count: existingRows?.length ?? 0,
+          rows: existingRows ?? [],
+        });
+
         const { error: deleteError } = await supabase
           .from("message_reads")
           .delete()
@@ -1148,7 +1164,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
         const epochTimestamp = new Date(0).toISOString();
 
         console.log("[bookings] Upserting conversation to mark unread with last_read_at:", epochTimestamp);
-        const { data: upsertData, error: upsertError } = await supabase
+        const { error: upsertError } = await supabase
           .from("message_reads")
           .upsert(
             {
@@ -1158,17 +1174,16 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
               last_read_at: epochTimestamp,
             },
             { onConflict: "user_id,conversation_id" }
-          )
-          .select("*");
+          );
 
         if (upsertError) {
-          console.error("[bookings] ❌ Failed to upsert conversation message_reads:", upsertError);
-        } else {
-          console.log("[bookings] ✅ Marked conversation unread:", {
+          console.error("[bookings] ❌ Failed to upsert conversation message_reads:", {
+            error: upsertError,
             user_id: booking.recipient_id,
             conversation_id: booking.conversation_id,
-            last_read_at: pastTimestamp,
           });
+        } else {
+          console.log("[bookings] ✅ Marked conversation unread for DJ:", booking.recipient_id);
         }
       } catch (error) {
         console.error("[bookings] ❌ Exception during mark unread:", error);
