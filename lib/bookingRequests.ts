@@ -1167,7 +1167,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
           console.log("[bookings] ✅ Marked conversation unread:", {
             user_id: booking.recipient_id,
             conversation_id: booking.conversation_id,
-            last_read_at: pastTimestamp,
+            last_read_at: epochTimestamp,
           });
         }
       } catch (error) {
