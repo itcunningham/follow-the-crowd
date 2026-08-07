@@ -6,6 +6,8 @@ import {
 } from "@/lib/messageReads";
 import { markNotificationsReadForLink } from "@/lib/notifications";
 import { getEventCrewChatLink } from "@/lib/eventCrewChat";
+import { listOwnedEvents } from "@/lib/events";
+import { isCrewMemberJoinedNotice } from "@/lib/groupChatSystemMessages";
 import { supabase } from "@/lib/supabaseClient";
 import type { UserRole } from "@/lib/user/currentUser";
 
@@ -81,9 +83,17 @@ export async function getInboxUnreadCounts(
 
   if (accessibleEventIds.length > 0) {
     try {
-      const previews = await loadLatestGroupChatPreviews(accessibleEventIds);
+      const [previews, ownedEvents] = await Promise.all([
+        loadLatestGroupChatPreviews(accessibleEventIds),
+        role === "promoter" || role === "both" ? listOwnedEvents() : Promise.resolve([]),
+      ]);
+      const ownedEventIds = new Set(ownedEvents.map((event) => event.id));
 
       for (const [eventId, preview] of previews) {
+        if (ownedEventIds.has(eventId) && isCrewMemberJoinedNotice(preview.text)) {
+          continue;
+        }
+
         latestEventMessages.set(eventId, {
           user_id: preview.userId,
           created_at: preview.createdAt,

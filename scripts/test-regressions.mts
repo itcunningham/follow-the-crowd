@@ -191,10 +191,13 @@ import {
 import { applyInboxGroupMessage, type GroupChatListItem } from "../lib/groupChats";
 import {
   CREW_CHAT_STARTED_NOTICE,
+  formatCrewMemberJoinedNotice,
   formatGroupChatInboxPreview,
   formatGroupChatSystemNoticeText,
+  isCrewMemberJoinedNotice,
   isGroupChatSystemUpdateMessage,
   isHiddenCrewRosterNotice,
+  shouldOmitCrewMessageForViewer,
 } from "../lib/groupChatSystemMessages";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
@@ -14246,6 +14249,7 @@ async function testGroupInboxUnreadSurvivesOverlappingRefreshes() {
     coverImageUrl: null,
     fallbackColour: null,
     href: `/events/${eventId}/chat`,
+    isOwnedByViewer: false,
     latestPreview: "see you there",
     latestMessageAt: "2026-08-03T10:00:00.000Z",
     latestMessageUserId: me,
@@ -14712,7 +14716,7 @@ function testCrewChatStartNotifiesAndSeedsUnread() {
   );
   const notifyFn = eventCrewSource.slice(
     eventCrewSource.indexOf("export async function notifyCrewChatStarted"),
-    eventCrewSource.indexOf("export async function sendEventCrewChatMessage"),
+    eventCrewSource.indexOf("export async function notifyCrewMemberJoined"),
   );
   assert.match(notifyFn, /CREW_CHAT_STARTED_NOTICE/);
   assert.match(notifyFn, /from\("messages"\)\.insert/);
@@ -14728,8 +14732,65 @@ function testCrewChatStartNotifiesAndSeedsUnread() {
   );
   assert.match(chatSource, /isGroupChatSystemUpdateMessage\(message\.text\)/);
   assert.match(chatSource, /GroupChatSystemNotice/);
-  assert.match(chatSource, /!isHiddenCrewRosterNotice\(message\.text\)/);
-  assert.match(chatSource, /isHiddenCrewRosterNotice\(newMessage\.text\)/);
+  assert.match(chatSource, /shouldOmitCrewMessageForViewer/);
+}
+
+/**
+ * Other DJs get "{name} joined the crew" pill + unread; planner gets neither.
+ */
+function testCrewMemberJoinedNoticeForOtherDjsOnly() {
+  assert.equal(isCrewMemberJoinedNotice("Alex joined the crew"), true);
+  assert.equal(isGroupChatSystemUpdateMessage("Alex joined the crew"), true);
+  assert.equal(isHiddenCrewRosterNotice("Alex joined the crew"), false);
+  assert.equal(
+    shouldOmitCrewMessageForViewer("Alex joined the crew", {
+      viewerUserId: "owner-1",
+      ownerId: "owner-1",
+    }),
+    true,
+    "planner hides join pill",
+  );
+  assert.equal(
+    shouldOmitCrewMessageForViewer("Alex joined the crew", {
+      viewerUserId: "dj-2",
+      ownerId: "owner-1",
+    }),
+    false,
+    "other DJ sees join pill",
+  );
+  assert.equal(formatCrewMemberJoinedNotice("Alex"), "Alex joined the crew");
+
+  const bookingAcceptanceSource = readFileSync(
+    new URL("../lib/events/bookingAcceptance.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(bookingAcceptanceSource, /notifyCrewMemberJoined/);
+  assert.match(bookingAcceptanceSource, /skipNotification:\s*justStarted/);
+
+  const eventCrewSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const joinFn = eventCrewSource.slice(
+    eventCrewSource.indexOf("export async function notifyCrewMemberJoined"),
+    eventCrewSource.indexOf("export async function sendEventCrewChatMessage"),
+  );
+  assert.match(joinFn, /formatCrewMemberJoinedNotice/);
+  assert.match(joinFn, /participantId !== joinerId && participantId !== ownerKey/);
+  assert.match(joinFn, /skipNotification/);
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmPageSource, /isOwnedByViewer && isCrewMemberJoinedNotice/);
+
+  const groupChatsSource = readFileSync(
+    new URL("../lib/groupChats.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(groupChatsSource, /isOwnedByViewer:\s*true/);
+  assert.match(groupChatsSource, /isOwnedByViewer:\s*false/);
 }
 
 function testEventDetailEditDiscardOnBackOnly() {
@@ -17285,6 +17346,7 @@ async function main() {
   testCrewChatBackPreservesEventDetailOrigin();
   testCrewChatsInboxDoesNotFlickerOnBadgeBus();
   testCrewChatStartNotifiesAndSeedsUnread();
+  testCrewMemberJoinedNoticeForOtherDjsOnly();
   testEventDetailEditDiscardOnBackOnly();
   testEventDetailPopsCrewChatHistoryEntry();
   testCrewChatMemberSheetReopenOnProfileReturn();

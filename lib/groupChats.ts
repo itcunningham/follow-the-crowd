@@ -21,6 +21,8 @@ export type GroupChatListItem = {
   coverImageUrl: string | null;
   fallbackColour: string | null;
   href: string;
+  /** True when the current user owns this event (planner unread skips join notices). */
+  isOwnedByViewer: boolean;
   latestPreview: string | null;
   latestMessageAt: string | null;
   latestMessageUserId: string | null;
@@ -88,6 +90,7 @@ function mergeGroupChatRows(
     ),
     fallbackColour: primary.fallbackColour ?? secondary.fallbackColour,
     href: primary.href || secondary.href,
+    isOwnedByViewer: Boolean(primary.isOwnedByViewer || secondary.isOwnedByViewer),
     latestPreview: primary.latestPreview ?? secondary.latestPreview,
     latestMessageAt: primary.latestMessageAt ?? secondary.latestMessageAt,
     latestMessageUserId: primary.latestMessageUserId ?? secondary.latestMessageUserId,
@@ -297,6 +300,7 @@ export async function listAccessibleGroupChats(
         coverImageUrl: pickPreferredEventCoverImageUrl(event.cover_image_url),
         fallbackColour: event.fallback_colour?.trim() || null,
         href: getEventCrewChatLink(event.id, { from: "dm", tab: "group" }),
+        isOwnedByViewer: true,
       });
     }
   }
@@ -350,6 +354,7 @@ export async function listAccessibleGroupChats(
           fallbackColour:
             ((event as { fallback_colour?: string | null }).fallback_colour?.trim()) || null,
           href: getEventCrewChatLink(event.id as string, { from: "dm", tab: "group" }),
+          isOwnedByViewer: false,
         });
       }
     }
@@ -624,6 +629,13 @@ function writeLocalGroupChatsInboxCache(chats: GroupChatListItem[]): void {
   }
 }
 
+function normalizeGroupChatListItem(chat: GroupChatListItem): GroupChatListItem {
+  return {
+    ...chat,
+    isOwnedByViewer: Boolean(chat.isOwnedByViewer),
+  };
+}
+
 export function readGroupChatsInboxCache(): GroupChatListItem[] {
   if (typeof window === "undefined") {
     return [];
@@ -637,14 +649,14 @@ export function readGroupChatsInboxCache(): GroupChatListItem[] {
       const chats = Array.isArray(parsed) ? (parsed as GroupChatListItem[]) : [];
 
       if (chats.length > 0) {
-        return chats;
+        return chats.map(normalizeGroupChatListItem);
       }
     }
   } catch (cacheError) {
     console.error("[groupChats] Failed to read inbox cache:", cacheError);
   }
 
-  return readLocalGroupChatsInboxCache();
+  return readLocalGroupChatsInboxCache().map(normalizeGroupChatListItem);
 }
 
 export function writeGroupChatsInboxCache(chats: GroupChatListItem[]): void {

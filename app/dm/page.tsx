@@ -34,7 +34,7 @@ import {
   normalizeInboxId,
   type DmInboxRow,
 } from "@/lib/dmInbox";
-import { formatGroupChatInboxPreview, isGroupChatSystemUpdateMessage } from "@/lib/groupChatSystemMessages";
+import { formatGroupChatInboxPreview, isCrewMemberJoinedNotice, isGroupChatSystemUpdateMessage } from "@/lib/groupChatSystemMessages";
 import {
   buildDmInboxReactionActivity,
   dmInboxReactionActivityToRowFields,
@@ -666,12 +666,20 @@ function DmInboxPageContent() {
     const latestEventMessages = new Map<string, LatestChatMessage>();
 
     for (const chat of groupChats) {
-      if (chat.latestActivityAt && chat.latestMessageUserId) {
-        latestEventMessages.set(chat.eventId, {
-          user_id: chat.latestMessageUserId,
-          created_at: chat.latestActivityAt,
-        });
+      if (!chat.latestActivityAt || !chat.latestMessageUserId) {
+        continue;
       }
+
+      // Planner already knows from the booking accept — join lines must not
+      // light Crew Chats unread for the event owner.
+      if (chat.isOwnedByViewer && isCrewMemberJoinedNotice(chat.latestPreview)) {
+        continue;
+      }
+
+      latestEventMessages.set(chat.eventId, {
+        user_id: chat.latestMessageUserId,
+        created_at: chat.latestActivityAt,
+      });
     }
 
     try {
