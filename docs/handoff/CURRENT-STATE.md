@@ -966,6 +966,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `9a1b56f4` — fix(cancel): unique per-event cancel DM so DJ unread can fire
 - `1a4ee28d` — fix(cancel): harden mark_conversation_unread RPC + always mark DJ unread
 - `9fbf54b5` — fix(chat): bump own bubble text to font-medium
 - `3676a4ce` — fix(dm): drop Booking type label; Cancelled by shows DJ name
