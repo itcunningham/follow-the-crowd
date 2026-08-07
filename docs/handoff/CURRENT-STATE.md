@@ -1,7 +1,9 @@
-# Current state (last updated: 2026-08-06)
+# Current state (last updated: 2026-08-07)
 
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
+
+**Event cancellation notification badge routing fixed (`f18af09` on `main`, 2026-08-07):** When planner cancels event, DJ receives notification in Messages inbox instead of incorrectly appearing on Crew Chats tab. Changed message_reads marking strategy from DELETE (fragile, could fail silently) to UPSERT with last_read_at set 1 second before message timestamp. Ensures cancellation message always appears as unread in Messages badge calculation, regardless of prior read state.
 
 **DJ join pill + unread (planner excluded) (on `main`, 2026-08-07):** When a DJ accepts into an unlocked crew chat, insert **“{name} joined the crew”**. Other DJs get the Instagram-style pill + inbox unread (+ push unless this accept just auto-started — then start notify covers it). Planner sees no pill, no unread, no join push. Open crew chat refreshes member avatars on join INSERT.
 
