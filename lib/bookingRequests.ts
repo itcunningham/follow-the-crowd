@@ -1153,7 +1153,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
         const epochTimestamp = new Date(0).toISOString();
 
         console.log("[bookings] Upserting conversation to mark unread with last_read_at:", epochTimestamp);
-        const { data: upsertData, error: upsertError } = await supabase
+        const { error: upsertError } = await supabase
           .from("message_reads")
           .upsert(
             {
@@ -1163,17 +1163,12 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
               last_read_at: epochTimestamp,
             },
             { onConflict: "user_id,conversation_id" }
-          )
-          .select("*");
+          );
 
         if (upsertError) {
           console.error("[bookings] ❌ Failed to upsert conversation message_reads:", upsertError);
         } else {
-          console.log("[bookings] ✅ Marked conversation unread:", {
-            user_id: booking.recipient_id,
-            conversation_id: booking.conversation_id,
-            last_read_at: epochTimestamp,
-          });
+          console.log("[bookings] ✅ Marked conversation unread for DJ:", booking.recipient_id);
         }
       } catch (error) {
         console.error("[bookings] ❌ Exception during mark unread:", error);
