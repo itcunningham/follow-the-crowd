@@ -1,11 +1,20 @@
 export const GROUP_CHAT_BOOKING_UPDATE_PREFIX = "Booking update:";
 
+/** Fixed notice when crew chat unlocks (manual Start or auto-start). */
+export const CREW_CHAT_STARTED_NOTICE = "Crew chat started";
+
 function isGroupChatCrewOpenedNotice(text: string): boolean {
   return /^.+ joined the event crew\. Crew chat is now open\.$/.test(text.trim());
 }
 
 function isGroupChatCrewStartedNotice(text: string): boolean {
-  return /^.+ started the crew$/.test(text.trim());
+  const trimmed = text.trim();
+
+  return (
+    trimmed === CREW_CHAT_STARTED_NOTICE ||
+    // Brief Claude ship used "{name} started the crew" — still recognize it.
+    /^.+ started the crew$/.test(trimmed)
+  );
 }
 
 export function isGroupChatSystemUpdateMessage(text: string): boolean {
@@ -53,11 +62,14 @@ export function isHiddenCrewRosterNotice(text: string): boolean {
 export function formatGroupChatSystemNoticeText(text: string): string {
   const trimmed = text.trim();
 
+  if (trimmed === CREW_CHAT_STARTED_NOTICE) {
+    return CREW_CHAT_STARTED_NOTICE;
+  }
+
   const crewStartedMatch = trimmed.match(/^(.+?) started the crew$/);
 
   if (crewStartedMatch) {
-    const name = crewStartedMatch[1]?.trim() || "Planner";
-    return `${name} started the crew`;
+    return CREW_CHAT_STARTED_NOTICE;
   }
 
   const crewOpenedMatch = trimmed.match(/^(.+?) joined the event crew\. Crew chat is now open\.$/);

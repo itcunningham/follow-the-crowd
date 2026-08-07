@@ -190,6 +190,12 @@ import {
 } from "../lib/events/eventDetailDjBookingUi";
 import { applyInboxGroupMessage, type GroupChatListItem } from "../lib/groupChats";
 import {
+  CREW_CHAT_STARTED_NOTICE,
+  formatGroupChatInboxPreview,
+  formatGroupChatSystemNoticeText,
+  isGroupChatSystemUpdateMessage,
+} from "../lib/groupChatSystemMessages";
+import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
   DM_BOOKING_RATE_DECLINED_MESSAGE,
@@ -14655,6 +14661,71 @@ function testCrewChatsInboxDoesNotFlickerOnBadgeBus() {
   );
 }
 
+/**
+ * When crew chat unlocks, DJs need a notification + unread highlight on
+ * Messages → Crew Chats until they open it. That requires a system message
+ * (unread attaches to latest message from someone else) plus createNotification.
+ * Copy is fixed "Crew chat started" so auto-start (2nd accept) does not blame
+ * the accepting DJ with "{name} started the crew".
+ */
+function testCrewChatStartNotifiesAndSeedsUnread() {
+  assert.equal(CREW_CHAT_STARTED_NOTICE, "Crew chat started");
+  assert.equal(isGroupChatSystemUpdateMessage(CREW_CHAT_STARTED_NOTICE), true);
+  assert.equal(formatGroupChatSystemNoticeText(CREW_CHAT_STARTED_NOTICE), CREW_CHAT_STARTED_NOTICE);
+  assert.equal(
+    formatGroupChatSystemNoticeText("Alex started the crew"),
+    CREW_CHAT_STARTED_NOTICE,
+  );
+  assert.equal(
+    formatGroupChatInboxPreview(CREW_CHAT_STARTED_NOTICE),
+    CREW_CHAT_STARTED_NOTICE,
+  );
+
+  const plannerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+  const djId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee";
+  assert.equal(
+    isChatUnread(
+      { user_id: plannerId, created_at: "2026-08-07T06:00:00.000Z" },
+      djId,
+      null,
+    ),
+    true,
+    "DJ with no read row treats start notice as unread",
+  );
+  assert.equal(
+    isChatUnread(
+      { user_id: plannerId, created_at: "2026-08-07T06:00:00.000Z" },
+      plannerId,
+      null,
+    ),
+    false,
+    "starter does not unread their own start notice",
+  );
+
+  const eventCrewSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const notifyFn = eventCrewSource.slice(
+    eventCrewSource.indexOf("export async function notifyCrewChatStarted"),
+    eventCrewSource.indexOf("export async function sendEventCrewChatMessage"),
+  );
+  assert.match(notifyFn, /CREW_CHAT_STARTED_NOTICE/);
+  assert.match(notifyFn, /from\("messages"\)\.insert/);
+  assert.match(notifyFn, /insertError/);
+  assert.match(notifyFn, /markEventChatRead\(eventId\)/);
+  assert.match(notifyFn, /createNotification\(/);
+  assert.doesNotMatch(notifyFn, /started the crew`/);
+  assert.doesNotMatch(notifyFn, /\.catch\(/);
+
+  const chatSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(chatSource, /isGroupChatSystemUpdateMessage\(message\.text\)/);
+  assert.match(chatSource, /GroupChatSystemNotice/);
+}
+
 function testEventDetailEditDiscardOnBackOnly() {
   const detailSource = readFileSync(
     new URL("../app/events/[eventId]/page.tsx", import.meta.url),
@@ -17207,6 +17278,7 @@ async function main() {
   testEventDetailReturnsToCrewChat();
   testCrewChatBackPreservesEventDetailOrigin();
   testCrewChatsInboxDoesNotFlickerOnBadgeBus();
+  testCrewChatStartNotifiesAndSeedsUnread();
   testEventDetailEditDiscardOnBackOnly();
   testEventDetailPopsCrewChatHistoryEntry();
   testCrewChatMemberSheetReopenOnProfileReturn();

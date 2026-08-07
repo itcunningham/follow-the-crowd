@@ -15,6 +15,7 @@ import {
   CREW_CHAT_EVENT_DETAIL_RETURN_PARAM,
   buildEventDetailHrefFromReturnQuery,
 } from "@/lib/events/eventDetailCrewChatReturn";
+import { CREW_CHAT_STARTED_NOTICE } from "@/lib/groupChatSystemMessages";
 
 export type EventCrewChatMessage = {
   id: string;
@@ -271,11 +272,12 @@ export async function getEventCrewParticipantIds(eventId: string): Promise<strin
 }
 
 /**
- * After crew chat unlocks (manual Start or auto-start on 2nd accept): notify
- * every other crew member so their Messages → Crew Chats inbox can refetch.
- * Start only writes `events.crew_chat_started_at` — without this there is no
- * realtime signal on the DJ side. Also inserts a system message and ensures
- * the crew chat shows as unread. Soft-fail per recipient.
+ * After crew chat unlocks (manual Start or auto-start on 2nd accept):
+ * 1. Insert a system notice so Crew Chats can show unread until opened
+ * 2. Notify every other crew member (badge + inbox refetch)
+ *
+ * Start only writes `events.crew_chat_started_at` — without a message, unread
+ * math has nothing to attach to. Soft-fail per step.
  */
 export async function notifyCrewChatStarted(options: {
   eventId: string;
@@ -287,49 +289,52 @@ export async function notifyCrewChatStarted(options: {
 
   let senderId: string;
   let participants: string[];
-  let senderProfile;
 
   try {
     senderId = await getCurrentUserId();
-    senderProfile = await getCurrentUserProfile();
     participants = await getEventCrewParticipantIds(eventId);
   } catch (loadError) {
     console.error("[eventCrewChat] Crew chat start notify setup failed:", loadError);
     return;
   }
 
-  const senderName = senderProfile?.display_name?.trim() || "Planner";
-
-  // Insert system message for crew start and notify participants
-  const insertPromise = supabase.from("messages").insert({
+  const { error: insertError } = await supabase.from("messages").insert({
     event_id: eventId,
     user_id: senderId,
-    text: `${senderName} started the crew`,
-  }).catch((error) => {
-    console.error("[eventCrewChat] Failed to insert crew started system message:", error);
+    text: CREW_CHAT_STARTED_NOTICE,
   });
 
-  const notifyPromises = participants
-    .filter((participantId) => participantId !== senderId)
-    .map(async (participantId) => {
-      try {
-        await createNotification(
-          participantId,
-          "message",
-          eventName,
-          "Crew started",
-          link,
-        );
-      } catch (notificationError) {
-        console.error(
-          "[eventCrewChat] Crew started but notification failed:",
-          participantId,
-          notificationError,
-        );
-      }
-    });
+  if (insertError) {
+    console.error("[eventCrewChat] Failed to insert crew started system message:", insertError);
+  } else {
+    try {
+      await markEventChatRead(eventId);
+    } catch (readError) {
+      console.error("[eventCrewChat] Failed to mark crew chat read after start notice:", readError);
+    }
+  }
 
-  await Promise.all([insertPromise, ...notifyPromises]);
+  await Promise.all(
+    participants
+      .filter((participantId) => participantId !== senderId)
+      .map(async (participantId) => {
+        try {
+          await createNotification(
+            participantId,
+            "message",
+            eventName,
+            CREW_CHAT_STARTED_NOTICE,
+            link,
+          );
+        } catch (notificationError) {
+          console.error(
+            "[eventCrewChat] Crew chat started but notification failed:",
+            participantId,
+            notificationError,
+          );
+        }
+      }),
+  );
 }
 
 export async function sendEventCrewChatMessage(
