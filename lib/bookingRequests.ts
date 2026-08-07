@@ -1106,44 +1106,41 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     // Mark conversation as unread for the DJ recipient
     if (booking.recipient_id && booking.conversation_id) {
       try {
-        // Delete any stale event_id row to prevent the badge from appearing on Crew Chats
-        const { error: deleteError } = await supabase
-          .from("message_reads")
-          .delete()
-          .eq("user_id", booking.recipient_id)
-          .eq("event_id", booking.event_id);
-
-        if (deleteError) {
-          console.error("[bookings] Failed to delete stale event_id message_reads:", deleteError);
-        }
-
         const nowMs = Date.now();
         const pastTimestamp = new Date(nowMs - 1000).toISOString();
 
-        const { data: upsertData, error: upsertError } = await supabase
+        // First, delete any event_id row for this user+event to clean up stale state
+        await supabase
           .from("message_reads")
-          .upsert(
-            {
-              user_id: booking.recipient_id,
-              conversation_id: booking.conversation_id,
-              event_id: null,
-              last_read_at: pastTimestamp,
-            },
-            { onConflict: "user_id,conversation_id" }
-          )
-          .select("*");
+          .delete()
+          .eq("user_id", booking.recipient_id)
+          .eq("event_id", booking.event_id)
+          .eq("conversation_id", null);
 
-        if (upsertError) {
-          console.error("[bookings] Failed to upsert conversation message_reads:", upsertError);
-        } else {
-          console.log("[bookings] Marked conversation unread:", {
+        // Then delete any existing conversation_id row so we can insert a fresh one
+        await supabase
+          .from("message_reads")
+          .delete()
+          .eq("user_id", booking.recipient_id)
+          .eq("conversation_id", booking.conversation_id);
+
+        // Insert a new message_reads row with timestamp before the message
+        const { error: insertError } = await supabase
+          .from("message_reads")
+          .insert({
             user_id: booking.recipient_id,
             conversation_id: booking.conversation_id,
+            event_id: null,
             last_read_at: pastTimestamp,
           });
+
+        if (insertError) {
+          console.error("[bookings] Failed to insert message_reads:", insertError);
+        } else {
+          console.log("[bookings] Marked conversation unread for DJ:", booking.recipient_id, booking.conversation_id);
         }
       } catch (error) {
-        console.error("[bookings] Exception during mark unread:", error);
+        console.error("[bookings] Exception marking conversation unread:", error);
       }
     }
   }
