@@ -24,6 +24,7 @@
 
 - **After 2 failed fix attempts:** stop guessing and investigate. Gather diagnostics first: browser console errors, network requests (Fetch/XHR tab), database queries, data flow logs. Do not guess a third time.
 - **Do detective work yourself.** Do not ask Isaac for diagnostics/screenshots. Read the code, trace the flow, find the issue. He wants to minimize effort — investigation is yours to do.
+- **Multi-system bugs (RLS + badge calculation + timing, etc.):** Don't trace theory. Test live data end-to-end. Each layer only surfaces after fixing the previous one. Instrument code, run a real scenario, look at actual data flow. This is faster than reasoning through nested system interactions.
 
 ## Shipping & Perfection
 
