@@ -85,18 +85,18 @@ export default function BookingRateProposalPanel({
         <button
           type="button"
           disabled={loading}
-          onClick={() => void onAcceptProposal()}
-          className={PROPOSAL_PRIMARY_ACTION_CLASS}
-        >
-          Accept
-        </button>
-        <button
-          type="button"
-          disabled={loading}
           onClick={() => void onKeepOriginalOffer()}
           className={PROPOSAL_SECONDARY_ACTION_CLASS}
         >
           {secondaryActionLabel}
+        </button>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => void onAcceptProposal()}
+          className={PROPOSAL_PRIMARY_ACTION_CLASS}
+        >
+          Accept
         </button>
       </div>
     </BookingProposalCardShell>
