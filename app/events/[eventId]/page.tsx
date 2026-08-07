@@ -1223,41 +1223,16 @@ function EventDetailPageView() {
         cancelResult.event,
       );
 
-      // Notify all DJs who accepted bookings about the cancellation
+      // Create system message about cancellation so DJs see it in their messages
       try {
-        const { data: bookings, error: bookingError } = await supabase
-          .from("booking_requests")
-          .select("recipient_id")
-          .eq("event_id", event.id)
-          .eq("status", "accepted");
-
-        if (!bookingError && bookings && bookings.length > 0) {
-          const djIds = [...new Set(
-            (bookings as Array<{ recipient_id: string | null }>)
-              .map((b) => b.recipient_id)
-              .filter((id): id is string => Boolean(id))
-          )];
-
-          console.log("[eventCancel] Notifying DJs:", djIds);
-
-          await Promise.all(
-            djIds.map((djId) =>
-              createNotification(
-                djId,
-                "message",
-                event.name || "Event",
-                "Event cancelled",
-                "/",
-              ).then(() => {
-                console.log("[eventCancel] Notified DJ:", djId);
-              }).catch((error) => {
-                console.error("[eventCancel] Failed to notify DJ:", djId, error);
-              })
-            )
-          );
-        }
-      } catch (notifyError) {
-        console.error("[eventCancel] Failed to notify DJs:", notifyError);
+        const userId = await getCurrentUserId();
+        await supabase.from("messages").insert({
+          event_id: event.id,
+          user_id: userId,
+          text: `${event.name || "Event"} was cancelled`,
+        });
+      } catch (messageError) {
+        console.error("[eventCancel] Failed to create cancellation message:", messageError);
       }
 
       // Broadcast event cancellation to all connected DJs
