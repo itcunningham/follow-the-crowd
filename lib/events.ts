@@ -848,6 +848,18 @@ async function notifyCancelledBookingsFromEventCancellation(
 }
 
 export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
+  console.log("[events] cancelEvent called with eventId:", eventId);
+
+  // Fetch bookings BEFORE calling cancel_event RPC, since the RPC may modify them
+  let eventBookings: BookingRequest[] = [];
+  try {
+    eventBookings = await listBookingRequestsForEvent(eventId);
+    console.log("[events] Fetched", eventBookings.length, "bookings before RPC call");
+  } catch (fetchError) {
+    console.error("[events] Failed to fetch bookings before RPC call:", fetchError);
+    eventBookings = [];
+  }
+
   const { data, error } = await supabase.rpc("cancel_event", {
     p_event_id: eventId,
   });
@@ -865,9 +877,7 @@ export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
 
   const result = parseCancelEventRpcResult(data);
 
-  let eventBookings: BookingRequest[] = [];
   try {
-    eventBookings = await listBookingRequestsForEvent(eventId);
     await insertEventCancellationActivityMessagesIfNeeded({
       eventName: result.event.name,
       plannerUserId: result.event.owner_id,

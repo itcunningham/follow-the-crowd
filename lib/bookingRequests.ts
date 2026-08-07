@@ -1009,10 +1009,16 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
   plannerUserId: string;
   bookings: BookingRequest[];
 }): Promise<void> {
+  console.log("[bookings] insertEventCancellationActivityMessagesIfNeeded called with event:", options.eventName);
+  console.log("[bookings] Event cancellation: processing", options.bookings.length, "bookings");
+
+  if (options.bookings.length === 0) {
+    console.warn("[bookings] No bookings to process for event cancellation");
+    return;
+  }
+
   const messageText = formatEventCancellationActivityMessage(options.eventName);
   const seenConversationIds = new Set<string>();
-
-  console.log("[bookings] Event cancellation: processing", options.bookings.length, "bookings");
 
   for (const booking of options.bookings) {
     const idsAreSame = booking.conversation_id === booking.event_id;
