@@ -4,6 +4,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { createNotification } from "@/lib/notifications";
+import { getEventCrewParticipantIds } from "@/lib/eventCrewChat";
 import { looksLikeUserId, resolveUserDisplayName } from "@/lib/user/displayName";
 import { parseCalendarOriginFromEventDetail, resolveSentBookingsLinkedToPlannerEvent } from "@/lib/calendar";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
@@ -1221,6 +1223,31 @@ function EventDetailPageView() {
         relatedBookingIds,
         cancelResult.event,
       );
+
+      // Notify all DJs about the cancellation
+      try {
+        const participantIds = await getEventCrewParticipantIds(event.id);
+        const currentId = await getCurrentUserId();
+
+        await Promise.all(
+          participantIds
+            .filter((id) => id !== currentId)
+            .map((djId) =>
+              createNotification(
+                djId,
+                "message",
+                event.name || "Event",
+                "Event cancelled",
+                "/",
+              ).catch((error) => {
+                console.error("[eventCancel] Failed to notify DJ:", djId, error);
+              })
+            )
+        );
+      } catch (notifyError) {
+        console.error("[eventCancel] Failed to notify DJs:", notifyError);
+      }
+
       // Broadcast event cancellation to all connected DJs
       await supabase.channel("event-cancellations").send({
         type: "broadcast",
