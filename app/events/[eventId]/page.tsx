@@ -1228,21 +1228,24 @@ function EventDetailPageView() {
       try {
         const participantIds = await getEventCrewParticipantIds(event.id);
         const currentId = await getCurrentUserId();
+        const djIds = participantIds.filter((id) => id !== currentId);
+
+        console.log("[eventCancel] Notifying DJs:", djIds);
 
         await Promise.all(
-          participantIds
-            .filter((id) => id !== currentId)
-            .map((djId) =>
-              createNotification(
-                djId,
-                "message",
-                event.name || "Event",
-                "Event cancelled",
-                "/",
-              ).catch((error) => {
-                console.error("[eventCancel] Failed to notify DJ:", djId, error);
-              })
-            )
+          djIds.map((djId) =>
+            createNotification(
+              djId,
+              "message",
+              event.name || "Event",
+              "Event cancelled",
+              "/",
+            ).then(() => {
+              console.log("[eventCancel] Notified DJ:", djId);
+            }).catch((error) => {
+              console.error("[eventCancel] Failed to notify DJ:", djId, error);
+            })
+          )
         );
       } catch (notifyError) {
         console.error("[eventCancel] Failed to notify DJs:", notifyError);
