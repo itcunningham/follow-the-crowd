@@ -802,11 +802,14 @@ function DmInboxPageContent() {
           event: "UPDATE",
           schema: "public",
           table: "events",
-          filter: "status=eq.cancelled",
         },
-        () => {
-          // Event was cancelled; remove its crew chat from DJ's list.
-          void loadGroupChats();
+        (payload) => {
+          // Check if this event was cancelled.
+          const status = payload.new && typeof payload.new === "object" ? String((payload.new as { status?: string }).status ?? "") : "";
+          if (status === "cancelled") {
+            // Hard reload to remove cancelled event's crew chat from DJ's inbox.
+            void loadGroupChats({ forceLoading: true });
+          }
         },
       )
       .subscribe();
