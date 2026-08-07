@@ -774,7 +774,7 @@ function DmInboxPageContent() {
 
     window.addEventListener("ftc-notifications-updated", softReloadGroupChatsFromBadgeBus);
 
-    const channel = supabase
+    const notificationChannel = supabase
       .channel(`dm-inbox:crew-chat-unlock:${currentUserId}`)
       .on(
         "postgres_changes",
@@ -798,9 +798,18 @@ function DmInboxPageContent() {
       )
       .subscribe();
 
+    const cancellationChannel = supabase
+      .channel("event-cancellations")
+      .on("broadcast", { event: "event_cancelled" }, () => {
+        // Event was cancelled; reload crew chats to remove it from DJ's list
+        void loadGroupChats({ forceLoading: true });
+      })
+      .subscribe();
+
     return () => {
       window.removeEventListener("ftc-notifications-updated", softReloadGroupChatsFromBadgeBus);
-      supabase.removeChannel(channel);
+      supabase.removeChannel(notificationChannel);
+      supabase.removeChannel(cancellationChannel);
     };
   }, [currentUserId, loadGroupChats]);
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 import { looksLikeUserId, resolveUserDisplayName } from "@/lib/user/displayName";
 import { parseCalendarOriginFromEventDetail, resolveSentBookingsLinkedToPlannerEvent } from "@/lib/calendar";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
@@ -1220,6 +1221,11 @@ function EventDetailPageView() {
         relatedBookingIds,
         cancelResult.event,
       );
+      // Broadcast event cancellation to all connected DJs
+      await supabase.channel("event-cancellations").send("broadcast", {
+        event: "event_cancelled",
+        eventId: event.id,
+      });
       router.replace("/");
     } catch (cancelError) {
       console.error("Failed to cancel event:", cancelError);
