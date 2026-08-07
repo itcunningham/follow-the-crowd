@@ -274,7 +274,8 @@ export async function getEventCrewParticipantIds(eventId: string): Promise<strin
  * After crew chat unlocks (manual Start or auto-start on 2nd accept): notify
  * every other crew member so their Messages → Crew Chats inbox can refetch.
  * Start only writes `events.crew_chat_started_at` — without this there is no
- * realtime signal on the DJ side. Soft-fail per recipient.
+ * realtime signal on the DJ side. Also inserts a system message and ensures
+ * the crew chat shows as unread. Soft-fail per recipient.
  */
 export async function notifyCrewChatStarted(options: {
   eventId: string;
@@ -286,36 +287,49 @@ export async function notifyCrewChatStarted(options: {
 
   let senderId: string;
   let participants: string[];
+  let senderProfile;
 
   try {
     senderId = await getCurrentUserId();
+    senderProfile = await getCurrentUserProfile();
     participants = await getEventCrewParticipantIds(eventId);
   } catch (loadError) {
     console.error("[eventCrewChat] Crew chat start notify setup failed:", loadError);
     return;
   }
 
-  await Promise.all(
-    participants
-      .filter((participantId) => participantId !== senderId)
-      .map(async (participantId) => {
-        try {
-          await createNotification(
-            participantId,
-            "message",
-            eventName,
-            "Crew chat started",
-            link,
-          );
-        } catch (notificationError) {
-          console.error(
-            "[eventCrewChat] Crew chat started but notification failed:",
-            participantId,
-            notificationError,
-          );
-        }
-      }),
-  );
+  const senderName = senderProfile?.display_name?.trim() || "Planner";
+
+  // Insert system message for crew start and notify participants
+  const insertPromise = supabase.from("messages").insert({
+    event_id: eventId,
+    user_id: senderId,
+    text: `${senderName} started the crew`,
+  }).catch((error) => {
+    console.error("[eventCrewChat] Failed to insert crew started system message:", error);
+  });
+
+  const notifyPromises = participants
+    .filter((participantId) => participantId !== senderId)
+    .map(async (participantId) => {
+      try {
+        await createNotification(
+          participantId,
+          "message",
+          eventName,
+          "Crew started",
+          link,
+        );
+      } catch (notificationError) {
+        console.error(
+          "[eventCrewChat] Crew started but notification failed:",
+          participantId,
+          notificationError,
+        );
+      }
+    });
+
+  await Promise.all([insertPromise, ...notifyPromises]);
 }
 
 export async function sendEventCrewChatMessage(
