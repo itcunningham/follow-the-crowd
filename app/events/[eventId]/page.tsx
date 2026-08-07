@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { createNotification } from "@/lib/notifications";
-import { getEventCrewParticipantIds } from "@/lib/eventCrewChat";
 import { looksLikeUserId, resolveUserDisplayName } from "@/lib/user/displayName";
 import { parseCalendarOriginFromEventDetail, resolveSentBookingsLinkedToPlannerEvent } from "@/lib/calendar";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
@@ -1224,29 +1223,39 @@ function EventDetailPageView() {
         cancelResult.event,
       );
 
-      // Notify all DJs about the cancellation
+      // Notify all DJs who accepted bookings about the cancellation
       try {
-        const participantIds = await getEventCrewParticipantIds(event.id);
-        const currentId = await getCurrentUserId();
-        const djIds = participantIds.filter((id) => id !== currentId);
+        const { data: bookings, error: bookingError } = await supabase
+          .from("booking_requests")
+          .select("recipient_id")
+          .eq("event_id", event.id)
+          .eq("status", "accepted");
 
-        console.log("[eventCancel] Notifying DJs:", djIds);
+        if (!bookingError && bookings && bookings.length > 0) {
+          const djIds = [...new Set(
+            (bookings as Array<{ recipient_id: string | null }>)
+              .map((b) => b.recipient_id)
+              .filter((id): id is string => Boolean(id))
+          )];
 
-        await Promise.all(
-          djIds.map((djId) =>
-            createNotification(
-              djId,
-              "message",
-              event.name || "Event",
-              "Event cancelled",
-              "/",
-            ).then(() => {
-              console.log("[eventCancel] Notified DJ:", djId);
-            }).catch((error) => {
-              console.error("[eventCancel] Failed to notify DJ:", djId, error);
-            })
-          )
-        );
+          console.log("[eventCancel] Notifying DJs:", djIds);
+
+          await Promise.all(
+            djIds.map((djId) =>
+              createNotification(
+                djId,
+                "message",
+                event.name || "Event",
+                "Event cancelled",
+                "/",
+              ).then(() => {
+                console.log("[eventCancel] Notified DJ:", djId);
+              }).catch((error) => {
+                console.error("[eventCancel] Failed to notify DJ:", djId, error);
+              })
+            )
+          );
+        }
       } catch (notifyError) {
         console.error("[eventCancel] Failed to notify DJs:", notifyError);
       }
