@@ -105,6 +105,41 @@ export async function addDjToRosterByUsername(
 }
 
 /**
+ * Remove one DJ from the current planner's roster.
+ *
+ * Scoped by BOTH ids. The RLS delete policy already restricts this to
+ * `planner_id = auth_user_id()`, so the planner filter is redundant against a
+ * correct database — it is stated anyway so a policy regression shows up as a
+ * failing test rather than as one planner clearing another's roster.
+ *
+ * Deletes exactly one row from planner_dj_roster and nothing else. The DJ
+ * account, bookings, DMs, crew chat and message history are all keyed off other
+ * tables and are untouched: this removes a bookmark, not a relationship. The
+ * same DJ can be added back afterwards through the existing username flow.
+ */
+export async function removeDjFromRoster(
+  plannerId: string,
+  djId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!plannerId || !djId) {
+    return { ok: false, message: "Could not remove that DJ. Please try again." };
+  }
+
+  const { error } = await supabase
+    .from("planner_dj_roster")
+    .delete()
+    .eq("planner_id", plannerId)
+    .eq("dj_id", djId);
+
+  if (error) {
+    console.error("[roster] remove failed:", error);
+    return { ok: false, message: "Could not remove that DJ. Please try again." };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Record the planner→DJ relationship created by sending a booking request.
  *
  * Fires on booking *creation*, not acceptance: a planner who deliberately tried

@@ -11,8 +11,13 @@ import EventDjSendOfferControls, {
 import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner/PlannerUi";
 import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
+import BookingSheetDialog, {
+  BookingSheetDangerButton,
+  BookingSheetSecondaryButton,
+} from "@/app/components/booking/BookingSheetDialog";
 import {
   addDjToRosterByUsername,
+  removeDjFromRoster,
   ROSTER_SCOPING_ENABLED,
 } from "@/lib/plannerDjRoster";
 import { getCurrentUserId } from "@/lib/user/currentUser";
@@ -177,6 +182,51 @@ function AddDjByUsernameField({
   );
 }
 
+/**
+ * Removing a DJ is destructive to the roster but to nothing else, and the
+ * confirmation says so explicitly. A planner who fears losing a booking history
+ * will not use the control, and a stale roster is worse than an accurate one.
+ */
+function RemoveDjFromRosterDialog({
+  dj,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
+  dj: { user_id: string; display_name?: string | null } | null;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void | Promise<void>;
+}) {
+  if (!dj) {
+    return null;
+  }
+
+  const displayName = dj.display_name?.trim() || "this DJ";
+
+  return (
+    <BookingSheetDialog
+      open
+      title={`Remove ${displayName} from your roster?`}
+      titleId="remove-dj-from-roster-title"
+      description={`${displayName} will no longer appear in Invite DJs. Past bookings and chats won't be affected.`}
+      loading={loading}
+      overlayClassName="z-[70]"
+      onBackdropClick={onCancel}
+      footer={
+        <>
+          <BookingSheetSecondaryButton disabled={loading} onClick={onCancel}>
+            Cancel
+          </BookingSheetSecondaryButton>
+          <BookingSheetDangerButton disabled={loading} onClick={onConfirm}>
+            {loading ? "Removing" : "Remove"}
+          </BookingSheetDangerButton>
+        </>
+      }
+    />
+  );
+}
+
 function InviteDjAvatar({
   name,
   avatarUrl,
@@ -218,6 +268,8 @@ type DjInviteSelectionRowProps = {
   offer: DjSendOffer;
   onToggle: () => void;
   onOfferChange: (offer: DjSendOffer) => void;
+  /** Roster mode only. Omitted, no remove control renders and the row is unchanged. */
+  onRemove?: () => void;
 };
 
 /**
@@ -237,6 +289,7 @@ export function DjInviteSelectionRow({
   offer,
   onToggle,
   onOfferChange,
+  onRemove,
 }: DjInviteSelectionRowProps) {
   const displayName = dj.display_name?.trim() || "DJ";
   const showAvailabilityBadge =
@@ -244,13 +297,17 @@ export function DjInviteSelectionRow({
 
   return (
     <li>
+      {/* Flex row rather than an X inside the select button: nesting a button
+          inside a button is invalid, and a click on the inner one would also
+          toggle selection. */}
+      <div className="flex items-start gap-1.5">
       <button
         type="button"
         disabled={disabled || isDuplicateBlocked}
         aria-pressed={selected}
         aria-label={`${selected ? "Deselect" : "Select"} ${displayName}`}
         onClick={onToggle}
-        className={`ftc-option-card flex w-full items-start gap-3 p-2.5 transition duration-150 ease-out disabled:cursor-not-allowed motion-reduce:transition-none ${
+        className={`ftc-option-card flex w-full min-w-0 flex-1 items-start gap-3 p-2.5 transition duration-150 ease-out disabled:cursor-not-allowed motion-reduce:transition-none ${
           selected
             ? "ftc-option-card-selected bg-[var(--ftc-color-primary-subtle)]"
             : isDuplicateBlocked
@@ -281,6 +338,28 @@ export function DjInviteSelectionRow({
           ) : null}
         </div>
       </button>
+      {onRemove ? (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onRemove}
+          aria-label={`Remove ${displayName} from your roster`}
+          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ftc-text-muted transition hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-[18px] w-[18px]"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      ) : null}
+      </div>
       {selected ? (
         <div className="mt-2 rounded-xl bg-ftc-bg-elevated/70 p-3">
           <EventDjSendOfferControls offer={offer} disabled={disabled} onChange={onOfferChange} />
@@ -396,6 +475,41 @@ export default function SendBookingRequestsPanel({
   });
   const trimmedError = errorMessage?.trim() || null;
 
+  const [djPendingRemoval, setDjPendingRemoval] = useState<DjInviteSelectionRowDj | null>(
+    null,
+  );
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  const handleConfirmRemove = useCallback(async () => {
+    if (!djPendingRemoval || removing) {
+      return;
+    }
+
+    setRemoving(true);
+    setRemoveError(null);
+
+    try {
+      const plannerId = await getCurrentUserId();
+      const result = await removeDjFromRoster(plannerId, djPendingRemoval.user_id);
+
+      if (!result.ok) {
+        // The DJ stays visible. Hiding a row whose delete failed would tell the
+        // planner the roster changed when it did not.
+        setRemoveError(result.message);
+        return;
+      }
+
+      setDjPendingRemoval(null);
+      await draft.reloadDjs();
+    } catch (error) {
+      console.error("Failed to remove DJ from roster:", error);
+      setRemoveError("Could not remove that DJ. Please try again.");
+    } finally {
+      setRemoving(false);
+    }
+  }, [djPendingRemoval, removing, draft]);
+
   return (
     <div className={embedded ? "space-y-4 border-t border-ftc-border-subtle pt-4" : "space-y-4"}>
       {embedded ? (
@@ -452,6 +566,14 @@ export default function SendBookingRequestsPanel({
                 offer={offer}
                 onToggle={() => draft.toggleDjSelection(dj.user_id)}
                 onOfferChange={(nextOffer) => draft.updateDjOffer(dj.user_id, nextOffer)}
+                onRemove={
+                  ROSTER_SCOPING_ENABLED
+                    ? () => {
+                        setRemoveError(null);
+                        setDjPendingRemoval(dj);
+                      }
+                    : undefined
+                }
               />
             );
           })}
@@ -493,6 +615,26 @@ export default function SendBookingRequestsPanel({
           {sendButtonLabel}
         </button>
       ) : null}
+
+      {removeError ? (
+        <p
+          role="alert"
+          className="rounded-xl border border-[var(--ftc-color-danger)]/40 bg-[var(--ftc-color-danger)]/10 px-3.5 py-3 text-sm leading-relaxed text-[var(--ftc-color-danger)]"
+        >
+          {removeError}
+        </p>
+      ) : null}
+
+      <RemoveDjFromRosterDialog
+        dj={djPendingRemoval}
+        loading={removing}
+        onCancel={() => {
+          // Cancel closes and does nothing else. No delete is issued.
+          setDjPendingRemoval(null);
+          setRemoveError(null);
+        }}
+        onConfirm={handleConfirmRemove}
+      />
     </div>
   );
 }

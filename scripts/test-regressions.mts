@@ -17630,6 +17630,8 @@ async function main() {
   testPlannerRosterIsolatesPlannersAndExcludesUnbookableDjs();
   testPlannerRosterAddIsExactAndNonEnumerating();
   testPlannerRosterAutoAddCannotBreakABooking();
+  testPlannerRosterRemoveIsScopedAndNonDestructive();
+  testPlannerRosterRemoveRequiresConfirmation();
   testPlannerRosterMigrationGrantsTablePrivileges();
   console.log("All regression checks passed.");
 }
@@ -17787,6 +17789,102 @@ function testPlannerRosterAddIsExactAndNonEnumerating() {
   assert.doesNotMatch(addFn, /not a DJ|is a promoter|already exists/i);
 
   assert.match(addFn, /djId === plannerId/, "self-add is refused client-side too");
+}
+
+/**
+ * Removing a DJ takes one row out of one planner's roster and touches nothing
+ * else. The risk is not that it under-deletes — it is that a missing filter
+ * clears a whole roster, or that "remove from my list" quietly becomes "delete
+ * the working relationship".
+ */
+function testPlannerRosterRemoveIsScopedAndNonDestructive() {
+  const rosterSource = readFileSync(
+    new URL("../lib/plannerDjRoster.ts", import.meta.url),
+    "utf8",
+  );
+  const removeFn = rosterSource
+    .slice(
+      rosterSource.indexOf("export async function removeDjFromRoster"),
+      rosterSource.indexOf("export async function recordRosterFromBooking"),
+    )
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  assert.ok(removeFn.length > 0, "removeDjFromRoster must exist");
+
+  // Both ids. Dropping either turns one removal into a mass delete: without
+  // dj_id it clears the planner's entire roster, and RLS would not stop it
+  // because every one of those rows legitimately belongs to that planner.
+  assert.match(removeFn, /\.delete\(\)/);
+  assert.match(removeFn, /\.eq\("planner_id", plannerId\)/);
+  assert.match(removeFn, /\.eq\("dj_id", djId\)/);
+
+  // Nothing but the roster table. A remove must never reach the DJ's account,
+  // bookings, conversations, messages or crew chat.
+  const tablesTouched = [...removeFn.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]);
+  assert.deepEqual(
+    tablesTouched,
+    ["planner_dj_roster"],
+    "remove must touch only planner_dj_roster",
+  );
+  // Exactly one query, so no second call can be added without failing this.
+  assert.equal((removeFn.match(/await supabase/g) ?? []).length, 1);
+  assert.doesNotMatch(removeFn, /\.rpc\(/, "no RPC that could reach other tables");
+
+  // Re-adding later must work, so removal leaves no tombstone or blocklist —
+  // the add path is a plain upsert against the same table.
+  assert.doesNotMatch(rosterSource, /removed_at|is_removed|blocked/i);
+}
+
+/**
+ * The confirmation is the whole safety mechanism for a destructive control that
+ * sits on every row. A one-tap X beside a name people tap all day is a mis-tap
+ * waiting to happen.
+ */
+function testPlannerRosterRemoveRequiresConfirmation() {
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The X only stages a pending removal; it never deletes.
+  assert.match(panelSource, /onRemove=\{[\s\S]{0,200}setDjPendingRemoval\(dj\)/);
+  assert.doesNotMatch(
+    panelSource,
+    /onRemove=\{[\s\S]{0,200}removeDjFromRoster\(/,
+    "the row control must not delete directly — it opens the dialog",
+  );
+
+  // Only the dialog's confirm handler calls the delete.
+  assert.match(panelSource, /handleConfirmRemove[\s\S]{0,900}removeDjFromRoster\(/);
+  assert.match(panelSource, /onConfirm=\{handleConfirmRemove\}/);
+
+  // Cancel closes and does nothing else.
+  assert.match(
+    panelSource,
+    /onCancel=\{\(\) => \{[\s\S]{0,300}setDjPendingRemoval\(null\)[\s\S]{0,200}\}\}/,
+  );
+  const cancelBlock = panelSource.slice(
+    panelSource.indexOf("onCancel={() => {"),
+    panelSource.indexOf("onConfirm={handleConfirmRemove}"),
+  );
+  assert.doesNotMatch(cancelBlock, /removeDjFromRoster/, "Cancel must issue no delete");
+
+  // The copy has to say what is not affected, or a planner will avoid the
+  // control for fear of losing a booking history.
+  assert.match(panelSource, /Remove \$\{displayName\} from your roster\?/);
+  assert.match(panelSource, /Past bookings and chats won't be affected/);
+
+  // A failed delete keeps the row on screen; hiding it would report a change
+  // that did not happen.
+  assert.match(panelSource, /if \(!result\.ok\) \{[\s\S]{0,300}setRemoveError\(result\.message\)/);
+  const failureBlock = panelSource.slice(
+    panelSource.indexOf("if (!result.ok) {"),
+    panelSource.indexOf("setDjPendingRemoval(null);\n      await draft.reloadDjs();"),
+  );
+  assert.doesNotMatch(failureBlock, /reloadDjs/, "no refresh on failure");
+
+  // Roster mode only: with the flag off the row renders exactly as before.
+  assert.match(panelSource, /ROSTER_SCOPING_ENABLED[\s\S]{0,120}setDjPendingRemoval\(dj\)/);
 }
 
 /**
