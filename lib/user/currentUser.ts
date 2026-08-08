@@ -18,7 +18,6 @@ export type UserProfile = {
   user_id: string;
   role: UserRole | null;
   onboarding_complete: boolean;
-  full_name: string | null;
   username: string | null;
   display_name: string | null;
   bio: string | null;
@@ -30,7 +29,8 @@ export type UserProfile = {
   location: string | null;
   avatar_url: string | null;
   artist_name: string | null;
-  dj_booking_contact_name: string | null;
+  /** Present only on the owner's own profile — omitted from public reads. */
+  dj_booking_contact_name?: string | null;
   dj_availability: string | null;
   dj_past_gigs: string | null;
   promoter_brand_name: string | null;
@@ -61,8 +61,29 @@ export type UserProfileInput = {
   promoter_past_events: string;
 };
 
+/**
+ * Fields any authenticated user may be shown about another user.
+ *
+ * DATA MINIMISATION, NOT CONFIDENTIALITY. `users_select_authenticated` still
+ * permits `select to authenticated using (auth.uid() is not null)`, so a
+ * determined API client can read the underlying row regardless of what this
+ * projection asks for. This narrows what ordinary application traffic carries;
+ * it is not a security boundary. Database-enforced private profile fields are
+ * tracked as post-beta security debt.
+ *
+ * Two fields are deliberately absent:
+ *   full_name               - never written by any form and rendered nowhere;
+ *                             it was fetched on every profile read and used by
+ *                             nothing. Removed from the type too, so it cannot
+ *                             quietly come back.
+ *   dj_booking_contact_name - written by the owner's profile form and displayed
+ *                             on no surface. Owner-only below.
+ */
 const PROFILE_FIELDS =
-  "user_id, role, onboarding_complete, full_name, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_booking_contact_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
+  "user_id, role, onboarding_complete, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
+
+/** The owner's own profile: everything above, plus their private contact field. */
+const OWN_PROFILE_FIELDS = `${PROFILE_FIELDS}, dj_booking_contact_name`;
 
 const PROFILE_LOCAL_CACHE_KEY = "ftc-user-profile-local";
 
@@ -444,7 +465,7 @@ export async function getCurrentUserProfile(options?: {
     try {
       const { data, error } = await supabase
         .from("users")
-        .select(PROFILE_FIELDS)
+        .select(OWN_PROFILE_FIELDS)
         .eq("user_id", userId)
         .maybeSingle();
 

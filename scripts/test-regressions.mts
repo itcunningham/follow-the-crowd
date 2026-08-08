@@ -17633,6 +17633,7 @@ async function main() {
   testPlannerRosterRemoveIsScopedAndNonDestructive();
   testEventPickerIsSelectionOnly();
   testMyDjsRosterManager();
+  testProfileProjectionOmitsPrivateFields();
   testPlannerRosterMigrationGrantsTablePrivileges();
   console.log("All regression checks passed.");
 }
@@ -18035,6 +18036,71 @@ function testPlannerRosterAutoAddCannotBreakABooking() {
       bookingSource.indexOf("const { error: messageError } = await supabase"),
     "roster write happens after the booking and DM already exist",
   );
+}
+
+/**
+ * Two fields must not ride along on every profile read.
+ *
+ * DATA MINIMISATION, NOT CONFIDENTIALITY. users_select_authenticated still
+ * allows any authenticated client to query public.users directly, so this
+ * narrows ordinary application traffic rather than enforcing secrecy. Real
+ * database-enforced private fields are post-beta security debt — this test
+ * exists so the projection does not quietly widen again in the meantime.
+ */
+function testProfileProjectionOmitsPrivateFields() {
+  const source = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+
+  const publicProjection = source.slice(
+    source.indexOf("const PROFILE_FIELDS ="),
+    source.indexOf("const OWN_PROFILE_FIELDS"),
+  );
+  assert.ok(publicProjection.length > 0, "PROFILE_FIELDS must exist");
+
+  // full_name is never written and rendered nowhere; it should not be fetched.
+  assert.doesNotMatch(publicProjection, /full_name/);
+  assert.doesNotMatch(publicProjection, /dj_booking_contact_name/);
+
+  // ...and the owner projection is the only place the contact field appears.
+  assert.match(
+    source,
+    /const OWN_PROFILE_FIELDS = `\$\{PROFILE_FIELDS\}, dj_booking_contact_name`;/,
+  );
+
+  // full_name is gone from the type too, so it cannot be reintroduced by a
+  // literal without a compile error.
+  const profileType = source.slice(
+    source.indexOf("export type UserProfile = {"),
+    source.indexOf("export type UserProfileInput"),
+  );
+  assert.doesNotMatch(profileType, /full_name/);
+
+  // Exactly one query may use the owner projection: the owner's own fetch.
+  assert.equal(
+    (source.match(/\.select\(OWN_PROFILE_FIELDS\)/g) ?? []).length,
+    1,
+    "only the owner's own profile read may use the owner projection",
+  );
+
+  // Every other-user query stays on the public projection.
+  for (const fn of ["getUserProfileById", "listDiscoverUsers", "listBookableDjs", "listRosterDjs"]) {
+    const body = source.slice(source.indexOf(`export async function ${fn}`));
+    assert.doesNotMatch(
+      body.slice(0, 900),
+      /OWN_PROFILE_FIELDS/,
+      `${fn} reads other users and must not use the owner projection`,
+    );
+  }
+
+  // The owner's edit flow still round-trips the contact field.
+  const formUtils = readFileSync(
+    new URL("../lib/user/profileFormUtils.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(formUtils, /dj_booking_contact_name: profile\.dj_booking_contact_name\?\.trim\(\) \?\? ""/);
+  assert.match(source, /dj_booking_contact_name: input\.dj_booking_contact_name\.trim\(\)/);
 }
 
 main().catch((error) => {

@@ -276,7 +276,9 @@ export function createProfileFormInputFromProfile(profile: {
   soundcloud_url: string | null;
   website_url: string | null;
   artist_name: string | null;
-  dj_booking_contact_name: string | null;
+  // Optional: public profile reads omit this field, and only the owner's own
+  // profile carries it. The `?? ""` below already handles its absence.
+  dj_booking_contact_name?: string | null;
   promoter_brand_name: string | null;
   promoter_brand_description: string | null;
   dj_availability: string | null;

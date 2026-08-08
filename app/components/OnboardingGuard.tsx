@@ -93,7 +93,6 @@ function buildOptimisticProfile(): UserProfile | null {
     user_id: userId,
     role,
     onboarding_complete: true,
-    full_name: null,
     username: null,
     display_name: null,
     bio: null,
