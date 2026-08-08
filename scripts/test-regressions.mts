@@ -7655,9 +7655,26 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(pageSource, /clearPendingAttachments/);
   assert.match(pageSource, /onStagePhotos=\{stagePendingPhotos\}/);
   assert.match(pageSource, /onRemovePendingPhoto=\{removePendingPhotoAt\}/);
+  // The guarantee is that the staged photos survive a failed send, so the clear
+  // must sit in the success path. This asserts that placement directly rather
+  // than the statements that happened to surround it: the previous form pinned
+  // a comment after setInput("") and `if (otherUserId)` after the clear, and
+  // broke on ec781b25 ("always resolve peer before message notification"),
+  // which reordered that tail without changing the behaviour being protected.
   assert.match(
     pageSource,
-    /setInput\(""\);\s*\/\/[\s\S]{0,220}\s*clearPendingAttachments\(\);\s*if \(otherUserId\)/,
+    /await sendDmMessageWithAttachments\([\s\S]*?clearPendingAttachments\(\);/,
+    "the pending photos must only clear after the send resolves",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /catch \(uploadError\)[\s\S]{0,600}clearPendingAttachments\(\)/,
+    "a failed send must leave the photos staged for retry, so the failure path must never clear them",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /setUploading\(true\);[\s\S]*?clearPendingAttachments\(\)[\s\S]*?await sendDmMessageWithAttachments/,
+    "the photos must not clear before the send completes",
   );
   assert.doesNotMatch(
     pageSource,
