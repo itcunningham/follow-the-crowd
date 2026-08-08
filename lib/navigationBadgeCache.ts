@@ -733,22 +733,7 @@ export function getCachedGigsPendingCount(
   const runtimeCount = readRuntimeGigsPendingCount(userId, role);
 
   if (runtimeCount != null) {
-    if (runtimeCount === 0) {
-      if (localGigsCount != null && localGigsCount > 0) {
-        return localGigsCount;
-      }
-
-      const latchedCount = readWorkspaceGigsSubNavDisplayLatch(userId, role);
-      if (latchedCount != null && latchedCount > 0) {
-        return latchedCount;
-      }
-
-      const sessionCount = readWorkspaceGigsDisplaySessionCount(userId, role);
-      if (sessionCount != null && sessionCount > 0) {
-        return sessionCount;
-      }
-    }
-
+    // Explicit runtime count (including zero) is authoritative — don't defer to local/latched
     return runtimeCount;
   }
 
