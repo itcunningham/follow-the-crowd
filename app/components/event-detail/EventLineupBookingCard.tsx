@@ -162,7 +162,9 @@ export default function EventLineupBookingCard({
 
           {readOnly ? (
             <BookingRateProposalNotice booking={booking} currentUserId={currentUserId} />
-          ) : pendingProposal && booking.recipient_id !== currentUserId ? (
+          ) : pendingProposal && booking.recipient_id === currentUserId ? (
+            <BookingProposalCardAmount value={booking.proposed_rate} />
+          ) : (
             <BookingRateProposalPanel
               booking={booking}
               currentUserId={currentUserId}
@@ -170,9 +172,7 @@ export default function EventLineupBookingCard({
               onAcceptProposal={onAcceptProposal}
               onKeepOriginalOffer={onKeepOriginalOffer}
             />
-          ) : pendingProposal ? (
-            <BookingProposalCardAmount value={booking.proposed_rate} />
-          ) : null}
+          )}
         </div>
       </div>
 
