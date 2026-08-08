@@ -86,6 +86,27 @@ const PROFILE_FIELDS =
 /** The owner's own profile: everything above, plus their private contact field. */
 const OWN_PROFILE_FIELDS = `${PROFILE_FIELDS}, dj_booking_contact_name`;
 
+/**
+ * Where the owner's own profile is read from.
+ *
+ * NOT `users`. `authenticated` no longer holds SELECT on
+ * `dj_booking_contact_name` at the table level - see
+ * scripts/setupPrivateProfileFields.sql - because table privileges are checked
+ * per column and before RLS, which is the only way to stop another signed-in
+ * user reading it with a direct query. Column grants are role-wide, so that
+ * revoke locks the owner out too.
+ *
+ * `public.my_profile` is a view over public.users filtered to
+ * `user_id = auth_user_id()`, exposing exactly OWN_PROFILE_FIELDS. It takes no
+ * parameters, so a caller can narrow the result but never widen it to someone
+ * else's row.
+ *
+ * Reads of OTHER users stay on `users` with PROFILE_FIELDS. Writes stay on
+ * `users` too - INSERT/UPDATE were left table-level, so profile editing is
+ * unchanged.
+ */
+const OWN_PROFILE_SOURCE = "my_profile";
+
 const PROFILE_LOCAL_CACHE_KEY = "ftc-user-profile-local";
 
 /**
@@ -474,7 +495,7 @@ export async function getCurrentUserProfile(options?: {
   profileRequest = (async () => {
     try {
       const { data, error } = await supabase
-        .from("users")
+        .from(OWN_PROFILE_SOURCE)
         .select(OWN_PROFILE_FIELDS)
         .eq("user_id", userId)
         .maybeSingle();

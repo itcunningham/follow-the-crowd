@@ -8006,6 +8006,173 @@ function testDmImageGroupFullViewerAndOwnershipAlignment() {
 }
 
 /**
+ * P1: private profile fields are denied by table privilege, not by projection.
+ *
+ * RLS has no column granularity, so PROFILE_FIELDS only narrows ordinary
+ * traffic. Table privileges are checked per column and before RLS, so the
+ * revoke is what actually denies full_name/dj_booking_contact_name to other
+ * signed-in users.
+ *
+ * The rollout is deliberately two SQL files, and the ORDER IS LOAD-BEARING:
+ *
+ *   Phase A (view)   additive   - safe against the currently deployed code
+ *   deploy code                 - moves traffic to the view
+ *   Phase C (revoke) restrictive- removes the old privilege
+ *
+ * Recombining them into one script reintroduces a guaranteed outage: running
+ * the revoke before the code is live breaks the deployed owner read with
+ * 42501, and deploying the code before the view exists breaks it with
+ * PGRST205 - via OnboardingGuard, across the whole authenticated app. Several
+ * assertions below exist purely to stop that recombination.
+ *
+ * The deny side itself is a database guarantee needing two accounts to prove;
+ * that test is pending credentials. What is enforceable here is that the SQL
+ * and the code cannot drift apart, because every other failure mode of this
+ * change is a mismatch between the grant list, the view's columns and the
+ * projections.
+ */
+function testPrivateProfileFieldsAreDatabaseEnforced() {
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--[^\n]*/g, "");
+
+  const viewSqlRaw = readFileSync(
+    new URL("../scripts/setupPrivateProfileFieldsView.sql", import.meta.url),
+    "utf8",
+  );
+  const revokeSqlRaw = readFileSync(
+    new URL("../scripts/setupPrivateProfileFieldsRevoke.sql", import.meta.url),
+    "utf8",
+  );
+  const viewSql = stripComments(viewSqlRaw);
+  const revokeSql = stripComments(revokeSqlRaw);
+  const currentUserSource = stripComments(
+    readFileSync(new URL("../lib/user/currentUser.ts", import.meta.url), "utf8"),
+  );
+
+  const listOf = (block: string) =>
+    block
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => /^[a-z_]+$/.test(entry));
+
+  // --- the phases must stay separate -------------------------------------
+  // Phase A must be purely additive. A revoke on public.users here would fire
+  // before the code is deployed and break the live owner-profile read.
+  assert.doesNotMatch(
+    viewSql,
+    /revoke[^;]*on table public\.users/,
+    "Phase A must not revoke anything on public.users - it runs before the code is live",
+  );
+  // Phase C must not create the view: if the view only appears here, there is
+  // no safe intermediate state at all.
+  assert.doesNotMatch(
+    revokeSql,
+    /create view public\.my_profile/,
+    "Phase C must not create the view - Phase A has to be runnable on its own first",
+  );
+  // Neither file may contain both halves.
+  for (const [name, sql] of [["Phase A", viewSql], ["Phase C", revokeSql]] as const) {
+    const hasView = /create view public\.my_profile/.test(sql);
+    const hasRevoke = /revoke select on table public\.users from authenticated/.test(sql);
+    assert.ok(
+      !(hasView && hasRevoke),
+      `${name} contains both the view and the revoke - the phases must never be recombined`,
+    );
+  }
+  // The ordering must be documented where someone about to run it will look.
+  assert.match(viewSqlRaw, /PHASE A/);
+  assert.match(revokeSqlRaw, /PHASE C/);
+  assert.match(
+    revokeSqlRaw,
+    /DEPLOYED/,
+    "Phase C must state that the code has to be deployed first",
+  );
+
+  // --- the projections the app actually asks for -------------------------
+  const profileFields = listOf(
+    currentUserSource.slice(
+      currentUserSource.indexOf('const PROFILE_FIELDS =\n  "') + 26,
+      currentUserSource.indexOf('";', currentUserSource.indexOf("const PROFILE_FIELDS =")),
+    ),
+  );
+  assert.ok(profileFields.length >= 20, "failed to parse PROFILE_FIELDS");
+  assert.ok(
+    !profileFields.includes("full_name") && !profileFields.includes("dj_booking_contact_name"),
+    "PROFILE_FIELDS must not carry either private column",
+  );
+
+  // --- Phase C: the grant on public.users --------------------------------
+  const grantBlock = revokeSql.slice(
+    revokeSql.indexOf("grant select ("),
+    revokeSql.indexOf(") on table public.users to authenticated;"),
+  );
+  const granted = listOf(grantBlock.slice(grantBlock.indexOf("(") + 1));
+
+  assert.ok(!granted.includes("full_name"), "full_name must never be granted to authenticated");
+  assert.ok(
+    !granted.includes("dj_booking_contact_name"),
+    "dj_booking_contact_name must never be granted to authenticated",
+  );
+  for (const column of profileFields) {
+    assert.ok(granted.includes(column), `PROFILE_FIELDS column not granted: ${column}`);
+  }
+  assert.ok(
+    granted.includes("deleted_at"),
+    'deleted_at is filtered with .is("deleted_at", null) and must be granted',
+  );
+  assert.match(revokeSql, /revoke select on table public\.users from authenticated;/);
+  assert.doesNotMatch(
+    revokeSql,
+    /revoke (insert|update)[^;]*on table public\.users from authenticated/,
+    "INSERT/UPDATE must be left alone - restricting them breaks profile editing",
+  );
+
+  // --- Phase A: the owner view -------------------------------------------
+  const viewBlock = viewSql.slice(
+    viewSql.indexOf("create view public.my_profile"),
+    viewSql.indexOf("from public.users"),
+  );
+  const viewColumns = listOf(viewBlock.slice(viewBlock.indexOf("select") + 6));
+
+  assert.match(
+    viewSql,
+    /where user_id = public\.auth_user_id\(\)/,
+    "my_profile must be filtered to the caller's own row",
+  );
+  assert.match(viewSql, /security_invoker = false/);
+  assert.match(viewSql, /grant select on public\.my_profile to authenticated;/);
+  assert.match(viewSql, /revoke all on public\.my_profile from anon;/);
+
+  assert.ok(
+    viewColumns.includes("dj_booking_contact_name"),
+    "my_profile must expose dj_booking_contact_name or the owner cannot edit it",
+  );
+  assert.ok(
+    !viewColumns.includes("full_name"),
+    "full_name has no runtime read and must not be exposed through my_profile",
+  );
+  assert.deepEqual(
+    [...viewColumns].sort(),
+    [...profileFields, "dj_booking_contact_name"].sort(),
+    "my_profile must match OWN_PROFILE_FIELDS exactly",
+  );
+
+  // Both phases must reload the PostgREST schema cache or the change is
+  // invisible to the API until something else reloads it.
+  assert.match(viewSql, /notify pgrst, 'reload schema';/);
+  assert.match(revokeSql, /notify pgrst, 'reload schema';/);
+
+  // --- the read path -------------------------------------------------------
+  assert.match(
+    currentUserSource,
+    /const OWN_PROFILE_SOURCE = "my_profile";/,
+    "the owner profile read must come from the view, not the table",
+  );
+  assert.match(currentUserSource, /\.from\(OWN_PROFILE_SOURCE\)\s*\.select\(OWN_PROFILE_FIELDS\)/);
+  assert.match(currentUserSource, /\.from\("users"\)\s*\.select\(PROFILE_FIELDS\)/);
+}
+
+/**
  * P0: DM and Crew Chat attachments render only signed URLs.
  *
  * `dm-attachments` is becoming a private bucket because anonymous clients could
@@ -17614,6 +17781,7 @@ async function main() {
   testDmImageGroupFullViewerAndOwnershipAlignment();
   testDmAttachmentsRenderOnlySignedUrls();
   testToStorageObjectPathResolvesStoredUrls();
+  testPrivateProfileFieldsAreDatabaseEnforced();
   testDmImageGalleryOverviewForLargeGroups();
   testDmMediaViewerCloseButtonConsistentAndClickable();
   testDmImageLightboxUsesPagedTrackNotFloatingCard();
