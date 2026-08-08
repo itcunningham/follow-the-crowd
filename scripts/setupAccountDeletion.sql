@@ -219,6 +219,22 @@ begin
   delete from public.booking_plans
   where owner_id = v_user_id;
 
+  -- Private planner->DJ roster, BOTH directions. The dj_id half is the one that
+  -- is easy to forget: without it a deleted DJ leaves a stale row on every
+  -- planner's roster forever, invisible in the UI but permanent.
+  --
+  -- Guarded and dynamic on purpose. A static delete would be parsed the first
+  -- time this function runs, so on a database where setupPlannerDjRoster.sql
+  -- has not been applied yet account deletion would fail outright. EXECUTE
+  -- defers resolution, and to_regclass makes the branch skip cleanly. That
+  -- keeps the two scripts order-independent rather than adding another
+  -- undocumented run-order dependency.
+  if to_regclass('public.planner_dj_roster') is not null then
+    execute
+      'delete from public.planner_dj_roster where planner_id = $1 or dj_id = $1'
+      using v_user_id;
+  end if;
+
   update public.users
   set
     display_name = 'Deleted User',
