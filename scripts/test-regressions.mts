@@ -11709,10 +11709,14 @@ function testRoleAwareWorkspaceNavigation() {
     plannerEventsNavSource,
     /export function isStandaloneEventDetailPath\(pathname: string\): boolean/,
   );
-  assert.match(
-    appNavigationSource,
-    /eventDetailFromCrewChat[\s\S]{0,200}from"\) === "crew-chat"/,
-  );
+  // Two independent assertions rather than one proximity window. As a single
+  // /A[\s\S]{0,200}B/ this broke on 4f0cf572 ("keep Events lit on profiles
+  // opened from event detail"), which inserted profileFromEventDetail between
+  // the two clauses and pushed them 328 characters apart — neither clause
+  // changed. A window couples the assertion to whatever happens to sit between
+  // its halves, so any future insertion here would break it again.
+  assert.match(appNavigationSource, /eventDetailFromCrewChat/);
+  assert.match(appNavigationSource, /params\.get\("from"\) === "crew-chat"/);
   assert.match(
     appNavigationSource,
     /profileFromEventDetail[\s\S]{0,220}from"\) === "event-detail"/,
