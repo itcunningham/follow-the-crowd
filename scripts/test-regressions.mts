@@ -12759,7 +12759,9 @@ function testCrewChatPremiumPolish() {
   assert.match(emptyStateSource, /Welcome to your Crew Chat/);
   assert.match(
     emptyStateSource,
-    /Coordinate set times, arrivals, equipment and event updates with your crew\./,
+    // No trailing full stop: ff0c236a dropped it to match the app-wide
+    // short-message convention this suite already enforces elsewhere.
+    /Coordinate set times, arrivals, equipment and event updates with your crew/,
   );
 
   // Bubble: memoised, messageId-first callbacks (so memo is actually
@@ -12783,10 +12785,18 @@ function testCrewChatPremiumPolish() {
     /seenLabel=\{message\.id === lastMessage\?\.id \? latestMessageSeenLabel : null\}/,
   );
 
-  // eventCrewChat access carries the two new fields on every return path
-  // (type declaration + denied/owner/accepted-DJ outcomes = 4 occurrences).
-  assert.equal((eventCrewChatSource.match(/ownerId:/g) ?? []).length, 4);
-  assert.equal((eventCrewChatSource.match(/eventSetTime:/g) ?? []).length, 4);
+  // eventCrewChat access carries the two new fields on every return path.
+  // Asserted as a pairing rather than a whole-file count of each name: the
+  // count broke when notifyCrewMemberJoined's options type gained an unrelated
+  // `ownerId`, which is not a return path at all. `ownerId: event` matches only
+  // the three access assignments, and the +1 is the single type declaration
+  // that `eventSetTime:` also carries. This now fails when a return path gains
+  // one field without the other — the thing that actually matters — and
+  // survives unrelated additions elsewhere in the file.
+  assert.equal(
+    (eventCrewChatSource.match(/eventSetTime:/g) ?? []).length,
+    (eventCrewChatSource.match(/ownerId: event/g) ?? []).length + 1,
+  );
 
   // Read receipts reuse the existing per-message comparison rather than
   // reimplementing it, and read from message_reads -- no new table/column.
@@ -13074,10 +13084,27 @@ function testCrewChatEventCardToggleScrollCompensation() {
 
   // Entering a chat is always a fresh start, including when React reuses this
   // component instance across two different events rather than remounting.
+  //
+  // loadAccess re-collapses the event card, but must NOT close the member
+  // sheet. 2719fd03 ("Stop loadAccess from closing the crew sheet on Back")
+  // removed that reset: returning from a profile remounts this page with
+  // memberSheetOpen=true in the URL, and loadAccess slammed the sheet shut
+  // again. The sheet is URL-driven now, so the doesNotMatch below is what stops
+  // that regression coming back.
   assert.match(
     chatPageSource,
-    /setMemberSheetOpen\(false\);[\s\S]{0,320}setEventCardCollapsed\(true\);/,
+    /setEventCardCollapsed\(true\);/,
     "switching events must reset the card to collapsed",
+  );
+  assert.match(
+    chatPageSource,
+    /setMemberSheetOpen\(memberSheetOpenFromUrl\);/,
+    "the member sheet must follow the URL, not a blind reset",
+  );
+  assert.doesNotMatch(
+    chatPageSource,
+    /setAccessLoading\(true\);[\s\S]{0,600}setMemberSheetOpen\(false\)/,
+    "loadAccess must never close the member sheet — that is the Back-navigation bug",
   );
   assert.doesNotMatch(
     chatPageSource,
@@ -14696,7 +14723,7 @@ function testEventDetailReturnsToCrewChat() {
   assert.match(detailSource, /whitespace-nowrap/);
   assert.match(
     detailSource,
-    /startingCrewChat \? "Starting" : "Start group chat"/,
+    /startingCrewChat \? "Starting" : "Start crew chat"/,
   );
   assert.doesNotMatch(detailSource, /max-w-\[10\.5rem\]/);
   assert.doesNotMatch(detailSource, /max-w-\[8\.5rem\]/);
