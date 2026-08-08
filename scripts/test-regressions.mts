@@ -4622,6 +4622,13 @@ function testCombinedRoleLabelIsConsistentEverywhere() {
   assert.equal(COMBINED_ROLE_LABEL, "DJ & Promoter");
   assert.equal(getRoleLabel("both"), COMBINED_ROLE_LABEL);
 
+  // The same drift had happened again, quieter: both role pickers offered
+  // "Promoter / Event Planner" while getRoleLabel returned "Promoter", so the
+  // words a user picked their role by were not the words shown back to them
+  // anywhere the label rendered.
+  assert.equal(getRoleLabel("promoter"), "Promoter / Event Planner");
+  assert.equal(getRoleLabel("dj"), "DJ / Artist");
+
   // Display copy only -- the stored value, the enum and every role check are
   // untouched, so existing accounts keep working.
   const currentUserSource = readFileSync(

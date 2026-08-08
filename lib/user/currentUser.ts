@@ -831,7 +831,11 @@ export function getRoleLabel(role: UserRole | null): string {
   }
 
   if (role === "promoter") {
-    return "Promoter";
+    // "Promoter / Event Planner", not "Promoter": onboarding and Edit Profile
+    // have always offered this role under the long name, so the short label
+    // here was the drift the comment above warns about, not a deliberate
+    // abbreviation.
+    return "Promoter / Event Planner";
   }
 
   if (role === "both") {
