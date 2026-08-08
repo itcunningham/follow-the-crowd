@@ -7726,8 +7726,14 @@ function testDmComposerRowAlignment() {
   // would leave the buttons floating mid-height once the field grows tall.
   assert.match(composerSource, /className="mb-0\.5"/); // photo button nudge
   assert.match(composerSource, /COMPOSER_ACTION_ROW_CLASS/);
-  assert.match(composerSource, /items-end gap-2/);
-  assert.doesNotMatch(composerSource, /items-center gap-2/);
+  // The row class moved into the shared COMPOSER_ACTION_ROW_CLASS in 4127373a
+  // ("stop iOS composer Message collapse after send"), so assert it where it
+  // now lives. Read against DmComposer.tsx the negative check passed
+  // vacuously — neither string was in that file — and would not have caught a
+  // regression to items-center. It also now covers the crew-chat composer,
+  // which shares the same constant.
+  assert.match(fieldSource, /items-end gap-2/);
+  assert.doesNotMatch(fieldSource, /items-center gap-2/);
 
   // Text field height is untouched.
   assert.match(fieldSource, /min-h-11/);
