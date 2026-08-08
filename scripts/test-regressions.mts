@@ -13251,8 +13251,10 @@ function testEventUpdateMessagePresentation() {
     "the system-authored branch must come before the own/incoming split",
   );
 
-  // Narrower than a normal message so it supports rather than dominates.
-  assert.match(bubbleSource, /max-w-\[72%\] sm:max-w-\[56%\]/);
+  // Wider than a normal message. The old 72%/56% was tuned for a card pinned
+  // to the left edge; c3d9b64b widened it to suit the centred column, where a
+  // narrow card reads as a stray fragment rather than a full-width notice.
+  assert.match(bubbleSource, /max-w-\[90%\] sm:max-w-\[85%\]/);
 
   /* ---- polish pass: separation, border weight, timestamp ---- */
 
