@@ -79,6 +79,8 @@ async function uploadEventCrewChatAttachmentFile(
     throw uploadError;
   }
 
+  // Same reasoning as the DM upload: a stable identifier in the existing
+  // format, never a URL to render. See lib/attachmentUrls.ts.
   const { data } = supabase.storage.from(DM_ATTACHMENTS_BUCKET).getPublicUrl(path);
 
   return {

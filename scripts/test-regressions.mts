@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { toStorageObjectPath } from "../lib/attachmentUrls";
 import {
   assertEventFormTextFieldLimits,
   getEventFormFieldErrors,
@@ -7990,7 +7991,10 @@ function testDmImageGroupFullViewerAndOwnershipAlignment() {
     new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(attachmentViewSource, /window\.open\(attachment\.file_url/);
+  // The viewer is still window.open in a new tab. It opens the signed `src`
+  // rather than the stored file_url, which is a dead public URL now that
+  // dm-attachments is private (see testDmAttachmentsRenderOnlySignedUrls).
+  assert.match(attachmentViewSource, /window\.open\(src/);
   assert.doesNotMatch(attachmentViewSource, /DmImageLightbox/);
 
   // Ownership alignment: DmTextMessageBubble still owns left/right alignment
@@ -7999,6 +8003,137 @@ function testDmImageGroupFullViewerAndOwnershipAlignment() {
   // entirely in the grid's own width, not in a new alignment wrapper.
   assert.match(bubbleSource, /DmMessageAttachmentGroup/);
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
+}
+
+/**
+ * P0: DM and Crew Chat attachments render only signed URLs.
+ *
+ * `dm-attachments` is becoming a private bucket because anonymous clients could
+ * list it and fetch every private image. The stored `message_attachments.
+ * file_url` is a public URL that will stop resolving; rendering it is the
+ * defect. These assertions exist so a future edit cannot quietly reinstate it
+ * as a "fallback" when signing fails.
+ */
+function testDmAttachmentsRenderOnlySignedUrls() {
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+
+  const helperSource = readFileSync(
+    new URL("../lib/attachmentUrls.ts", import.meta.url),
+    "utf8",
+  );
+  const groupSource = stripComments(
+    readFileSync(
+      new URL("../app/components/dm/DmMessageAttachmentGroup.tsx", import.meta.url),
+      "utf8",
+    ),
+  );
+  const viewSource = stripComments(
+    readFileSync(
+      new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // TTL is one hour: long enough for a chat session, short enough that a leaked
+  // URL expires the same day.
+  assert.match(
+    stripComments(helperSource),
+    /export const SIGNED_URL_TTL_SECONDS = 3600;/,
+    "signed attachment URLs must expire after 3600s",
+  );
+
+  // Batched signing: a message with N images costs one round trip, not N.
+  assert.match(stripComments(helperSource), /createSignedUrls\(/);
+  assert.doesNotMatch(
+    stripComments(helperSource),
+    /createSignedUrl\(/,
+    "use the plural createSignedUrls so one message costs one request",
+  );
+
+  // Neither rendering component may read the stored URL. Comments are stripped
+  // first: both files discuss file_url at length, and an assertion satisfied by
+  // prose rather than code proves nothing.
+  assert.doesNotMatch(
+    viewSource,
+    /attachment\.file_url/,
+    "DmMessageAttachment must render the signed src, never the stored file_url",
+  );
+  assert.doesNotMatch(
+    groupSource,
+    /src=\{attachment\.file_url\}|url: attachment\.file_url/,
+    "DmMessageAttachmentGroup must render signed URLs, never the stored file_url",
+  );
+
+  // The group is the single signing point for both DM and Crew Chat.
+  assert.match(groupSource, /signAttachmentPaths/);
+  assert.match(groupSource, /toStorageObjectPath/);
+  assert.match(groupSource, /DM_ATTACHMENTS_BUCKET/);
+
+  // Expiry recovery re-signs at most once per attachment. Without the guard a
+  // 403 that is not about expiry (revoked membership, deleted object) retries
+  // forever.
+  assert.match(groupSource, /retriedRef/);
+  assert.match(
+    groupSource,
+    /if \(retriedRef\.current\.has\(attachmentId\)\) \{\s*return;/,
+    "resign must bail out when this attachment has already been retried once",
+  );
+  assert.match(viewSource, /onError=\{onExpired\}/);
+
+  // Path extraction decodes: filenames carry spaces, stored percent-encoded,
+  // but storage addresses objects by raw path.
+  assert.match(stripComments(helperSource), /decodeURIComponent/);
+}
+
+/**
+ * Behavioural counterpart to testDmAttachmentsRenderOnlySignedUrls: the source
+ * assertions there prove the components call this, these prove it is correct.
+ * Every existing `message_attachments` row holds the public-URL form, and none
+ * of them are being migrated - so if this regresses, historical DM and Crew
+ * Chat images stop rendering for everyone.
+ */
+function testToStorageObjectPathResolvesStoredUrls() {
+  const bucket = "dm-attachments";
+  const base = "https://gidplxriruttihfirvii.supabase.co/storage/v1/object/public";
+
+  // The form every existing row holds.
+  assert.equal(
+    toStorageObjectPath(`${base}/dm-attachments/conv-1/user-1/1786149756143-photo.jpg`, bucket),
+    "conv-1/user-1/1786149756143-photo.jpg",
+  );
+
+  // Percent-encoding must be decoded: storage addresses objects by raw path,
+  // but a filename with spaces is encoded into the stored URL.
+  assert.equal(
+    toStorageObjectPath(`${base}/dm-attachments/conv-1/user-1/my%20holiday%20snap.jpg`, bucket),
+    "conv-1/user-1/my holiday snap.jpg",
+  );
+
+  // Crew Chat shares the bucket, keyed by event id instead of conversation id.
+  assert.equal(
+    toStorageObjectPath(`${base}/dm-attachments/event-9/user-2/1786011318110-flyer.png`, bucket),
+    "event-9/user-2/1786011318110-flyer.png",
+  );
+
+  // A bare path is accepted so the column can be normalised later as a pure
+  // data change, with no code change riding along. Nothing writes this yet.
+  assert.equal(
+    toStorageObjectPath("conv-1/user-1/already-a-path.jpg", bucket),
+    "conv-1/user-1/already-a-path.jpg",
+  );
+
+  // Anything unrecognised yields null so the caller renders its unavailable
+  // state. Returning the input unchanged would put a dead public URL in the
+  // DOM, which is the whole defect.
+  assert.equal(toStorageObjectPath("", bucket), null);
+  assert.equal(toStorageObjectPath("   ", bucket), null);
+  assert.equal(toStorageObjectPath("https://evil.example/steal.jpg", bucket), null);
+  assert.equal(
+    toStorageObjectPath(`${base}/profile-images/user-1/avatar.jpg`, bucket),
+    null,
+    "another bucket's object must not resolve as a dm-attachments path",
+  );
 }
 
 function testDmImageGalleryOverviewForLargeGroups() {
@@ -17477,6 +17612,8 @@ async function main() {
   testDmImageGridLayout();
   testDmImageGridNoCropping();
   testDmImageGroupFullViewerAndOwnershipAlignment();
+  testDmAttachmentsRenderOnlySignedUrls();
+  testToStorageObjectPathResolvesStoredUrls();
   testDmImageGalleryOverviewForLargeGroups();
   testDmMediaViewerCloseButtonConsistentAndClickable();
   testDmImageLightboxUsesPagedTrackNotFloatingCard();

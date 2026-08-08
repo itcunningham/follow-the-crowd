@@ -1,16 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ACCOUNT_DELETION_FAILED_MESSAGE } from "@/lib/accountDeletion";
-
-function extractPublicStoragePath(fileUrl: string, bucket: string): string | null {
-  const marker = `/storage/v1/object/public/${bucket}/`;
-  const markerIndex = fileUrl.indexOf(marker);
-
-  if (markerIndex === -1) {
-    return null;
-  }
-
-  return decodeURIComponent(fileUrl.slice(markerIndex + marker.length));
-}
+import { toStorageObjectPath } from "@/lib/attachmentUrls";
 
 export async function removeUserStorageObjects(
   userClient: SupabaseClient,
@@ -44,7 +34,7 @@ export async function removeUserStorageObjects(
   }
 
   const attachmentPaths = (attachments ?? [])
-    .map((attachment) => extractPublicStoragePath(attachment.file_url, "dm-attachments"))
+    .map((attachment) => toStorageObjectPath(attachment.file_url, "dm-attachments"))
     .filter((path): path is string => Boolean(path));
 
   if (attachmentPaths.length > 0) {

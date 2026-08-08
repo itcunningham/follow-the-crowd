@@ -43,12 +43,22 @@ function handleImageContextMenu(
   onContextMenu?.(event);
 }
 
+/**
+ * `src` is a signed URL supplied by DmMessageAttachmentGroup, undefined while
+ * signing is in flight or if it failed. `attachment.file_url` is deliberately
+ * never read here: once `dm-attachments` is private that value is a dead
+ * public URL, and rendering it is precisely the leak this change closes.
+ */
 export default function DmMessageAttachmentView({
   attachment,
+  src,
+  onExpired,
   isOwnMessage,
   onContextMenu,
 }: {
   attachment: DmMessageAttachment;
+  src: string | undefined;
+  onExpired: () => void;
   isOwnMessage: boolean;
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
@@ -80,40 +90,54 @@ export default function DmMessageAttachmentView({
         aria-label="Open image"
         className="ftc-dm-message-image-open block w-fit max-w-full overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40"
         onClick={() => {
-          window.open(attachment.file_url, "_blank", "noopener,noreferrer");
+          if (!src) {
+            return;
+          }
+
+          window.open(src, "_blank", "noopener,noreferrer");
         }}
         onContextMenu={(event) => handleImageContextMenu(event, onContextMenu)}
         onDragStart={(event) => event.preventDefault()}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={attachment.file_url}
-          alt={attachment.file_name}
-          draggable={false}
-          width={reserved.width}
-          height={reserved.height}
-          className={`pointer-events-none h-auto ${DM_IMAGE_BUBBLE_MAX_HEIGHT_CLASS} ${DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS}`}
-          style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
-          loading="lazy"
-          onLoad={(event) => {
-            const image = event.currentTarget;
-            recordDmImageAspectRatio(attachment.id, image.naturalWidth, image.naturalHeight);
+        {!src ? (
+          // Reserves the bubble's footprint until the signed URL arrives.
+          <span
+            aria-hidden="true"
+            className="block bg-ftc-bg-elevated/40"
+            style={{ width: reserved.width, height: reserved.height }}
+          />
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={src}
+            alt={attachment.file_name}
+            draggable={false}
+            width={reserved.width}
+            height={reserved.height}
+            className={`pointer-events-none h-auto ${DM_IMAGE_BUBBLE_MAX_HEIGHT_CLASS} ${DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS}`}
+            style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
+            loading="lazy"
+            onError={onExpired}
+            onLoad={(event) => {
+              const image = event.currentTarget;
+              recordDmImageAspectRatio(attachment.id, image.naturalWidth, image.naturalHeight);
 
-            if (image.naturalWidth > 0 && image.naturalHeight > 0) {
-              setRatioState({
-                id: attachment.id,
-                ratio: image.naturalWidth / image.naturalHeight,
-              });
-            }
-          }}
-        />
+              if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+                setRatioState({
+                  id: attachment.id,
+                  ratio: image.naturalWidth / image.naturalHeight,
+                });
+              }
+            }}
+          />
+        )}
       </button>
     );
   }
 
   return (
     <a
-      href={attachment.file_url}
+      href={src}
       target="_blank"
       rel="noopener noreferrer"
       download={attachment.file_name}
