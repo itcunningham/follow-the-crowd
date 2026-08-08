@@ -55,6 +55,10 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Gates account creation. Deliberately not persisted: there is no age column,
+  // so the record of confirmation is the account and its created_at. This is a
+  // product gate, not a versioned-consent system.
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -76,7 +80,22 @@ export default function SignupPage() {
       const { session } = await signUpWithEmail(email, password);
 
       if (!session) {
-        setSuccessMessage("Account created. Confirm your email to continue");
+        // A null session is NOT proof an account was created. With email
+        // confirmation enabled Supabase returns the same success-shaped
+        // response for a new signup awaiting confirmation and for an address
+        // that is already registered — deliberately, so signup cannot be used
+        // to discover which emails exist. `error` is null in both cases too.
+        //
+        // So the copy has to stay true either way: it says an email was sent,
+        // not that an account now exists, and points at Log in for the case
+        // where one already did.
+        //
+        // data.user.identities is empty for an existing account and could tell
+        // the two apart, but branching on it — different copy, a different
+        // redirect, anything visible — rebuilds the enumeration oracle Supabase
+        // is suppressing. An attacker does not need the words "email exists",
+        // only a reliable difference. Left unread on purpose.
+        setSuccessMessage("Check your email to continue");
         setSubmitting(false);
         return;
       }
@@ -149,19 +168,56 @@ export default function SignupPage() {
           </label>
 
           {successMessage ? (
-            <p className="text-sm text-ftc-primary/90">{successMessage}</p>
+            <div className="space-y-1.5">
+              <p className="text-sm text-ftc-primary/90">{successMessage}</p>
+              {/* Shown unconditionally alongside the neutral message: it is the
+                  only hint a returning user gets, and making it conditional
+                  would signal which emails already exist. */}
+              <p className="text-sm text-ftc-text-muted">
+                If you already have an account with this email,{" "}
+                <Link
+                  href={LOGIN_PATH}
+                  className="font-semibold text-ftc-primary transition hover:text-ftc-primary/90"
+                >
+                  log in instead
+                </Link>
+              </p>
+            </div>
           ) : null}
 
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={ageConfirmed}
+              onChange={(event) => setAgeConfirmed(event.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-ftc-border-strong bg-ftc-surface accent-[var(--ftc-color-primary)]"
+            />
+            <span className="text-sm text-ftc-text-secondary">I confirm I am 18 or older</span>
+          </label>
+
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !ageConfirmed}
+            aria-disabled={submitting || !ageConfirmed}
             className="w-full ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Creating account" : "Sign up"}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-xs leading-relaxed text-ftc-text-muted">
+          By creating an account, you agree to the{" "}
+          <Link href="/terms" className="font-semibold text-ftc-primary hover:underline">
+            Terms &amp; Conditions
+          </Link>{" "}
+          and acknowledge the{" "}
+          <Link href="/privacy" className="font-semibold text-ftc-primary hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
 
         <p className="mt-6 text-center text-sm text-ftc-text-muted">
           Already have an account?{" "}

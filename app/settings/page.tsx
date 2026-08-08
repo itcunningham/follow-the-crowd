@@ -207,6 +207,43 @@ export default function SettingsPage() {
                 </div>
               </section>
 
+              {/* Above the deletion section so the documents describing what
+                  deletion does sit before the control that performs it. */}
+              <section className="ftc-card overflow-hidden p-0">
+                <div className="border-b border-ftc-border-subtle px-4 py-3 sm:px-5">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+                    Legal
+                  </h2>
+                </div>
+
+                {[
+                  { href: "/terms", label: "Terms & Conditions" },
+                  { href: "/privacy", label: "Privacy Policy" },
+                ].map((row, index) => (
+                  <Link
+                    key={row.href}
+                    href={row.href}
+                    className={`flex items-center justify-between gap-3 px-4 py-4 transition hover:bg-ftc-bg-elevated/60 sm:px-5 ${
+                      index === 0 ? "border-b border-ftc-border-subtle" : ""
+                    }`}
+                  >
+                    <span className="text-sm font-semibold text-ftc-text">{row.label}</span>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4 shrink-0 text-ftc-text-muted"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </Link>
+                ))}
+              </section>
+
               <RequestAccountDeletionSection accountEmail={accountEmail} username={username} />
 
               {error ? <p className="text-sm text-red-400">{error}</p> : null}

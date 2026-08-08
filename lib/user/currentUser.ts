@@ -337,6 +337,15 @@ export async function signUpWithEmail(email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
+    // Without this, Supabase falls back to the project's Site URL for the
+    // confirmation link — which was still the default localhost:3000, so anyone
+    // confirming on a phone landed on a dead page. Password reset already used
+    // this helper; signup was the one that missed it.
+    //
+    // getAuthRedirectUrl resolves NEXT_PUBLIC_APP_URL, then a non-localhost
+    // window origin, then the production fallback — so it never emits a
+    // localhost or LAN address into an email that outlives the session.
+    options: { emailRedirectTo: getAuthRedirectUrl(LOGIN_PATH) },
   });
 
   if (error) {

@@ -17634,7 +17634,10 @@ async function main() {
   testEventPickerIsSelectionOnly();
   testMyDjsRosterManager();
   testProfileProjectionOmitsPrivateFields();
+  testLegalPagesArePublicAndAccurate();
+  testSignupAgeGateAndLegalLinks();
   testNoAuthenticatedPrefetchWithoutASession();
+  testAuthEmailsRedirectThroughTheSharedHelper();
   testPlannerRosterMigrationGrantsTablePrivileges();
   console.log("All regression checks passed.");
 }
@@ -18104,7 +18107,145 @@ function testProfileProjectionOmitsPrivateFields() {
   assert.match(source, /dj_booking_contact_name: input\.dj_booking_contact_name\.trim\(\)/);
 }
 
+/**
+ * The legal layer has two failure modes that matter.
+ *
+ * One: the pages must render logged-out. They are linked from the signup form,
+ * so wrapping them in OnboardingGuard would make the acceptance line point at a
+ * screen a prospective user cannot open.
+ *
+ * Two: the documents must keep describing the product as audited. If FTC starts
+ * processing payments, adds analytics, or enables AI, the Privacy Policy becomes
+ * false — these assertions are a tripwire for that, not decoration.
+ */
+function testLegalPagesArePublicAndAccurate() {
+  const terms = readFileSync(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
+  const privacy = readFileSync(new URL("../app/privacy/page.tsx", import.meta.url), "utf8");
+  const shell = readFileSync(
+    new URL("../app/components/legal/LegalPageShell.tsx", import.meta.url),
+    "utf8",
+  );
 
+  // Public: reachable before an account exists. Comments are stripped first —
+  // the shell's own docstring explains why it is NOT wrapped in OnboardingGuard,
+  // and prose must never stand in for the code it describes.
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  for (const [name, source] of [["terms", terms], ["privacy", privacy], ["shell", shell]] as const) {
+    assert.doesNotMatch(
+      stripComments(source),
+      /OnboardingGuard/,
+      `${name} must render logged out`,
+    );
+  }
+
+  // Back control works from both origins, and still works with no history.
+  assert.match(shell, /window\.history\.length > 1/);
+  assert.match(shell, /router\.back\(\)/);
+  assert.match(shell, /readSupabaseSessionUserIdSync\(\) \? SETTINGS_PATH : SIGNUP_PATH/);
+
+  // Operator is an individual — FTC is not a registered company.
+  const legal = readFileSync(new URL("../lib/legal.ts", import.meta.url), "utf8");
+  assert.match(legal, /LEGAL_OPERATOR = "Isaac Cunningham"/);
+  assert.match(legal, /ap-northeast-1/, "hosting region drives the cross-border disclosure");
+  // No invented corporate identity. "registered company" is deliberately NOT in
+  // this list: the Terms use it correctly, in the negative, to disclose that FTC
+  // is not one.
+  for (const source of [terms, privacy]) {
+    assert.doesNotMatch(source, /Pty Ltd|\bABN\b|\bACN\b/i);
+  }
+  assert.match(terms, /not a registered company/i, "the operator disclosure must stay");
+
+  // Facts the audit established. Each of these is false the moment the product
+  // changes, which is the point.
+  assert.match(privacy, /does not process payments/i);
+  assert.match(privacy, /no analytics/i);
+  assert.match(privacy, /does not collect GPS/i);
+  assert.match(privacy, /outside Australia/);
+  assert.match(privacy, /Deleted User/);
+  assert.match(privacy, /Messages and booking history involving other people are not deleted/i);
+  assert.match(terms, /not a party to any agreement/i);
+  assert.match(terms, /Australian Consumer Law/);
+
+  // AI is disabled for beta and must not be described to users as an active
+  // feature. Comments stripped: the file docstrings mention AI precisely to say
+  // it is off, and a comment is not something a user reads.
+  for (const source of [terms, privacy]) {
+    assert.doesNotMatch(
+      stripComments(source),
+      /\bAI\b|artificial intelligence|machine learning/,
+    );
+  }
+
+  // No user-facing "draft" language. These are the operative beta terms — the
+  // "needs professional legal review" note lives in lib/legal.ts and the QA
+  // checklist, deliberately not on the page.
+  for (const source of [terms, privacy]) {
+    assert.doesNotMatch(stripComments(source), /draft|not legally binding|placeholder/i);
+  }
+  const legalConstants = readFileSync(new URL("../lib/legal.ts", import.meta.url), "utf8");
+  assert.match(legalConstants, /NOT had professional legal review/i);
+}
+
+/**
+ * Account creation is gated on the 18+ confirmation, and both documents are
+ * reachable from the form that asks you to agree to them.
+ */
+function testSignupAgeGateAndLegalLinks() {
+  const signup = readFileSync(new URL("../app/signup/page.tsx", import.meta.url), "utf8");
+
+  assert.match(signup, /I confirm I am 18 or older/);
+  assert.match(signup, /type="checkbox"/);
+  // Unticked by default — a pre-ticked box is not a confirmation. Anchored on
+  // the declaration itself: a bare /useState\(false\)/ matched any of the
+  // page's other flags and passed even when this one defaulted to true.
+  assert.match(signup, /const \[ageConfirmed, setAgeConfirmed\] = useState\(false\);/);
+  // ...and it actually blocks submission. The lookbehind matters: without it
+  // the assertion was satisfied by the aria-disabled attribute and passed with
+  // the real disabled prop reverted to `{submitting}`.
+  assert.match(signup, /(?<!aria-)disabled=\{submitting \|\| !ageConfirmed\}/);
+
+  // A null session is not proof of creation. With email confirmation enabled
+  // Supabase returns the same success-shaped response for a new signup and for
+  // an address that is already registered, so claiming "Account created" tells
+  // a returning user they made an account they did not make.
+  assert.doesNotMatch(signup, /Account created/);
+  assert.match(signup, /setSuccessMessage\("Check your email to continue"\)/);
+  assert.match(signup, /If you already have an account with this email/);
+  assert.match(signup, /log in instead/);
+
+  // The supporting line is unconditional. Rendering it only for existing
+  // accounts would signal which emails exist.
+  const successBlock = signup.slice(
+    signup.indexOf("{successMessage ? ("),
+    signup.indexOf(") : null}", signup.indexOf("{successMessage ? (")),
+  );
+  assert.doesNotMatch(successBlock, /identities|alreadyRegistered|isExisting/);
+
+  // Nothing may branch user-visible behaviour on data.user.identities: it
+  // distinguishes an existing account from a new one, and any visible
+  // difference rebuilds the enumeration oracle Supabase suppresses. Comments
+  // are stripped because the code documents precisely why it is left unread.
+  const signupCode = signup
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  assert.doesNotMatch(signupCode, /identities/);
+  const authHelper = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(authHelper, /identities/);
+
+  assert.match(signup, /By creating an account, you agree to the/);
+  assert.match(signup, /href="\/terms"/);
+  assert.match(signup, /href="\/privacy"/);
+
+  // Settings carries permanent links too.
+  const settings = readFileSync(new URL("../app/settings/page.tsx", import.meta.url), "utf8");
+  assert.match(settings, /Legal\s*<\/h2>/);
+  assert.match(settings, /href: "\/terms"/);
+  assert.match(settings, /href: "\/privacy"/);
+}
 
 /**
  * Authenticated prefetches must not fire without a real session.
@@ -18177,6 +18318,62 @@ function testNoAuthenticatedPrefetchWithoutASession() {
     /grant[^;]*booking_requests[^;]*anon/i,
     "booking_requests must never be granted to anon",
   );
+}
+
+/**
+ * Auth emails outlive the session that sent them, so their links must never
+ * carry a localhost or LAN address.
+ *
+ * signUp originally passed no emailRedirectTo, so Supabase fell back to the
+ * project Site URL — still the default localhost:3000 — and anyone confirming
+ * on a phone landed on a dead page. The account was created and confirmed
+ * correctly; only the return trip was broken. Password reset already routed
+ * through getAuthRedirectUrl; signup was the one that missed it.
+ */
+function testAuthEmailsRedirectThroughTheSharedHelper() {
+  const source = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  const code = source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+
+  // Both auth emails resolve their destination the same way.
+  assert.match(code, /options: \{ emailRedirectTo: getAuthRedirectUrl\(LOGIN_PATH\) \}/);
+  assert.match(code, /redirectTo: getAuthRedirectUrl\(LOGIN_PATH\)/);
+  assert.equal(
+    (code.match(/getAuthRedirectUrl\(LOGIN_PATH\)/g) ?? []).length,
+    2,
+    "signUp and resetPasswordForEmail must both use the helper",
+  );
+
+  // signUp specifically must not omit it again.
+  const signUpFn = code.slice(
+    code.indexOf("export async function signUpWithEmail"),
+    code.indexOf("export async function ensureAuthenticatedUserProfileRow"),
+  );
+  assert.ok(signUpFn.length > 0, "signUpWithEmail must exist");
+  assert.match(signUpFn, /emailRedirectTo/);
+
+  // No hardcoded origins anywhere in the auth path — an email cannot be
+  // corrected after it is sent.
+  const appUrl = readFileSync(
+    new URL("../lib/auth/appUrl.ts", import.meta.url),
+    "utf8",
+  );
+  for (const [name, contents] of [["currentUser", code], ["appUrl", appUrl]] as const) {
+    assert.doesNotMatch(
+      contents.replace(/\/\/[^\n]*/g, ""),
+      /https?:\/\/(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/,
+      `${name} must not hardcode a localhost or LAN origin`,
+    );
+  }
+
+  // The resolver refuses a localhost window origin rather than emailing it.
+  assert.match(appUrl, /function isLocalhostHostname/);
+  assert.match(appUrl, /if \(!isLocalhostHostname\(hostname\)\)/);
+  assert.match(appUrl, /FTC_APP_URL_FALLBACK = "https:\/\/follow-the-crowd\.vercel\.app"/);
 }
 
 main().catch((error) => {
