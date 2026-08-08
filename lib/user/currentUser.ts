@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 export const LOGIN_PATH = "/login";
 export const SIGNUP_PATH = "/signup";
+export const FORGOT_PASSWORD_PATH = "/forgot-password";
 export const PROFILE_SETUP_PATH = "/profile/setup";
 export const SETTINGS_PATH = "/settings";
 export const BOOKING_PLANS_PATH = "/booking-plans";

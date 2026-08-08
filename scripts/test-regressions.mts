@@ -17638,6 +17638,7 @@ async function main() {
   testSignupAgeGateAndLegalLinks();
   testNoAuthenticatedPrefetchWithoutASession();
   testAuthEmailsRedirectThroughTheSharedHelper();
+  testForgotPasswordFlow();
   testPlannerRosterMigrationGrantsTablePrivileges();
   console.log("All regression checks passed.");
 }
@@ -18374,6 +18375,67 @@ function testAuthEmailsRedirectThroughTheSharedHelper() {
   assert.match(appUrl, /function isLocalhostHostname/);
   assert.match(appUrl, /if \(!isLocalhostHostname\(hostname\)\)/);
   assert.match(appUrl, /FTC_APP_URL_FALLBACK = "https:\/\/follow-the-crowd\.vercel\.app"/);
+}
+
+/**
+ * Password recovery had a working second half and no first half.
+ *
+ * /login already detected PASSWORD_RECOVERY and rendered "Set a new password",
+ * and requestPasswordResetEmail already sent through getAuthRedirectUrl. The
+ * only way to ask for the email was Settings — which you must be logged in to
+ * reach, and being unable to log in is the entire problem.
+ */
+function testForgotPasswordFlow() {
+  const page = readFileSync(
+    new URL("../app/forgot-password/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  const pageCode = stripComments(page);
+
+  // Reachable signed out — the whole point.
+  assert.doesNotMatch(pageCode, /OnboardingGuard/);
+
+  // Reuses the existing helper rather than calling supabase.auth directly, so
+  // the reset link keeps resolving through getAuthRedirectUrl.
+  assert.match(pageCode, /requestPasswordResetEmail\(email\)/);
+  assert.doesNotMatch(pageCode, /supabase\.auth/);
+
+  // Neutral result. Confirming which addresses are registered would let anyone
+  // probe the user base one email at a time — the same reason signup does not
+  // branch on identities.
+  assert.match(page, /If an account exists for that email/);
+  assert.doesNotMatch(pageCode, /no account|not found|does not exist|unregistered/i);
+
+  // The success state must not depend on whether the address existed.
+  const sentBlock = pageCode.slice(pageCode.indexOf("{sent ? ("), pageCode.indexOf(") : ("));
+  assert.doesNotMatch(sentBlock, /exists \?|found \?|registered \?/);
+
+  assert.match(page, /Back to login/);
+  assert.match(pageCode, /href=\{LOGIN_PATH\}/);
+
+  // Login offers the entry point, and only outside recovery mode: sending
+  // someone back to the start of a flow they are finishing is a dead end.
+  const login = readFileSync(
+    new URL("../app/login/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(login, /Forgot password\?/);
+  assert.match(login, /href=\{FORGOT_PASSWORD_PATH\}/);
+  const recoveryBranch = login.slice(
+    login.indexOf("recoveryMode ? ("),
+    login.indexOf("</form>", login.indexOf("handleRecoverySubmit")),
+  );
+  assert.doesNotMatch(recoveryBranch, /Forgot password/);
+
+  // One source of truth for the route.
+  const currentUser = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(currentUser, /FORGOT_PASSWORD_PATH = "\/forgot-password"/);
+  assert.doesNotMatch(stripComments(login), /"\/forgot-password"/);
 }
 
 main().catch((error) => {
