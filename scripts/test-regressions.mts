@@ -2006,7 +2006,7 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
   assert.match(cardSource, /label="Cancel"/);
   assert.match(cardSource, /showCancelRequest && !pendingProposal/);
   assert.match(cardSource, /showCancelRequest && pendingProposal/);
-  assert.match(cardSource, />\s*Proposed\s*</);
+  assert.doesNotMatch(cardSource, />\s*Proposed\s*</);
   assert.doesNotMatch(cardSource, /Rate proposed/);
   assert.match(cardSource, /compact/);
   assert.doesNotMatch(cardSource, /Open DM/);
