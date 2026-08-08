@@ -10616,9 +10616,15 @@ function testRunSheetProductionPolish() {
   // Progress is view-mode only as of testRunSheetHeaderCancelAndSave -- it
   // used to also show live during editing, deliberately reversed since it
   // duplicated what Save/"Unsaved changes" already say once those exist.
+  //
+  // 52819b06 ("hide run sheet progress from DJs") then scoped it to planners
+  // with the leading `canEdit`: "N of M completed" is a browsing aid for whoever
+  // is building the sheet, not for a DJ reading their own set time. Adding a
+  // conjunct only narrows the guard, so the indicator cannot appear anywhere it
+  // did not before -- the sole behavioural delta is that DJs no longer see it.
   assert.match(
     section,
-    /const showRunSheetProgress = !isEditing && rows\.length > 0 && !allRowsIncomplete;/,
+    /const showRunSheetProgress =\s*canEdit && !isEditing && rows\.length > 0 && !allRowsIncomplete;/,
   );
   // One sentence shape at every stage -- the "Run Sheet Complete" variant
   // was dropped so the line always reads as a counter (see
