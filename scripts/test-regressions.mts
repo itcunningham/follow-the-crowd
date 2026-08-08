@@ -11163,7 +11163,7 @@ function testRunSheetHeaderAlignmentAndDensity() {
   // testRunSheetAccordionRestructure for the clipping bug that causes).
   assert.match(section, /<div className="space-y-1\.5 pt-0\.5">/);
   // Margin above the toggle tightened, but its `py-1` tap padding is intact.
-  assert.match(section, /className="mt-0\.5 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
+  assert.match(section, /className="mt-0 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
 
   // Nothing that would shrink a touch target, an input, or a textarea.
   assert.match(section, /const RUN_SHEET_NOTES_VISIBLE_ROWS = 4;/);
@@ -11549,7 +11549,7 @@ function testRunSheetProgressAndEmptyStateCopy() {
   assert.ok(chevronClass, "the chevron className must exist");
   assert.match(chevronClass, /\bmr-1\.5\b/);
   const toggle = entryFn.match(/<button[\s\S]*?onToggleExpanded[\s\S]*?<\/button>/)?.[0] ?? "";
-  assert.match(toggle, /className="mt-0\.5 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
+  assert.match(toggle, /className="mt-0 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
   assert.doesNotMatch(toggle, /\bpr-\d/);
 }
 
