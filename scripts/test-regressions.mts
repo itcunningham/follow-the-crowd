@@ -14497,6 +14497,28 @@ function testChatMediaLoadsWithoutARefresh() {
   assert.equal(coerceAvatarSourceUrl("profile-images/u/a.jpg"), null);
   assert.equal(resolveAvatarImageUrl("null", "sm"), null);
 
+  // Edit Profile previews the chosen photo with URL.createObjectURL BEFORE any
+  // upload happens - the upload runs inside the save handler. An http-only
+  // predicate returned null here, ProfileAvatar fell through to initials, and
+  // picking a new photo looked like it had done nothing until you saved.
+  const blobUrl = "blob:http://localhost:3000/9f8e7d6c-1234-4abc-9def-0123456789ab";
+  assert.equal(coerceAvatarSourceUrl(blobUrl), blobUrl);
+
+  // A blob URL is not a storage object, so it must pass through untransformed -
+  // rewriting it into the render endpoint would produce a URL that 404s.
+  assert.equal(resolveAvatarImageUrl(blobUrl, "xl"), blobUrl);
+  assert.equal(resolveAvatarImageUrl(blobUrl, "sm"), blobUrl);
+
+  // It has no public-object marker, so there is no "original" to fall back to;
+  // ProfileAvatar's `?? sourceUrl` covers that.
+  assert.equal(resolveAvatarObjectUrl(blobUrl), null);
+
+  // Widened by exactly one scheme. Anything else a browser will not load as an
+  // image source stays rejected.
+  assert.equal(coerceAvatarSourceUrl("data:image/png;base64,iVBORw0KGgo="), null);
+  assert.equal(coerceAvatarSourceUrl("javascript:alert(1)"), null);
+  assert.equal(coerceAvatarSourceUrl("//evil.example/a.jpg"), null);
+
   assert.equal(resolveAvatarObjectUrl(rendered), publicUrl);
   assert.equal(resolveAvatarObjectUrl(publicUrl), publicUrl);
   assert.equal(resolveAvatarObjectUrl("https://lh3.googleusercontent.com/a/x"), null);
