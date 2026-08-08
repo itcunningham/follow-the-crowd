@@ -386,9 +386,27 @@ drop policy if exists "Allow anon select conversations" on public.conversations;
 drop policy if exists "Allow anon insert conversations" on public.conversations;
 drop policy if exists "Allow anon select conversation_members" on public.conversation_members;
 drop policy if exists "Allow anon insert conversation_members" on public.conversation_members;
+
+-- Hand-created in the Supabase dashboard, never in this repo, and found live in
+-- production on 2026-08-08 by the anon/public sweep in
+-- supabaseSecurityAuditChecklistSupplement.sql. They survived every prior run of
+-- this script because the drops above are an allowlist of names, and an
+-- allowlist can only remove what its author already knew existed. All six were
+-- SELECT ... USING (true).
+drop policy if exists "allow read conversations" on public.conversations;
+drop policy if exists "allow read conversations anon" on public.conversations;
+drop policy if exists "allow read conversation_members" on public.conversation_members;
+drop policy if exists "allow select conversation_members anon" on public.conversation_members;
 drop policy if exists "conversations_select_member" on public.conversations;
 drop policy if exists "conversation_members_select_shared" on public.conversation_members;
 drop policy if exists "allow public insert messages" on public.messages;
+-- The read twin of the line above, and the one that mattered. Granted to the
+-- PUBLIC role, which in Postgres means every role including authenticated, with
+-- USING (true). Permissive policies are OR'd, so it silently overrode
+-- messages_select_conversation_member and let any logged-in account read every
+-- message row in the database. Dropped from production 2026-08-08.
+drop policy if exists "allow public read messages" on public.messages;
+drop policy if exists "allow read messages" on public.messages;
 drop policy if exists "messages_select_conversation_member" on public.messages;
 drop policy if exists "messages_insert_conversation_sender" on public.messages;
 drop policy if exists "messages_update_conversation_member" on public.messages;

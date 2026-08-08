@@ -62,18 +62,38 @@ select
 -- WHY IT MATTERS: the legacy setup scripts created broad policies
 --   ("Allow anon select conversations", "Allow public read users",
 --   "Allow public update users", and ~20 more). setupProductionRls.sql drops
---   them, but only if it ran after the scripts that created them. Main-checklist
---   check 12 would not catch a surviving SELECT policy, and does not look at
---   public.users at all. A live anon SELECT on messages or conversations means
---   private DMs are readable without authentication.
+--   them, but only if it ran after the scripts that created them — and it drops
+--   by exact name, so it never removes a policy created by hand in the dashboard
+--   under a name its author never saw. Main-checklist check 12 would not catch a
+--   surviving SELECT policy, and does not look at public.users at all.
 --
--- SAFE RESULT: ZERO ROWS. That is the answer you want.
+-- READ THE ROLE COLUMN CAREFULLY — `anon` AND `public` ARE NOT THE SAME THING.
+--   `anon` is the unauthenticated Supabase role. `public` is the Postgres
+--   pseudo-role meaning EVERY role, authenticated included. Permissive policies
+--   are OR'd, so one `to public using (true)` policy overrides every tighter
+--   policy on that table for logged-in users too. On 2026-08-08 production had
+--   exactly that on messages ("allow public read messages"), which let any
+--   authenticated account read every message row in the database. Five sibling
+--   policies granted to `anon` were dormant only because `anon` lacked the
+--   table-level SELECT grant — a GRANT away from live, and Supabase grants that
+--   by default on new tables.
+--
+-- SAFE RESULT: ZERO ROWS, or only rows whose qual is genuinely caller-scoped.
+--   The four message_reads policies list `{anon,authenticated}` but gate every
+--   branch on auth.uid(), which is NULL for anon, so they match nothing.
 --
 -- ESCALATE IF: any row is returned for messages, conversations,
 --   conversation_members, booking_requests, notifications or users.
 --   Stop and inspect before beta — do not treat as routine.
+--   Judge on the qual, not the role list: `true`, empty, or any qual with no
+--   auth.uid()/ownership/membership predicate is open. A `public` row is worse
+--   than an `anon` row, not equivalent to it.
 --   Rows on genuinely public-by-design tables may be legitimate; confirm intent
 --   per table rather than assuming.
+--
+-- GRANTS ARE THE SECOND LAYER: a policy only bites if the role also holds the
+--   table privilege. To tell dormant from live:
+--     select has_table_privilege('anon', 'public.messages', 'SELECT');
 
 select
   'anon/public policy present' as check_name,
