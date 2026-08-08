@@ -577,6 +577,11 @@ export function canRecipientRespondToPendingBooking(
     return false;
   }
 
+  // DJ already countered with a rate — Accept/Decline belong to the planner now.
+  if (hasPendingRateProposal(booking)) {
+    return false;
+  }
+
   return Boolean(currentUserId && booking.recipient_id === currentUserId);
 }
 
