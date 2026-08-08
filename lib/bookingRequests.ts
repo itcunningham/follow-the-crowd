@@ -8,6 +8,7 @@ import {
   resolveEventStartDateTime,
 } from "@/lib/bookingDateTime";
 import { createNotification, getNotificationCreateErrorMessage } from "@/lib/notifications";
+import { recordRosterFromBooking } from "@/lib/plannerDjRoster";
 import { notifyBookingRequestsChanged } from "@/lib/bookings/bookingRequestsSync";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { resolveUserDisplayName } from "@/lib/user/displayName";
@@ -2280,6 +2281,12 @@ export async function sendBookingRequestToDj(
   if (messageError) {
     throw messageError;
   }
+
+  // Intent is enough: the planner tried to book this DJ, so keep them findable
+  // even if the booking is later declined. recordRosterFromBooking never
+  // throws, for the same reason the notification below is wrapped — the booking
+  // and DM already exist and must not be undone by a bookkeeping row.
+  await recordRosterFromBooking(currentUserId, recipientId);
 
   try {
     await createNotification(

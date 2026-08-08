@@ -17626,7 +17626,197 @@ async function main() {
   await testAgentRoomWritesSummariesAndDecisionRecords();
   await testAgentRoomManualApprovalIsEnforcedServerSide();
   await testAgentRoomManualApprovalCoversEverySummaryPath();
+  await testPlannerRosterShipsDisabledAndKeepsTheFallback();
+  testPlannerRosterIsolatesPlannersAndExcludesUnbookableDjs();
+  testPlannerRosterAddIsExactAndNonEnumerating();
+  testPlannerRosterAutoAddCannotBreakABooking();
   console.log("All regression checks passed.");
+}
+
+/**
+ * The roster ships dark. Until the flag flips, every planner still sees every
+ * DJ, so a mistake anywhere in the roster code is invisible to users and the
+ * rollback is one line rather than a migration. This test is what protects that
+ * property — it is the reason the feature can be merged before it is trusted.
+ */
+async function testPlannerRosterShipsDisabledAndKeepsTheFallback() {
+  const { ROSTER_SCOPING_ENABLED } = await import("../lib/plannerDjRoster");
+
+  assert.equal(
+    ROSTER_SCOPING_ENABLED,
+    false,
+    "roster scoping must ship off; flipping it is its own reviewed commit",
+  );
+
+  const rosterSource = readFileSync(
+    new URL("../lib/plannerDjRoster.ts", import.meta.url),
+    "utf8",
+  );
+  // A constant, not an env var: the switch has to be greppable in the diff.
+  assert.match(rosterSource, /export const ROSTER_SCOPING_ENABLED = false;/);
+  assert.doesNotMatch(
+    rosterSource,
+    /process\.env[^\n]*ROSTER/,
+    "the flag must not be readable from the environment",
+  );
+
+  // Every call site keeps listBookableDjs as the flag-off path. If any of these
+  // stops being a ternary, the feature is no longer reversible by the flag.
+  const draftSource = readFileSync(
+    new URL("../app/components/booking/useSendBookingRequestsDraft.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    draftSource,
+    /ROSTER_SCOPING_ENABLED[\s\S]{0,80}listRosterDjs\(\)[\s\S]{0,60}listBookableDjs\(\)/,
+  );
+
+  const bookingsPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.equal(
+    (bookingsPageSource.match(
+      /ROSTER_SCOPING_ENABLED \? listRosterDjs\(\) : listBookableDjs\(\)/g,
+    ) ?? []).length,
+    2,
+    "both bookings-page loaders must keep the fallback",
+  );
+}
+
+/**
+ * The property the feature exists for: planner A sees roster A, and a DJ can
+ * sit on several rosters without those planners learning about each other.
+ *
+ * RLS is the real boundary — planner_dj_roster_select_own restricts reads to
+ * planner_id = auth_user_id(). The client filter is asserted here so that a
+ * policy regression shows up as a failing test rather than as one promoter
+ * quietly seeing another's roster.
+ */
+function testPlannerRosterIsolatesPlannersAndExcludesUnbookableDjs() {
+  const currentUserSource = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Comments stripped: the block above listRosterDjs's users query quotes
+  // `.is("deleted_at", null)` verbatim while explaining it, which satisfied
+  // this assertion even with the real filter deleted. Mutation testing caught
+  // it. Prose must never stand in for the code it describes.
+  const rosterFn = currentUserSource
+    .slice(currentUserSource.indexOf("export async function listRosterDjs"))
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  assert.ok(rosterFn.length > 0, "listRosterDjs must exist");
+
+  // Scoped to the caller. Nothing here may read another planner's rows.
+  assert.match(rosterFn, /from\("planner_dj_roster"\)/);
+  assert.match(rosterFn, /\.eq\("planner_id", currentUserId\)/);
+
+  // Unbookable accounts must never surface, whatever the roster table holds:
+  // a DJ who deleted their account, never finished onboarding, or changed role.
+  assert.match(rosterFn, /\.is\("deleted_at", null\)/);
+  assert.match(rosterFn, /user\.onboarding_complete/);
+  assert.match(rosterFn, /user\.role === "dj" \|\| user\.role === "both"/);
+  assert.match(rosterFn, /user\.user_id !== currentUserId/);
+
+  // An empty roster must not fall back to every DJ — that would silently
+  // reinstate global discovery for exactly the planners the roster is for.
+  assert.match(rosterFn, /djIds\.length === 0[\s\S]{0,40}return \[\]/);
+  assert.doesNotMatch(rosterFn, /listBookableDjs\(/);
+
+  // Empty roster and empty search result are different states with different
+  // fixes; collapsing them leaves a new planner staring at a dead end.
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    panelSource,
+    /ROSTER_SCOPING_ENABLED && draft\.djs\.length === 0[\s\S]{0,400}Your DJ roster is empty/,
+  );
+  assert.match(panelSource, /No available DJs to invite/);
+}
+
+/**
+ * Adding is exact-match only. A prefix or ilike search here would quietly turn
+ * a private roster into the global directory it exists to replace, and would
+ * also let anyone enumerate usernames.
+ */
+function testPlannerRosterAddIsExactAndNonEnumerating() {
+  const rosterSource = readFileSync(
+    new URL("../lib/plannerDjRoster.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Comments are stripped before asserting. Prose must never be able to satisfy
+  // or break a claim about code — a doc comment describing a behaviour reads
+  // identically to the code implementing it, and the slice below would
+  // otherwise run into the next function's comment block.
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+
+  const addFn = stripComments(
+    rosterSource.slice(
+      rosterSource.indexOf("export async function addDjToRosterByUsername"),
+      rosterSource.indexOf("export async function recordRosterFromBooking"),
+    ),
+  );
+  assert.ok(addFn.length > 0, "addDjToRosterByUsername must exist");
+
+  assert.match(addFn, /\.eq\("username", username\)/);
+  assert.doesNotMatch(
+    addFn,
+    /\.(ilike|like)\(|\.textSearch\(|\.or\(/,
+    "no fuzzy or multi-field matching — exact username only",
+  );
+
+  // "No such user" and "not a bookable DJ" must be indistinguishable, or the
+  // field becomes an oracle for which accounts exist and what type they are.
+  assert.match(rosterSource, /ADD_DJ_NOT_FOUND_MESSAGE = "No DJ found with that username\."/);
+  assert.equal(
+    (addFn.match(/ADD_DJ_NOT_FOUND_MESSAGE/g) ?? []).length,
+    1,
+    "one shared not-found path, so the two cases cannot diverge",
+  );
+  assert.doesNotMatch(addFn, /not a DJ|is a promoter|already exists/i);
+
+  assert.match(addFn, /djId === plannerId/, "self-add is refused client-side too");
+}
+
+/**
+ * A booking that already exists in the database must never fail because a
+ * bookkeeping row did not. Same reasoning as the notification call it sits
+ * beside — and the same failure mode if it is ever unwrapped.
+ */
+function testPlannerRosterAutoAddCannotBreakABooking() {
+  const rosterSource = readFileSync(
+    new URL("../lib/plannerDjRoster.ts", import.meta.url),
+    "utf8",
+  );
+  const recordFn = rosterSource
+    .slice(rosterSource.indexOf("export async function recordRosterFromBooking"))
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+
+  assert.match(recordFn, /try \{[\s\S]*\} catch \(rosterError\) \{/);
+  assert.doesNotMatch(recordFn, /throw /, "must swallow every failure");
+  assert.match(recordFn, /ignoreDuplicates: true/, "re-sends must not error");
+
+  const bookingSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  // Fires on creation, not acceptance: a declined DJ must stay findable.
+  assert.match(
+    bookingSource,
+    /await recordRosterFromBooking\(currentUserId, recipientId\);/,
+  );
+  assert.ok(
+    bookingSource.indexOf("await recordRosterFromBooking(currentUserId, recipientId);") >
+      bookingSource.indexOf("const { error: messageError } = await supabase"),
+    "roster write happens after the booking and DM already exist",
+  );
 }
 
 main().catch((error) => {

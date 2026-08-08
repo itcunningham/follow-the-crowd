@@ -821,6 +821,65 @@ export async function listBookableDjs(): Promise<UserProfile[]> {
     .sort((a, b) => (a.display_name ?? "").localeCompare(b.display_name ?? ""));
 }
 
+/**
+ * The planner's own roster, in the same shape `listBookableDjs` returns.
+ *
+ * `listBookableDjs` is deliberately left untouched beside this: while the
+ * scoping flag is off it stays the only caller-visible behaviour, so the
+ * rollback for anything wrong here is a flag rather than a migration.
+ *
+ * RLS already restricts `planner_dj_roster` to `planner_id = auth_user_id()`,
+ * so the roster query needs no planner filter of its own — but relying on that
+ * silently would make a policy change look like a product bug, so the eq() is
+ * stated anyway.
+ */
+export async function listRosterDjs(): Promise<UserProfile[]> {
+  const currentUserId = await getCurrentUserId();
+
+  if (!currentUserId) {
+    return [];
+  }
+
+  const { data: rosterRows, error: rosterError } = await supabase
+    .from("planner_dj_roster")
+    .select("dj_id")
+    .eq("planner_id", currentUserId);
+
+  if (rosterError) {
+    throw rosterError;
+  }
+
+  const djIds = (rosterRows ?? []).map((row) => row.dj_id as string);
+
+  if (djIds.length === 0) {
+    return [];
+  }
+
+  // `.is("deleted_at", null)` filters server-side on a column PROFILE_FIELDS
+  // does not select, which is why the projection stays unchanged. It is
+  // redundant today — anonymisation already clears onboarding_complete — but
+  // stated so this filter does not silently depend on that staying true.
+  const { data, error } = await supabase
+    .from("users")
+    .select(PROFILE_FIELDS)
+    .in("user_id", djIds)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as UserProfile[])
+    .filter(
+      (user) =>
+        user.user_id !== currentUserId &&
+        user.onboarding_complete &&
+        Boolean(user.display_name?.trim()) &&
+        (user.role === "dj" || user.role === "both"),
+    )
+    .sort((a, b) => (a.display_name ?? "").localeCompare(b.display_name ?? ""));
+}
+
 if (typeof window !== "undefined") {
   seedProfileFromPersistentStorage();
 

@@ -131,11 +131,13 @@ import {
   getDefaultRouteForRole,
   getRoleLabel,
   listBookableDjs,
+  listRosterDjs,
   LOGIN_PATH,
   type BookingRecipientProfile,
   type UserProfile,
   type UserRole,
 } from "@/lib/user/currentUser";
+import { ROSTER_SCOPING_ENABLED } from "@/lib/plannerDjRoster";
 import { filterBookableDjsBySearchQuery } from "@/lib/user/filterBookableDjs";
 import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import { markNotificationsReadByType } from "@/lib/notifications";
@@ -995,7 +997,7 @@ function BookingsPageContent() {
 
     try {
       const [bookableDjs, plans] = await Promise.all([
-        listBookableDjs(),
+        ROSTER_SCOPING_ENABLED ? listRosterDjs() : listBookableDjs(),
         listBookingPlans(),
       ]);
 
@@ -1231,7 +1233,7 @@ function BookingsPageContent() {
 
     try {
       const [bookableDjs, plans] = await Promise.all([
-        listBookableDjs(),
+        ROSTER_SCOPING_ENABLED ? listRosterDjs() : listBookableDjs(),
         listBookingPlans(),
       ]);
 

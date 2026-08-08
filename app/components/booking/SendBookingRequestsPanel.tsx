@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
@@ -10,6 +11,11 @@ import EventDjSendOfferControls, {
 import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner/PlannerUi";
 import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
+import {
+  addDjToRosterByUsername,
+  ROSTER_SCOPING_ENABLED,
+} from "@/lib/plannerDjRoster";
+import { getCurrentUserId } from "@/lib/user/currentUser";
 import type { EventBookingDuplicateStatus } from "@/lib/bookingRequests";
 import type { DjPlannerAvailabilityHint } from "@/lib/djAvailability";
 
@@ -71,6 +77,103 @@ function InviteDjSearchField({
         className="ftc-input h-11 w-full rounded-full py-0 pl-11 pr-4 text-[15px] placeholder:text-ftc-text-muted"
       />
     </label>
+  );
+}
+
+/**
+ * Exact-username add. Renders only while roster scoping is on, so with the flag
+ * off this component is unreachable and the picker is unchanged.
+ *
+ * There is no result list and no suggestion dropdown on purpose: a planner can
+ * only add a DJ whose username they already know, which is what keeps this a
+ * private roster rather than a global directory behind a text field.
+ */
+function AddDjByUsernameField({
+  disabled,
+  onAdded,
+}: {
+  disabled: boolean;
+  onAdded: () => Promise<void> | void;
+}) {
+  const [username, setUsername] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  const handleAdd = useCallback(async () => {
+    if (adding || !username.trim()) {
+      return;
+    }
+
+    setAdding(true);
+    setFeedback(null);
+
+    try {
+      const plannerId = await getCurrentUserId();
+      const result = await addDjToRosterByUsername(plannerId, username);
+
+      if (!result.ok) {
+        setFailed(true);
+        setFeedback(result.message);
+        return;
+      }
+
+      setFailed(false);
+      setFeedback(`${result.displayName || "DJ"} added to your roster.`);
+      setUsername("");
+      await onAdded();
+    } catch (addError) {
+      console.error("Failed to add DJ to roster:", addError);
+      setFailed(true);
+      setFeedback("Could not add that DJ. Please try again.");
+    } finally {
+      setAdding(false);
+    }
+  }, [adding, username, onAdded]);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-2">
+        <label className="relative block min-w-0 flex-1">
+          <span className="sr-only">Add a DJ by username</span>
+          <input
+            type="text"
+            value={username}
+            disabled={disabled || adding}
+            onChange={(event) => setUsername(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleAdd();
+              }
+            }}
+            placeholder="Add a DJ by @username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={64}
+            className="ftc-input h-11 w-full rounded-full py-0 pl-4 pr-4 text-[15px] placeholder:text-ftc-text-muted"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => void handleAdd()}
+          disabled={disabled || adding || !username.trim()}
+          aria-disabled={disabled || adding || !username.trim()}
+          className="ftc-btn-primary h-11 shrink-0 rounded-full px-5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {adding ? "Adding" : "Add DJ"}
+        </button>
+      </div>
+      {feedback ? (
+        <p
+          role="status"
+          className={`px-1 text-xs ${failed ? "text-red-400" : "text-ftc-text-muted"}`}
+        >
+          {feedback}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -307,6 +410,13 @@ export default function SendBookingRequestsPanel({
         <p className="text-sm leading-relaxed text-ftc-text-secondary">{introText}</p>
       ) : null}
 
+      {ROSTER_SCOPING_ENABLED ? (
+        <AddDjByUsernameField
+          disabled={disabled || sending}
+          onAdded={draft.reloadDjs}
+        />
+      ) : null}
+
       <InviteDjSearchField
         value={draft.searchQuery}
         disabled={disabled || sending}
@@ -315,6 +425,11 @@ export default function SendBookingRequestsPanel({
 
       {draft.loadingDjs ? (
         <p className="text-sm text-ftc-text-muted">Loading DJs</p>
+      ) : ROSTER_SCOPING_ENABLED && draft.djs.length === 0 ? (
+        // An empty roster and a search that matched nothing are different
+        // problems, and showing "No available DJs" for the first is a dead end.
+        // This branch is the only one that tells the planner what to do next.
+        <PlannerEmptyPanel message="Your DJ roster is empty. Add a DJ by their FTC username to start sending bookings." />
       ) : draft.filteredDjs.length === 0 ? (
         <PlannerEmptyPanel message="No available DJs to invite" />
       ) : (

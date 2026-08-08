@@ -20,7 +20,8 @@ import {
   type DjPlannerAvailabilityHint,
 } from "@/lib/djAvailability";
 import { filterBookableDjsBySearchQuery } from "@/lib/user/filterBookableDjs";
-import { listBookableDjs, type UserProfile } from "@/lib/user/currentUser";
+import { ROSTER_SCOPING_ENABLED } from "@/lib/plannerDjRoster";
+import { listBookableDjs, listRosterDjs, type UserProfile } from "@/lib/user/currentUser";
 
 type UseSendBookingRequestsDraftOptions = {
   eventDate: string;
@@ -48,7 +49,10 @@ export function useSendBookingRequestsDraft({
     setLoadingDjs(true);
 
     try {
-      const bookableDjs = await listBookableDjs();
+      // While the flag is off this is byte-for-byte the previous behaviour.
+      const bookableDjs = ROSTER_SCOPING_ENABLED
+        ? await listRosterDjs()
+        : await listBookableDjs();
       setDjs(bookableDjs);
 
       if (eventDate.trim()) {
