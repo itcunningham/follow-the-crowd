@@ -10,8 +10,10 @@ import RequestAccountDeletionSection from "@/app/components/settings/RequestAcco
 import {
   getCurrentAuthUser,
   getCurrentUserId,
+  canManageEvents,
   getCurrentUserProfile,
   LOGIN_PATH,
+  type UserRole,
   requestPasswordResetEmail,
   signOut,
 } from "@/lib/user/currentUser";
@@ -27,6 +29,7 @@ export default function SettingsPage() {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [passwordResetCooldown, setPasswordResetCooldown] = useState(false);
   const [passwordResetMessage, setPasswordResetMessage] = useState<string | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +41,7 @@ export default function SettingsPage() {
         setCurrentUserId(userId);
         setAccountEmail(authUser?.email?.trim() || null);
         setUsername(profile?.username?.trim() || null);
+        setRole(profile?.role ?? null);
       })
       .catch((loadError) => {
         console.error("Failed to load settings:", loadError);
@@ -112,7 +116,7 @@ export default function SettingsPage() {
             ← My Profile
           </Link>
           <h1 className="mt-3 text-xl font-semibold text-ftc-text">Settings</h1>
-          <p className="mt-1 text-sm text-ftc-text-muted">Account and support for private beta</p>
+          <p className="mt-1 text-sm text-ftc-text-muted">Workspace, account and support for private beta</p>
         </header>
 
         <div className="space-y-4 px-4 py-6 sm:px-6">
@@ -120,6 +124,43 @@ export default function SettingsPage() {
             <p className="text-sm text-ftc-text-muted">Loading settings...</p>
           ) : (
             <>
+              {/* Workspace features sit above account admin: roster management is
+                  a routine planner task, and it should not be buried beneath
+                  password reset and the delete-account section. */}
+              {canManageEvents(role) ? (
+                <section className="ftc-card overflow-hidden p-0">
+                  <div className="border-b border-ftc-border-subtle px-4 py-3 sm:px-5">
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+                      Workspace
+                    </h2>
+                  </div>
+
+                  <Link
+                    href="/my-djs"
+                    className="flex items-center justify-between gap-3 px-4 py-4 transition hover:bg-ftc-bg-elevated/60 sm:px-5"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-ftc-text">DJ Roster</span>
+                      <span className="mt-0.5 block text-sm text-ftc-text-muted">
+                        Manage the DJs you work with
+                      </span>
+                    </span>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4 shrink-0 text-ftc-text-muted"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </Link>
+                </section>
+              ) : null}
+
               <section className="ftc-card overflow-hidden p-0">
                 <div className="border-b border-ftc-border-subtle px-4 py-3 sm:px-5">
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">

@@ -26,7 +26,7 @@ export const ROSTER_SCOPING_ENABLED = true;
  * bookable DJ". Distinguishing them would turn this field into a probe for
  * which accounts exist and what type they are.
  */
-export const ADD_DJ_NOT_FOUND_MESSAGE = "No DJ found with that username.";
+export const ADD_DJ_NOT_FOUND_MESSAGE = "No DJ found with that username";
 
 export type AddDjToRosterResult =
   | { ok: true; djId: string; displayName: string; alreadyPresent: boolean }

@@ -17631,7 +17631,8 @@ async function main() {
   testPlannerRosterAddIsExactAndNonEnumerating();
   testPlannerRosterAutoAddCannotBreakABooking();
   testPlannerRosterRemoveIsScopedAndNonDestructive();
-  testPlannerRosterRemoveRequiresConfirmation();
+  testEventPickerIsSelectionOnly();
+  testMyDjsRosterManager();
   testPlannerRosterMigrationGrantsTablePrivileges();
   console.log("All regression checks passed.");
 }
@@ -17780,7 +17781,7 @@ function testPlannerRosterAddIsExactAndNonEnumerating() {
 
   // "No such user" and "not a bookable DJ" must be indistinguishable, or the
   // field becomes an oracle for which accounts exist and what type they are.
-  assert.match(rosterSource, /ADD_DJ_NOT_FOUND_MESSAGE = "No DJ found with that username\."/);
+  assert.match(rosterSource, /ADD_DJ_NOT_FOUND_MESSAGE = "No DJ found with that username"/);
   assert.equal(
     (addFn.match(/ADD_DJ_NOT_FOUND_MESSAGE/g) ?? []).length,
     1,
@@ -17836,55 +17837,121 @@ function testPlannerRosterRemoveIsScopedAndNonDestructive() {
 }
 
 /**
- * The confirmation is the whole safety mechanism for a destructive control that
- * sits on every row. A one-tap X beside a name people tap all day is a mis-tap
- * waiting to happen.
+ * Roster management has one home, and the event picker is only for choosing who
+ * to invite. Mixing them put a destructive control next to a selection control
+ * and made the event form the place people learned to manage a roster.
  */
-function testPlannerRosterRemoveRequiresConfirmation() {
+function testEventPickerIsSelectionOnly() {
   const panelSource = readFileSync(
     new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
     "utf8",
   );
 
-  // The X only stages a pending removal; it never deletes.
-  assert.match(panelSource, /onRemove=\{[\s\S]{0,200}setDjPendingRemoval\(dj\)/);
-  assert.doesNotMatch(
-    panelSource,
-    /onRemove=\{[\s\S]{0,200}removeDjFromRoster\(/,
-    "the row control must not delete directly — it opens the dialog",
-  );
+  // No add-by-username form and no remove control in the invite flow.
+  assert.doesNotMatch(panelSource, /AddDjByUsernameField/);
+  assert.doesNotMatch(panelSource, /addDjToRosterByUsername/);
+  assert.doesNotMatch(panelSource, /removeDjFromRoster/);
+  assert.doesNotMatch(panelSource, /onRemove/);
 
-  // Only the dialog's confirm handler calls the delete.
-  assert.match(panelSource, /handleConfirmRemove[\s\S]{0,900}removeDjFromRoster\(/);
-  assert.match(panelSource, /onConfirm=\{handleConfirmRemove\}/);
+  assert.match(panelSource, /Choose DJs to invite/);
+  assert.match(panelSource, /Invite DJs · Optional/);
+  assert.match(panelSource, /placeholder="Search DJs"/);
 
-  // Cancel closes and does nothing else.
+  // An empty roster is a dead end without a way out of it.
+  assert.match(panelSource, /Your DJ roster is empty\. Add DJs to your roster before sending invitations/);
+  assert.match(panelSource, /Add DJs/);
+  // Selecting, not managing: no persistent management affordance once the
+  // planner already has DJs.
+  assert.doesNotMatch(panelSource, /Manage roster|Manage My DJs/);
+
+  // Managing the roster must open a sheet, never navigate: the event draft is
+  // component state and a route change would discard a half-typed event.
+  assert.match(panelSource, /setRosterSheetOpen\(true\)/);
+  assert.doesNotMatch(panelSource, /router\.push|<Link/);
+
+  // Closing the sheet refreshes the picker so a newly added DJ is selectable
+  // straight away.
   assert.match(
     panelSource,
-    /onCancel=\{\(\) => \{[\s\S]{0,300}setDjPendingRemoval\(null\)[\s\S]{0,200}\}\}/,
+    /closeRosterSheet = useCallback\(\(\) => \{[\s\S]{0,200}draft\.reloadDjs\(\)/,
   );
-  const cancelBlock = panelSource.slice(
-    panelSource.indexOf("onCancel={() => {"),
-    panelSource.indexOf("onConfirm={handleConfirmRemove}"),
+
+  // Still the planner-scoped roster, never a global list.
+  const draftSource = readFileSync(
+    new URL("../app/components/booking/useSendBookingRequestsDraft.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    draftSource,
+    /ROSTER_SCOPING_ENABLED[\s\S]{0,80}listRosterDjs\(\)[\s\S]{0,60}listBookableDjs\(\)/,
+  );
+}
+
+/**
+ * One management component, rendered by both the permanent page and the sheet,
+ * so the two surfaces cannot drift apart.
+ */
+function testMyDjsRosterManager() {
+  const managerSource = readFileSync(
+    new URL("../app/components/roster/PlannerDjRosterManager.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(managerSource, /addDjToRosterByUsername\(plannerId, username\)/);
+  assert.match(managerSource, /placeholder="DJ username"/);
+  assert.match(managerSource, /Enter their exact FTC username/);
+  assert.match(managerSource, /Your DJ roster is empty\. Add DJs by their FTC username/);
+  assert.match(managerSource, /placeholder="Search DJs"/);
+
+  // Remove still goes through a confirmation, and Cancel issues no delete.
+  assert.match(managerSource, /setDjPendingRemoval\(dj\)/);
+  assert.match(managerSource, /handleConfirmRemove[\s\S]{0,900}removeDjFromRoster\(/);
+  assert.match(managerSource, /Past bookings and chats won't be affected/);
+  const cancelBlock = managerSource.slice(
+    managerSource.indexOf("<BookingSheetSecondaryButton"),
+    managerSource.indexOf("<BookingSheetDangerButton"),
   );
   assert.doesNotMatch(cancelBlock, /removeDjFromRoster/, "Cancel must issue no delete");
 
-  // The copy has to say what is not affected, or a planner will avoid the
-  // control for fear of losing a booking history.
-  assert.match(panelSource, /Remove \$\{displayName\} from your roster\?/);
-  assert.match(panelSource, /Past bookings and chats won't be affected/);
+  // Planner-scoped read only. A global list here would reintroduce discovery
+  // through the back door.
+  assert.match(managerSource, /listRosterDjs\(\)/);
+  assert.doesNotMatch(managerSource, /listBookableDjs/);
 
-  // A failed delete keeps the row on screen; hiding it would report a change
-  // that did not happen.
-  assert.match(panelSource, /if \(!result\.ok\) \{[\s\S]{0,300}setRemoveError\(result\.message\)/);
-  const failureBlock = panelSource.slice(
-    panelSource.indexOf("if (!result.ok) {"),
-    panelSource.indexOf("setDjPendingRemoval(null);\n      await draft.reloadDjs();"),
+  // The permanent page guards by role: hiding an entry point is not access
+  // control, and /my-djs is reachable by URL.
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/my-djs/page.tsx", import.meta.url),
+    "utf8",
   );
-  assert.doesNotMatch(failureBlock, /reloadDjs/, "no refresh on failure");
+  assert.match(pageSource, /canManageEvents\(userRole\)/);
+  assert.match(pageSource, /router\.replace\(getDefaultRouteForRole\(userRole\)\)/);
+  assert.match(pageSource, /title="My DJs"/);
+  // Reached from Settings, so it must not present as a child of Events.
+  assert.match(pageSource, /href=\{SETTINGS_PATH\}/);
+  assert.doesNotMatch(pageSource, /EVENTS_AREA_SUB_NAV|← Events/);
 
-  // Roster mode only: with the flag off the row renders exactly as before.
-  assert.match(panelSource, /ROSTER_SCOPING_ENABLED[\s\S]{0,120}setDjPendingRemoval\(dj\)/);
+  // The Events header keeps only its primary action.
+  const eventsSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(eventsSource, /my-djs|ROSTER_SCOPING_ENABLED/);
+
+  // Settings is the entry point, planner-gated, above the account card.
+  const settingsSource = readFileSync(
+    new URL("../app/settings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(settingsSource, /canManageEvents\(role\)/);
+  assert.match(settingsSource, /setRole\(profile\?\.role \?\? null\)/, "role must actually be read, or the row never renders");
+  assert.match(settingsSource, /href="\/my-djs"/);
+  assert.match(settingsSource, /Manage the DJs you work with/);
+  assert.ok(
+    settingsSource.indexOf("Workspace") < settingsSource.indexOf(">\n                    Account"),
+    "workspace card sits above account admin",
+  );
+  assert.match(pageSource, /<PlannerDjRosterManager/);
 }
 
 /**
