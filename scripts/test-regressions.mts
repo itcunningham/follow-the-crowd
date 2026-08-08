@@ -14728,9 +14728,11 @@ function testEventDetailReturnsToCrewChat() {
   assert.doesNotMatch(detailSource, /max-w-\[10\.5rem\]/);
   assert.doesNotMatch(detailSource, /max-w-\[8\.5rem\]/);
   // Help is inside the chip wrapper, not a sibling outside it.
+  // The `}` after the backtick closes the JSX expression container — without it
+  // this could never match valid JSX, which is why it had gone unnoticed.
   assert.match(
     detailSource,
-    /HEADER_GROUP_CHAT_CHIP_CLASS\}`>\s*\{showStartCrewChatAction[\s\S]*?showCrewChatHelpUi \? \(\s*<InlineOptionHelpButton/,
+    /HEADER_GROUP_CHAT_CHIP_CLASS\}`\}>\s*\{showStartCrewChatAction[\s\S]*?showCrewChatHelpUi \? \(\s*<InlineOptionHelpButton/,
   );
 }
 
