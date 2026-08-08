@@ -65,7 +65,7 @@ case is moot for beta. Re-check once real testers have accumulated history.
 | Test planner account available | Passed | Critical | QA | |
 | Test DJ account available | Passed | Critical | QA | |
 | Test “both” role account (optional) | Passed | Medium | QA | |
-| QA transactional data reset procedure | Passed | High | Builder | `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md` + `scripts/resetQaEnvironment.sql` |
+| QA transactional data reset procedure | Passed | High | Builder | `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md` + `scripts/resetQaEnvironment.sql`. **The 2026-08-08 reset used an explicit four-id scope, not the script's detection rules** — `FTC QABot` and `Synergy` match none of them, so the script would have deleted almost nothing and reported success. Explicit-scope procedure is documented in the reset doc. |
 | Mobile test device / 390px emulator | Passed | High | QA | |
 | iPhone Safari physical smoke | Passed | High | QA | 7/7 passed |
 
