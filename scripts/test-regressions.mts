@@ -4921,7 +4921,8 @@ function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
   );
 
   clearWorkspaceGigsDisplaySession();
-  writeRuntimeGigsPendingCount("user-a", "dj", 0);
+  // Authoritative: a completed fetch reported zero.
+  writeRuntimeGigsPendingCount("user-a", "dj", 0, { authoritative: true });
   assert.equal(
     resolveWorkspaceGigsPendingDisplayCount({
       canViewGigs: true,
@@ -4955,6 +4956,66 @@ function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
     }),
     1,
     "stale runtime zero must not clear session display",
+  );
+}
+
+/**
+ * A runtime zero means two different things and the number cannot say which:
+ * "the server confirmed none" and "nothing has loaded yet, so this is the
+ * `?? 0` default". Treating both as authoritative hid real pending counts;
+ * treating neither as authoritative left cleared counts on screen. The runtime
+ * value now carries its provenance, and these three cases pin all of it.
+ */
+function testGigsPendingRuntimeZeroCarriesProvenance() {
+  // 1. An authoritative zero clears a stale cached count.
+  clearNavigationBadgeCache();
+  applyPersistedGigsPendingCount("user-a", "dj", 3);
+  assert.equal(getCachedGigsPendingCount("user-a", "dj"), 3, "persisted count should be visible");
+
+  writeRuntimeGigsPendingCount("user-a", "dj", 0, { authoritative: true });
+  assert.equal(
+    getCachedGigsPendingCount("user-a", "dj"),
+    0,
+    "a fetched zero must clear a stale cached count",
+  );
+
+  // 2. A provisional zero must not hide a valid persisted count.
+  clearNavigationBadgeCache();
+  applyPersistedGigsPendingCount("user-a", "dj", 3);
+  writeRuntimeGigsPendingCount("user-a", "dj", 0);
+  assert.equal(
+    getCachedGigsPendingCount("user-a", "dj"),
+    3,
+    "a provisional zero must not hide a persisted pending count",
+  );
+
+  // 3. Non-zero runtime counts still win, provenance regardless — this is the
+  //    path that lets the badge follow Incoming down from 3 to 1.
+  clearNavigationBadgeCache();
+  applyPersistedGigsPendingCount("user-a", "dj", 3);
+  writeRuntimeGigsPendingCount("user-a", "dj", 1);
+  assert.equal(
+    getCachedGigsPendingCount("user-a", "dj"),
+    1,
+    "a non-zero runtime count must win even when provisional",
+  );
+
+  writeRuntimeGigsPendingCount("user-a", "dj", 2, { authoritative: true });
+  assert.equal(
+    getCachedGigsPendingCount("user-a", "dj"),
+    2,
+    "a non-zero authoritative runtime count must win",
+  );
+
+  // Provenance must not survive a cache clear, or a logout would leave the next
+  // account's provisional zero looking confirmed.
+  clearNavigationBadgeCache();
+  applyPersistedGigsPendingCount("user-b", "dj", 4);
+  writeRuntimeGigsPendingCount("user-b", "dj", 0);
+  assert.equal(
+    getCachedGigsPendingCount("user-b", "dj"),
+    4,
+    "clearing the cache must reset provenance, not leave it authoritative",
   );
 }
 
@@ -17280,8 +17341,8 @@ async function main() {
   testGigsListTabPendingOptimisticSelection();
   testGigsFreshWorkspaceEntryOpensIncoming();
   testGigsFilterTabCountsPersistDuringLoading();
-  // TODO: Fix gigs pending count logic - test expects authoritative zero to override latched values
-  // testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
+  testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
+  testGigsPendingRuntimeZeroCarriesProvenance();
   testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero();
   testWorkspaceGigsCountFollowsIncomingDownwards();
   testGigsTabCountDisplayCap();
