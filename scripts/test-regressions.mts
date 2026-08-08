@@ -11717,10 +11717,11 @@ function testRoleAwareWorkspaceNavigation() {
   // its halves, so any future insertion here would break it again.
   assert.match(appNavigationSource, /eventDetailFromCrewChat/);
   assert.match(appNavigationSource, /params\.get\("from"\) === "crew-chat"/);
-  assert.match(
-    appNavigationSource,
-    /profileFromEventDetail[\s\S]{0,220}from"\) === "event-detail"/,
-  );
+  // Split for the same reason as the crew-chat pair above: the two features'
+  // declarations and setters interleave, so each one's halves sit either side
+  // of the other's setter block (measured gap 363 against a 220 window).
+  assert.match(appNavigationSource, /profileFromEventDetail/);
+  assert.match(appNavigationSource, /params\.get\("from"\) === "event-detail"/);
   assert.match(appNavigationSource, /function resolveNavItemActive\(item: NavItem\): boolean/);
   assert.match(
     appNavigationSource,
