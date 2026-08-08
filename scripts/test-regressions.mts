@@ -9590,9 +9590,15 @@ function testRunSheetInitialLoadIsNotDirty() {
     "utf8",
   );
 
-  // Structural half: the sync contract. Both success paths hand back one value
-  // used for both fields; only the catch builds them separately.
-  assert.match(sectionSource, /return \{ rows: unchanged, persistedRows: unchanged \}/);
+  // Structural half: the sync contract. Both fields on a success path come from
+  // the same source, so the baseline and the display cannot diverge; only the
+  // catch builds them separately. 7109f2d5 replaced the hoisted `unchanged`
+  // const with two calls to the same pure filter, which is equivalent here —
+  // hasUnsavedRunSheetEdits compares serialized values, not references.
+  assert.match(
+    sectionSource,
+    /\{ rows: currentFiltered\(\), persistedRows: currentFiltered\(\) \}/,
+  );
   assert.match(sectionSource, /return \{ rows: persisted, persistedRows: persisted \}/);
   assert.match(sectionSource, /persistedRows: currentFiltered\(\)/);
 
