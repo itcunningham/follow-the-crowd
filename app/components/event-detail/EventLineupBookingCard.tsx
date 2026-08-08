@@ -162,7 +162,7 @@ export default function EventLineupBookingCard({
 
           {readOnly ? (
             <BookingRateProposalNotice booking={booking} currentUserId={currentUserId} />
-          ) : pendingProposal && booking.sender_id === currentUserId ? (
+          ) : pendingProposal && booking.recipient_id !== currentUserId ? (
             <BookingRateProposalPanel
               booking={booking}
               currentUserId={currentUserId}
