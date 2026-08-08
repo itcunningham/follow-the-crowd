@@ -10411,10 +10411,15 @@ function testRunSheetDmNotifyOnSave() {
     new URL("../lib/eventRunSheet.ts", import.meta.url),
     "utf8",
   );
-  assert.match(runSheetLib, /type: "message"/);
+  // 6df737ae ("Remove runsheet update DM notifications, keep crew chat only")
+  // moved the channel from the booking DM to the event crew chat. Accepted DJs
+  // are crew participants — get_event_crew_participant_ids unions the event
+  // owner with every accepted booking's recipient_id — so they are still
+  // notified, through a different channel.
+  assert.match(runSheetLib, /notifyParticipants: true/);
   assert.match(runSheetLib, /booking\.recipient_id/);
   assert.doesNotMatch(runSheetLib, /postEventGroupChatUpdate/);
-  assert.doesNotMatch(runSheetLib, /sendEventCrewChatMessage/);
+  assert.match(runSheetLib, /sendEventCrewChatMessage/);
   assert.match(runSheetLib, /booking\.status !== "accepted"/);
   assert.match(runSheetLib, /Notes updated/);
   assert.match(runSheetLib, /Order updated/);
@@ -10461,9 +10466,11 @@ function testRunSheetEditMode() {
   const trySection = saveFn.slice(saveFn.indexOf("try {"), saveFn.indexOf("} catch"));
   assert.match(trySection, /setIsEditing\(false\)/);
   assert.match(trySection, /setExpandedRowIds\(new Set\(\)\)/);
-  // Diff before save; soft DM notify after persist — only changed DJs, never crew chat.
+  // Diff before save; soft notify after persist. The channel became the event
+  // crew chat in 6df737ae, so this asserts the crew-chat notify, not the
+  // removed DM one — the diff itself is unchanged and still drives it.
   assert.match(saveFn, /collectRunSheetBookingChanges\(savedRows, nextRows\)/);
-  assert.match(trySection, /notifyRunSheetUpdatesForChangedBookings/);
+  assert.match(trySection, /notifyCrewChatOfRunSheetUpdate/);
   assert.match(trySection, /changes: runSheetChanges/);
   assert.doesNotMatch(saveFn, /postEventGroupChatUpdate/);
   assert.doesNotMatch(saveFn, /sendEventCrewChatMessage/);
