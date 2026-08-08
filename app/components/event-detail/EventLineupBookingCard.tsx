@@ -3,6 +3,7 @@
 import Link from "next/link";
 import BookingRateProposalPanel, {
   BookingRateProposalNotice,
+  BookingProposalCardAmount,
 } from "@/app/components/booking/BookingRateProposalPanel";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
@@ -161,7 +162,7 @@ export default function EventLineupBookingCard({
 
           {readOnly ? (
             <BookingRateProposalNotice booking={booking} currentUserId={currentUserId} />
-          ) : (
+          ) : pendingProposal && booking.sender_id === currentUserId ? (
             <BookingRateProposalPanel
               booking={booking}
               currentUserId={currentUserId}
@@ -169,7 +170,9 @@ export default function EventLineupBookingCard({
               onAcceptProposal={onAcceptProposal}
               onKeepOriginalOffer={onKeepOriginalOffer}
             />
-          )}
+          ) : pendingProposal ? (
+            <BookingProposalCardAmount value={booking.proposed_rate} />
+          ) : null}
         </div>
       </div>
 
