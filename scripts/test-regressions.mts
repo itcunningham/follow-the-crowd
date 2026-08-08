@@ -12049,10 +12049,10 @@ function testBookingRateModeDescriptionsAreUnified() {
     eventDetailSource,
     /<InlineOptionHelpPanel label=\{CREW_CHAT_HELP\.label\} help=\{CREW_CHAT_HELP\.help\} \/>/,
   );
-  assert.match(
-    eventDetailSource,
-    /label: "Start group chat"/,
-  );
+  // d2c0e521 renamed the remaining "group chat" UI references to "crew chat".
+  // The control is unchanged: same handler, same disabled guard, same pending
+  // state — only the wording moved.
+  assert.match(eventDetailSource, /label: "Start crew chat"/);
   assert.match(
     eventDetailSource,
     /help: "Start now with 1 accepted DJ or wait\. It opens automatically when a 2nd DJ accepts"/,
