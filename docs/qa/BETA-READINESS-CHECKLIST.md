@@ -51,6 +51,48 @@ case is moot for beta. Re-check once real testers have accumulated history.
 
 ---
 
+## Private planner→DJ roster — live isolation test, 2026-08-08
+
+**Observed with two real planner accounts on a flag-on build, not reasoned about.**
+Run against a local dev server on the LAN from an iPhone, pointed at the
+production Supabase database, with `ROSTER_SCOPING_ENABLED = true` **uncommitted**
+so production was never affected.
+
+| Check | Result |
+|-------|--------|
+| Planner 1 sees only Planner 1's roster | Passed |
+| Planner 2 does not inherit Planner 1's DJ | Passed — the property the feature exists for |
+| Manual add by exact `@username` | Passed |
+| No global fallback leaking unrelated DJs | Passed |
+| Historical backfill behaves as expected | Passed |
+
+**Why this could not be established statically.** RLS restricts
+`planner_dj_roster` to `planner_id = auth_user_id()`, and the client filters the
+same way — but both are assertions about intent. Only two signed-in accounts
+prove that planner B's session genuinely cannot see planner A's rows.
+
+**A real bug was found by running it.** The migration created the table and three
+policies but granted no table privileges, so `authenticated` could not reach it
+at all — every read and write failed with `42501 permission denied for table`.
+RLS narrows access; it never grants it, and Postgres checks the privilege first.
+
+Two things made it look like something else:
+
+* the roster **empty state rendered correctly**, because `listRosterDjs()` threw
+  and the caller caught the error and set an empty list — a failure wearing the
+  costume of a working feature;
+* the post-migration verification **passed 19/19**, because it checked policies,
+  RLS and row integrity but never that any role could reach the table.
+
+`scripts/verifyPlannerDjRoster.sql` now asserts `has_table_privilege` for
+SELECT/INSERT/DELETE, that UPDATE is absent, and that `anon` holds nothing — 24
+rows instead of 19. A regression test pins the `grant` line in the migration.
+
+**Standing lesson:** a check that cannot fail for the most basic possible reason
+is not a check. Verify reachability before verifying correctness.
+
+---
+
 ## Environment readiness
 
 | Item | Status | Severity if failed | Owner | Notes |

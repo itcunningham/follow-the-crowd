@@ -49,6 +49,24 @@ create index if not exists planner_dj_roster_planner_idx
   on public.planner_dj_roster (planner_id);
 
 -- ---------------------------------------------------------------------------
+-- Table privileges
+-- ---------------------------------------------------------------------------
+-- RLS narrows what a role may reach; it grants nothing. Postgres checks the
+-- table privilege FIRST, so without this the policies below are never even
+-- evaluated and every read and write fails with 42501 "permission denied for
+-- table" — which is why omitting this looked like an RLS bug rather than a
+-- missing grant.
+--
+-- This project does not rely on Supabase's default privileges: `anon` holds no
+-- SELECT on messages, conversations or booking_plans, so a new table starts
+-- with nothing. Every other setup script grants explicitly for the same reason.
+--
+-- authenticated only, and no UPDATE: there is no update policy, and granting a
+-- privilege no policy admits is surface for nothing.
+
+grant select, insert, delete on table public.planner_dj_roster to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- RLS — planner-only, three policies
 -- ---------------------------------------------------------------------------
 -- Dropped and re-created here so THIS file is the single owner of these policy

@@ -17630,6 +17630,7 @@ async function main() {
   testPlannerRosterIsolatesPlannersAndExcludesUnbookableDjs();
   testPlannerRosterAddIsExactAndNonEnumerating();
   testPlannerRosterAutoAddCannotBreakABooking();
+  testPlannerRosterMigrationGrantsTablePrivileges();
   console.log("All regression checks passed.");
 }
 
@@ -17782,6 +17783,54 @@ function testPlannerRosterAddIsExactAndNonEnumerating() {
   assert.doesNotMatch(addFn, /not a DJ|is a promoter|already exists/i);
 
   assert.match(addFn, /djId === plannerId/, "self-add is refused client-side too");
+}
+
+/**
+ * The migration must grant table privileges, not just create policies.
+ *
+ * This exists because it was missed. RLS narrows access; it grants nothing, and
+ * Postgres checks the table privilege first — so a table with perfect policies
+ * and no GRANT is completely unreachable, failing every read and write with
+ * 42501. It shipped that way, the post-migration verification passed 19/19
+ * because it only inspected policies, and the bug surfaced as a live add
+ * failure with an empty state that looked correct because the roster read was
+ * throwing and being swallowed.
+ */
+function testPlannerRosterMigrationGrantsTablePrivileges() {
+  const migrationSource = readFileSync(
+    new URL("../scripts/setupPlannerDjRoster.sql", import.meta.url),
+    "utf8",
+  );
+  const executable = migrationSource
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n");
+
+  assert.match(
+    executable,
+    /grant select, insert, delete on table public\.planner_dj_roster to authenticated;/,
+    "without this the three policies are never reached",
+  );
+
+  // Only what the policies admit. There is no update policy, and every policy
+  // is `to authenticated`, so granting either would be privilege with no
+  // matching rule behind it.
+  assert.doesNotMatch(executable, /grant[^;]*update[^;]*planner_dj_roster/i);
+  assert.doesNotMatch(executable, /grant[^;]*planner_dj_roster[^;]*anon/i);
+
+  // The verification query must check reachability, not just policy shape.
+  const verifySource = readFileSync(
+    new URL("../scripts/verifyPlannerDjRoster.sql", import.meta.url),
+    "utf8",
+  );
+  for (const privilege of ["SELECT", "INSERT", "DELETE"]) {
+    assert.ok(
+      verifySource.includes(
+        `has_table_privilege('authenticated', 'public.planner_dj_roster', '${privilege}')`,
+      ),
+      `verification must prove authenticated can ${privilege}`,
+    );
+  }
 }
 
 /**
