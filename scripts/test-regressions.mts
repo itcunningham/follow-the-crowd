@@ -17635,18 +17635,22 @@ async function main() {
 }
 
 /**
- * The roster ships dark. Until the flag flips, every planner still sees every
- * DJ, so a mistake anywhere in the roster code is invisible to users and the
- * rollback is one line rather than a migration. This test is what protects that
- * property — it is the reason the feature can be merged before it is trusted.
+ * Roster scoping is ON as of the flip commit. It shipped dark first and was
+ * enabled only after a live two-planner isolation test — planner 2 did not
+ * inherit planner 1's DJ — and after the stranding gate confirmed no active
+ * planner would be left with an empty roster.
+ *
+ * The fallback assertions below still matter and are unchanged: `listBookableDjs`
+ * must remain the other arm of every call site, so switching back is still one
+ * line rather than a revert.
  */
 async function testPlannerRosterShipsDisabledAndKeepsTheFallback() {
   const { ROSTER_SCOPING_ENABLED } = await import("../lib/plannerDjRoster");
 
   assert.equal(
     ROSTER_SCOPING_ENABLED,
-    false,
-    "roster scoping must ship off; flipping it is its own reviewed commit",
+    true,
+    "roster scoping is enabled; turning it off is its own reviewed commit",
   );
 
   const rosterSource = readFileSync(
@@ -17654,7 +17658,7 @@ async function testPlannerRosterShipsDisabledAndKeepsTheFallback() {
     "utf8",
   );
   // A constant, not an env var: the switch has to be greppable in the diff.
-  assert.match(rosterSource, /export const ROSTER_SCOPING_ENABLED = false;/);
+  assert.match(rosterSource, /export const ROSTER_SCOPING_ENABLED = true;/);
   assert.doesNotMatch(
     rosterSource,
     /process\.env[^\n]*ROSTER/,

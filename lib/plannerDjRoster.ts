@@ -6,16 +6,20 @@ import { supabase } from "@/lib/supabaseClient";
  * A code constant rather than an env var on purpose: flipping it is a reviewed
  * commit with a diff, not a dashboard toggle nobody can point at afterwards.
  *
- * While this is false, `listBookableDjs()` remains the only behaviour anyone
- * sees and every DJ still shows — so the roster can be built, backfilled and
- * populated with zero user-visible change, and the rollback for anything wrong
- * is one line rather than a migration.
+ * Enabled 2026-08-08. It shipped `false` first so the table, backfill and
+ * add flow could land with zero user-visible change, and was flipped only after
+ * a live two-planner test confirmed the isolation actually holds — planner 2
+ * did not inherit planner 1's DJ — and after the stranding gate showed no
+ * active planner would be left unable to book anyone.
  *
- * Do not flip until every active planner has a non-empty roster. The gate query
- * is row 30 of scripts/… post-migration verification: eligible planners owning
- * an event but holding no roster rows must be zero.
+ * `listBookableDjs()` is still the other arm of every call site, so reverting
+ * to global discovery is this one line, not a revert of the feature.
+ *
+ * Before turning it on again after any bulk data change, re-run
+ * `scripts/verifyPlannerDjRoster.sql` and confirm row 30: eligible planners
+ * owning an event but holding no roster rows must be zero.
  */
-export const ROSTER_SCOPING_ENABLED = false;
+export const ROSTER_SCOPING_ENABLED = true;
 
 /**
  * Deliberately identical for "no such username" and "that username is not a

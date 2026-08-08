@@ -5,14 +5,17 @@
 -- Running it BEFORE the migration will error on the missing table - that is
 -- itself a correct answer, not a fault in the query.
 --
--- Baseline comes from the pre-flight: 1 relationship, 1 planner, 1 DJ.
+-- Checks invariants, not a point-in-time snapshot. It stays correct as the
+-- roster grows: rows are added by the backfill, by add-by-username, and by
+-- sending a booking. A check that fails because the feature was used is not
+-- protecting anything.
+--
 -- EVERY ROW MUST SHOW pass = true.
 --
 -- The account-deletion check reads pg_get_functiondef only. The function is
 -- NEVER called - calling it would delete an account.
 
-with expected as (select 1::bigint as rows, 1::bigint as planners, 1::bigint as djs),
-fn as (
+with fn as (
   select coalesce(
     (select pg_get_functiondef(p.oid)
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -91,21 +94,41 @@ union all select 92, 'anon holds NO privilege at all', 'false',
     or has_table_privilege('anon', 'public.planner_dj_roster', 'INSERT')
     or has_table_privilege('anon', 'public.planner_dj_roster', 'DELETE'))
 
-union all select 10, 'backfill rows inserted', (select rows::text from expected),
+-- Invariants, not the original 1/1/1 snapshot. Those fixed counts were correct
+-- for the hour after the migration and wrong forever afterwards: the roster is
+-- meant to grow, so pinning them turned "the feature was used" into a failing
+-- check. Growth is verified by shape; safety is verified by the integrity rows
+-- below and by the stranding gate at ord 30, which are the checks that can
+-- actually catch a defect.
+union all select 10, 'backfill ran at least once', '>= 1',
   (select count(*)::text from public.planner_dj_roster where source='backfill'),
-  (select count(*) from public.planner_dj_roster where source='backfill') = (select rows from expected)
+  (select count(*) from public.planner_dj_roster where source='backfill') >= 1
 
-union all select 11, 'total roster rows', (select rows::text from expected),
-  (select count(*)::text from public.planner_dj_roster),
-  (select count(*) from public.planner_dj_roster) = (select rows from expected)
+union all select 11, 'total rows >= backfill rows', 'true',
+  (select count(*)::text from public.planner_dj_roster)
+    || ' total, '
+    || (select count(*)::text from public.planner_dj_roster where source='backfill')
+    || ' backfill',
+  (select count(*) from public.planner_dj_roster)
+    >= (select count(*) from public.planner_dj_roster where source='backfill')
 
-union all select 12, 'distinct planners with roster entries', (select planners::text from expected),
+union all select 12, 'distinct planners with roster entries', '>= 1',
   (select count(distinct planner_id)::text from public.planner_dj_roster),
-  (select count(distinct planner_id) from public.planner_dj_roster) = (select planners from expected)
+  (select count(distinct planner_id) from public.planner_dj_roster) >= 1
 
-union all select 13, 'distinct DJs on a roster', (select djs::text from expected),
+union all select 13, 'distinct DJs on a roster', '>= 1',
   (select count(distinct dj_id)::text from public.planner_dj_roster),
-  (select count(distinct dj_id) from public.planner_dj_roster) = (select djs from expected)
+  (select count(distinct dj_id) from public.planner_dj_roster) >= 1
+
+-- Every row carries a source the migration or the app could have written. A row
+-- with an unexpected source means something wrote to this table that should not
+-- have; the check constraint should already prevent it, so this proves the
+-- constraint is real rather than merely declared.
+union all select 14, 'every row has a known source', 'true',
+  (select coalesce(string_agg(distinct source, ', ' order by source), '(no rows)')
+     from public.planner_dj_roster),
+  (select count(*) from public.planner_dj_roster
+     where source not in ('manual','booking','backfill')) = 0
 
 -- Integrity. The primary key and check constraints should make these impossible;
 -- verifying them proves the constraints were actually created, not just written.
