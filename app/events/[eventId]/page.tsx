@@ -38,6 +38,7 @@ import {
 import EventLineupBookingCard from "@/app/components/event-detail/EventLineupBookingCard";
 import { EventDetailBookingCancellationDetails } from "@/app/components/event-detail/EventDetailBookingCancellationDetails";
 import DeclineConfirmButton from "@/app/components/booking/DeclineConfirmButton";
+import { BookingRateProposalNotice } from "@/app/components/booking/BookingRateProposalPanel";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { EventDetailLoadingShell, EventDetailPlannerLowerSectionsSkeleton } from "@/app/components/skeleton/Skeleton";
@@ -89,7 +90,9 @@ import CancelAcceptedBookingButton from "@/app/components/booking/CancelAccepted
 import {
   cancelBookingRequest,
   cancelAcceptedBookingRequest,
+  canRecipientRespondToPendingBooking,
   getAcceptedBookingCancellationRole,
+  hasPendingRateProposal,
   resolveBookingCancellationReasonLabel,
   resolveBookingCancelledByLabel,
   acceptProposedBookingRate,
@@ -1672,7 +1675,9 @@ function EventDetailPageView() {
                           {viewerBooking.status !== "pending" ? (
                             <BookingStatusBadge status={viewerBooking.status} variant="compact" />
                           ) : null}
-                          {viewerBooking.fee && viewerBooking.status !== "cancelled" ? (
+                          {viewerBooking.fee &&
+                          viewerBooking.status !== "cancelled" &&
+                          !hasPendingRateProposal(viewerBooking) ? (
                             <p className={`${viewerBooking.status !== "pending" ? "mt-2" : ""} text-sm text-ftc-text-secondary`}>
                               {formatRateDisplay(viewerBooking.fee)}
                             </p>
@@ -1687,7 +1692,7 @@ function EventDetailPageView() {
                           ) : null}
                         </div>
                         <div className="flex gap-2">
-                          {viewerBooking.status === "pending" ? (
+                          {canRecipientRespondToPendingBooking(viewerBooking, currentUserId) ? (
                             <>
                               <DeclineConfirmButton
                                 onConfirm={() => handleRespondToPendingBooking(viewerBooking, "declined")}
@@ -1716,6 +1721,12 @@ function EventDetailPageView() {
                           ) : null}
                         </div>
                       </div>
+                      {hasPendingRateProposal(viewerBooking) ? (
+                        <BookingRateProposalNotice
+                          booking={viewerBooking}
+                          currentUserId={currentUserId}
+                        />
+                      ) : null}
                     </section>
                   ) : null}
 

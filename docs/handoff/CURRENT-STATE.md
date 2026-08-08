@@ -1,4 +1,12 @@
-# Current state (last updated: 2026-08-07)
+# Current state (last updated: 2026-08-08)
+
+## DJ rate proposal: no Accept/Decline on DJ surfaces
+
+**Bug:** After DJ submitted a counter-proposal (`proposed_rate` pending), Event Details **Your booking** still showed Accept/Decline (gated only on `status === "pending"`). Wrong surface for the prior EventLineupBookingCard attempt — DJ wasn’t looking at lineup cards.
+
+**Fix:** `canRecipientRespondToPendingBooking` returns false while a rate proposal is pending; Your booking uses that helper + `BookingRateProposalNotice`; DM card no longer keeps a Decline-only row after propose.
+
+---
 
 ## Event cancel badges: DM yes, Crew Chats no
 

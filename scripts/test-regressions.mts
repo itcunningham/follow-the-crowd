@@ -59,6 +59,7 @@ import {
 import type { BookingRequest } from "../lib/bookingRequests";
 import {
   buildBookingSendResultMessage,
+  canRecipientRespondToPendingBooking,
   filterActiveBookings,
   filterDjGigsByTab,
   filterHistoryCancelledBookings,
@@ -2191,6 +2192,50 @@ function testDjYourBookingMessageLabelAndWithdrawPlacement() {
   assert.doesNotMatch(yourBookingBlock, /Open DM/);
   assert.doesNotMatch(yourBookingBlock, /Withdraw from event/);
   assert.doesNotMatch(yourBookingBlock, /Withdraw booking/);
+
+  // After the DJ proposes a rate, Accept/Decline must leave the DJ surface.
+  // Prior bug: Your booking gated on status === "pending" only (ignored proposal).
+  assert.match(yourBookingBlock, /canRecipientRespondToPendingBooking\(viewerBooking, currentUserId\)/);
+  assert.match(yourBookingBlock, /BookingRateProposalNotice/);
+  assert.doesNotMatch(
+    yourBookingBlock,
+    /viewerBooking\.status === "pending" \? \(\s*<>\s*<DeclineConfirmButton/,
+  );
+
+  const dj = "dj-user";
+  const planner = "planner-user";
+  const pendingWithProposal = {
+    id: "booking-1",
+    status: "pending",
+    recipient_id: dj,
+    sender_id: planner,
+    proposed_rate: 250,
+    proposed_rate_status: "pending",
+    rate_mode: "open",
+  } as BookingRequest;
+  const pendingWithoutProposal = {
+    id: "booking-2",
+    status: "pending",
+    recipient_id: dj,
+    sender_id: planner,
+    proposed_rate: null,
+    proposed_rate_status: null,
+    rate_mode: "open",
+  } as BookingRequest;
+
+  assert.equal(canRecipientRespondToPendingBooking(pendingWithProposal, dj), false);
+  assert.equal(canRecipientRespondToPendingBooking(pendingWithoutProposal, dj), true);
+  assert.equal(canRecipientRespondToPendingBooking(pendingWithoutProposal, planner), false);
+
+  const bookingCardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+  // No leftover Decline-only row for the DJ after they proposed.
+  assert.doesNotMatch(
+    bookingCardSource,
+    /pendingProposal &&\s*booking\.recipient_id === currentUserId/,
+  );
 }
 
 function testProfileChatBackNavigation() {
