@@ -17634,6 +17634,7 @@ async function main() {
   testEventPickerIsSelectionOnly();
   testMyDjsRosterManager();
   testProfileProjectionOmitsPrivateFields();
+  testNoAuthenticatedPrefetchWithoutASession();
   testPlannerRosterMigrationGrantsTablePrivileges();
   console.log("All regression checks passed.");
 }
@@ -18101,6 +18102,81 @@ function testProfileProjectionOmitsPrivateFields() {
   );
   assert.match(formUtils, /dj_booking_contact_name: profile\.dj_booking_contact_name\?\.trim\(\) \?\? ""/);
   assert.match(source, /dj_booking_contact_name: input\.dj_booking_contact_name\.trim\(\)/);
+}
+
+
+
+/**
+ * Authenticated prefetches must not fire without a real session.
+ *
+ * They warmed badges from a cached role alone, so after a sign-out — or for an
+ * account deleted server-side, which cannot reach a device's storage — the role
+ * survived on the device and drove queries that reached PostgREST as `anon`.
+ * booking_requests correctly refused with 42501, and three prefetches each
+ * logged it, so one mistake looked like a page of errors.
+ *
+ * The fix is to stop asking. Granting `anon` the table would silence the console
+ * by making private booking data readable without authentication, which is the
+ * opposite of a fix.
+ */
+function testNoAuthenticatedPrefetchWithoutASession() {
+  const guard = readFileSync(
+    new URL("../app/components/OnboardingGuard.tsx", import.meta.url),
+    "utf8",
+  );
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  const guardCode = stripComments(guard);
+
+  // The module-scope block reads a session first, and the cached navigation is
+  // only consulted when one exists.
+  assert.match(guardCode, /const sessionUserIdOnLoad = readSupabaseSessionUserIdSync\(\);/);
+  assert.match(
+    guardCode,
+    /const cachedNavigationOnLoad = sessionUserIdOnLoad\s*\?\s*readCachedNavigation\(\)\s*:\s*\{ role: null, userId: null \}/,
+  );
+
+  // Prefetches take the live session id, never a cached one that may belong to
+  // a previously signed-in or deleted account.
+  assert.match(guardCode, /ensureNavMessagesPrefetched\(\s*sessionUserIdOnLoad,/);
+  assert.match(guardCode, /ensureNavigationBadgesPrefetched\(\s*sessionUserIdOnLoad,/);
+  assert.doesNotMatch(guardCode, /Prefetched\(\s*cachedNavigationOnLoad\.userId/);
+
+  // Cached navigation state is discarded, not merely ignored, without a session.
+  const cache = readFileSync(
+    new URL("../lib/navigationRoleCache.ts", import.meta.url),
+    "utf8",
+  );
+  const cacheCode = stripComments(cache);
+  assert.match(cacheCode, /function discardCacheWithoutSession\(\): boolean/);
+  assert.match(cacheCode, /if \(readSupabaseSessionUserIdSync\(\)\) \{\s*return false;/);
+  assert.match(cacheCode, /clearCachedNavigation\(\);/);
+
+  // Both readers go through it.
+  assert.match(
+    cacheCode,
+    /export function readCachedNavRole[\s\S]{0,240}discardCacheWithoutSession\(\)/,
+  );
+  assert.match(
+    cacheCode,
+    /export function readCachedNavigation[\s\S]{0,200}discardCacheWithoutSession\(\)/,
+  );
+
+  // A stale cached id must never win over the live session id.
+  assert.match(cacheCode, /cachedUserId !== liveUserId/);
+  assert.match(cacheCode, /const userId = liveUserId \?\? cachedUserId;/);
+  assert.doesNotMatch(cacheCode, /const userId = sessionUserId \?\? readSupabaseSessionUserIdSync\(\)/);
+
+  // Nothing here may be "fixed" by widening database access.
+  const rls = readFileSync(
+    new URL("../scripts/setupProductionRls.sql", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    rls.split("\n").filter((line) => !line.trim().startsWith("--")).join("\n"),
+    /grant[^;]*booking_requests[^;]*anon/i,
+    "booking_requests must never be granted to anon",
+  );
 }
 
 main().catch((error) => {
