@@ -59,7 +59,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 
 **Do not mark passed until run against production Supabase.**
 
-1. Run `scripts/supabaseSecurityAuditChecklist.sql` — all rows must pass (check #12: no `public`/`anon` write on core tables; check #16: crew auto-start auth).
+1. Run `scripts/supabaseSecurityAuditChecklist.sql` — all rows must pass (check #12: no `public`/`anon` write on core tables; check #16: crew auto-start auth), then `scripts/supabaseSecurityAuditChecklistSupplement.sql`. The supplement covers what the main checklist cannot: check #12 inspects INSERT/UPDATE/DELETE only, never SELECT, and does not look at `public.users` at all — so a surviving anon **read** on messages or users passes the main checklist. It also confirms RLS is actually enabled rather than merely policied (policies on a table with RLS off are inert and still look correct in the dashboard), and reports the `message_reads` one-ID constraint and policies. Both files are read-only.
 2. Confirm hardened RLS and crew-chat policies present; no legacy `using (true)` or `allow public insert messages` on core tables.
 3. Apply pending migrations: `20250715180000_harden_crew_chat_auto_start_auth.sql`, `20250715213000_remove_legacy_public_message_insert.sql`.
 3. Review Supabase Auth: email confirmation, password policy, rate limits.
@@ -77,6 +77,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 
 - Cursor app may need `notify pgrst, 'reload schema';` (included in migrations/scripts)
 - Re-test the feature in the app
+- **Rerun the security audit before shipping** — both files, every time SQL is applied by hand. Scripts are applied in an order nobody records, so running an older one after a newer one silently reinstates what it creates (`setupProductionRls.sql` re-creates `messages_select_event_authenticated`; `setupEventCrewChat.sql` exists to drop it). Permissive policies are OR'd together, so one stale broad policy defeats every tighter policy beside it, with no error and no log line. A passing audit describes the database at that moment, not a property it keeps.
 
 ## When Isaac asks for SQL
 
