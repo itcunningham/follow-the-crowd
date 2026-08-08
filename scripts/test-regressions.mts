@@ -8855,8 +8855,11 @@ function testDmInboxSearchEmptyStateCopy() {
   // in bookings/page.tsx).
   assert.match(inboxPageSource, />\s*No conversations match your search\s*</);
   assert.doesNotMatch(inboxPageSource, /No conversations match your search\./);
-  assert.match(inboxPageSource, />\s*No group chats match your search\s*</);
-  assert.doesNotMatch(inboxPageSource, /No group chats match your search\./);
+  // "group chats" became "crew chats" in 6091dcf2; the negative assertion below
+  // was passing vacuously against the old wording, so the no-trailing-full-stop
+  // convention was unenforced for this string until now.
+  assert.match(inboxPageSource, />\s*No crew chats match your search\s*</);
+  assert.doesNotMatch(inboxPageSource, /No crew chats match your search\./);
 }
 
 type TestInboxMessage = {
