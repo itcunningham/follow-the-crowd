@@ -483,7 +483,10 @@ function testOneAcceptedDjWithNullStartShowsStartAction() {
 
   assert.equal(actions.showStartCrewChatAction, true);
   assert.equal(actions.showEventGroupChatAction, false);
-  assert.equal(actions.crewChatHelpActionLabel, "Start group chat");
+  // Must match the button it sits beside in the event header, which reads
+  // "Start crew chat". This assertion held the last "group chat" string in the
+  // product, so it is the one that has to move for the rename to be possible.
+  assert.equal(actions.crewChatHelpActionLabel, "Start crew chat");
   assert.equal(actions.showCrewChatHelpUi, true);
 }
 
