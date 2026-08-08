@@ -13223,17 +13223,26 @@ function testEventUpdateMessagePresentation() {
     "the system card must not reuse the outgoing bubble fill or add shadows",
   );
 
-  assert.match(bubbleSource, /const systemAuthored = isEventUpdate;/);
+  // d1e14cf0 gave run-sheet updates the same system-card treatment when they
+  // moved from the booking DM into crew chat, so both kinds suppress the human
+  // sender name and avatar rather than only event updates.
+  assert.match(bubbleSource, /const systemAuthored = isEventUpdate \|\| isRunSheetUpdate;/);
   assert.match(bubbleSource, /systemAuthored\s*\n?\s*\?\s*resolveChatSystemCardShellClass\(\)/);
   assert.match(
     bubbleSource,
     /isOwnMessage=\{systemAuthored \? false : isOwnMessage\}/,
     "reaction pill and picker must anchor left, where the card actually sits",
   );
+  // 97d6c848 ("Refine runsheet update styling and center horizontally in crew
+  // chat") centred the system-card column, widening it to max-w-[90%] to suit.
+  // This deliberately reverses the earlier left-aligned requirement recorded in
+  // CURRENT-STATE: now that event updates and run-sheet updates share one
+  // system treatment, centring is what separates system activity from
+  // person-to-person chat.
   assert.match(
     bubbleSource,
-    /if \(systemAuthored\) \{[\s\S]{0,1200}items-start/,
-    "system notices render in their own left-aligned branch",
+    /if \(systemAuthored\) \{[\s\S]{0,1200}items-center/,
+    "system notices render in their own centred branch",
   );
   // That branch must precede the own/incoming split, or a planner's own
   // update would still take the right-aligned outgoing path.
