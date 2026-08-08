@@ -209,7 +209,7 @@ function RemoveDjFromRosterDialog({
       open
       title={`Remove ${displayName} from your roster?`}
       titleId="remove-dj-from-roster-title"
-      description={`${displayName} will no longer appear in Invite DJs. Past bookings and chats won't be affected.`}
+      description={`${displayName} will no longer appear in Invite DJs. Past bookings and chats won't be affected`}
       loading={loading}
       overlayClassName="z-[70]"
       onBackdropClick={onCancel}
