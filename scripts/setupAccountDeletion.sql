@@ -249,6 +249,22 @@ begin
     promoter_venues_used = '',
     promoter_upcoming_events = '',
     promoter_past_events = '',
+    -- These seven survived anonymisation until now. app/privacy/page.tsx tells
+    -- users their name, images, links and other profile details are cleared,
+    -- and artist_name is a name while tiktok_url and website_url are links, so
+    -- the policy described something the function did not do.
+    -- dj_booking_contact_name and full_name matter most: they are the fields
+    -- treated as private, and leaving them on an anonymised row meant the one
+    -- category of data a deleted user most expects to be gone was not.
+    -- username is still deliberately kept - it carries a unique index, and
+    -- clearing it would collide the moment a second account is deleted.
+    full_name = '',
+    dj_booking_contact_name = '',
+    artist_name = '',
+    tiktok_url = '',
+    website_url = '',
+    promoter_brand_name = '',
+    promoter_brand_description = '',
     role = null,
     onboarding_complete = false,
     deleted_at = now()

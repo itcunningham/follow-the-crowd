@@ -8006,6 +8006,70 @@ function testDmImageGroupFullViewerAndOwnershipAlignment() {
 }
 
 /**
+ * Account deletion must clear every profile column it claims to.
+ *
+ * app/privacy/page.tsx tells users their name, images, links and other profile
+ * details are cleared. Seven columns survived anonymisation - including both
+ * fields the app treats as private - so the policy described something the
+ * function did not do. Asserted against the column list rather than a fixed
+ * set, so a new profile column added later fails here until someone decides
+ * whether deletion should clear it.
+ */
+function testAccountDeletionClearsEveryProfileColumn() {
+  const deletionSql = readFileSync(
+    new URL("../scripts/setupAccountDeletion.sql", import.meta.url),
+    "utf8",
+  );
+  const anonymiseBlock = deletionSql.slice(
+    deletionSql.indexOf("update public.users"),
+    deletionSql.indexOf("where user_id = v_user_id;", deletionSql.indexOf("update public.users")),
+  );
+
+  const currentUserSource = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  const profileColumns = currentUserSource
+    .slice(
+      currentUserSource.indexOf('const PROFILE_FIELDS =\n  "') + 26,
+      currentUserSource.indexOf('";', currentUserSource.indexOf("const PROFILE_FIELDS =")),
+    )
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => /^[a-z_]+$/.test(entry));
+
+  // Structural columns, not profile content.
+  const notProfileContent = new Set(["user_id", "role", "onboarding_complete"]);
+  // username carries a unique index; clearing it collides on the second
+  // deletion. Deliberately retained - see the comment in the SQL.
+  const deliberatelyKept = new Set(["username"]);
+
+  for (const column of profileColumns) {
+    if (notProfileContent.has(column) || deliberatelyKept.has(column)) {
+      continue;
+    }
+
+    assert.match(
+      anonymiseBlock,
+      new RegExp(`\\b${column}\\s*=`),
+      `delete_account_data() must clear ${column} - Privacy says profile details are cleared`,
+    );
+  }
+
+  // The two private fields specifically, since they are the ones a deleted user
+  // most expects to be gone.
+  assert.match(anonymiseBlock, /\bfull_name\s*=/);
+  assert.match(anonymiseBlock, /\bdj_booking_contact_name\s*=/);
+
+  // username must NOT be cleared - the unique index makes it a collision.
+  assert.doesNotMatch(
+    anonymiseBlock,
+    /\busername\s*=/,
+    "username is unique-indexed and must stay retained",
+  );
+}
+
+/**
  * P1: private profile fields are denied by table privilege, not by projection.
  *
  * RLS has no column granularity, so PROFILE_FIELDS only narrows ordinary
@@ -17782,6 +17846,7 @@ async function main() {
   testDmAttachmentsRenderOnlySignedUrls();
   testToStorageObjectPathResolvesStoredUrls();
   testPrivateProfileFieldsAreDatabaseEnforced();
+  testAccountDeletionClearsEveryProfileColumn();
   testDmImageGalleryOverviewForLargeGroups();
   testDmMediaViewerCloseButtonConsistentAndClickable();
   testDmImageLightboxUsesPagedTrackNotFloatingCard();
