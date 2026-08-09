@@ -69,6 +69,9 @@ export default function ForgotPasswordPage() {
             <p className="text-sm text-ftc-text-muted">
               Check your inbox and follow the link to choose a new password
             </p>
+            <p className="text-sm text-ftc-text-muted">
+              If you don&rsquo;t see it, check your spam folder
+            </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
