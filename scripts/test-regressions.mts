@@ -8231,46 +8231,35 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
   const ownsProfileAssert = currentUserSource.indexOf("OWN_PROFILE_FIELDS");
   assert.ok(ownsProfileAssert >= 0, "OWN_PROFILE_FIELDS must be defined");
 
-  // --- Two-query read path with transitional fallback -----
-  // During PHASE 2-7 (transitional): reads both tables, uses fallback if no private row
-  // During PHASE 8+ (final): reads both tables, no fallback
-  //
+  // --- Two-query read path (final phase, no fallback) -----
   // The owner's profile is fetched with two queries:
-  // 1. Public fields (+ dj_booking_contact_name temporarily) from my_profile
-  // 2. Private contact from user_private_data
+  // 1. Public fields from my_profile (does NOT include dj_booking_contact_name)
+  // 2. Private contact from user_private_data (authoritative source)
   assert.match(
     currentUserSource,
     /const OWN_PROFILE_SOURCE = "my_profile";/,
     "owner profile comes from my_profile",
   );
 
-  // Transitional phase: includes dj_booking_contact_name in the selection
+  // Final phase: OWN_PROFILE_FIELDS equals PROFILE_FIELDS (no dj_booking_contact_name)
   assert.match(
     currentUserSource,
-    /const OWN_PROFILE_FIELDS = `\$\{PROFILE_FIELDS\}, dj_booking_contact_name`;/,
-    "During transition (Phase 2-7), OWN_PROFILE_FIELDS includes dj_booking_contact_name for fallback",
+    /const OWN_PROFILE_FIELDS = PROFILE_FIELDS;/,
+    "OWN_PROFILE_FIELDS must equal PROFILE_FIELDS (no private column in public view)",
   );
 
-  // Two-query pattern
+  // Two-query pattern: both tables queried, user_private_data is authoritative
   assert.match(
     currentUserSource,
     /\.from\(OWN_PROFILE_SOURCE\)[\s\S]*?\.from\("user_private_data"\)/,
     "getCurrentUserProfile must query both my_profile and user_private_data",
   );
 
-  // Transitional fallback: if no private row exists, use the value from my_profile
+  // No fallback: user_private_data is authoritative; if no row exists, value is NULL
   assert.match(
     currentUserSource,
-    /privateData\s*\?\s*privateData\.dj_booking_contact_name\s*:\s*\(publicProfile as any\)\.dj_booking_contact_name/,
-    "Transitional fallback: private row value wins; if no private row, use my_profile value",
-  );
-
-  // Important: the fallback only applies when privateData is falsy (row doesn't exist)
-  // If privateData exists but its value is NULL, that NULL is authoritative
-  assert.match(
-    currentUserSource,
-    /privateData\s*\?\s*privateData\.dj_booking_contact_name/,
-    "Private row existence (not its NULL value) triggers preference for its value",
+    /privateData\?\.dj_booking_contact_name \?\? null/,
+    "dj_booking_contact_name must use private table as authoritative source (no fallback)",
   );
 
   // --- Field distribution in save ----------------------------------------

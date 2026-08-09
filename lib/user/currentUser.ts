@@ -85,22 +85,12 @@ const PROFILE_FIELDS =
   "user_id, role, onboarding_complete, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
 
 /**
- * The owner's own profile during the TRANSITIONAL PHASE (Phase 2-7).
- * Includes dj_booking_contact_name from my_profile to support the temporary fallback
- * during backfill. Once all users are backfilled and the old column is scrubbed,
- * this reverts to just PROFILE_FIELDS and the fallback is removed (Phase 8).
- *
- * During transition:
- *   - my_profile still includes dj_booking_contact_name (not yet cleaned up)
- *   - If no private row exists, we use the value from my_profile (fallback)
- *   - If a private row exists, its value takes precedence
- *
- * Phase 8 (final):
- *   - my_profile is recreated without dj_booking_contact_name
- *   - OWN_PROFILE_FIELDS reverts to PROFILE_FIELDS
- *   - The fallback is removed
+ * The owner's own profile fields from the public view.
+ * dj_booking_contact_name is now private-table-only and fetched separately (Phase 8+).
+ * my_profile still includes the old column temporarily (not yet cleaned up),
+ * but we no longer read it here — only user_private_data is authoritative.
  */
-const OWN_PROFILE_FIELDS = `${PROFILE_FIELDS}, dj_booking_contact_name`;
+const OWN_PROFILE_FIELDS = PROFILE_FIELDS;
 
 /**
  * Where the owner's own profile public fields come from.
@@ -526,32 +516,26 @@ export async function getCurrentUserProfile(options?: {
       }
 
       // Query 2: Private contact field from user_private_data
-      // This is a temporary fallback path during migration. Once all users have
-      // been backfilled and the old column scrubbed, we can remove the fallback.
+      // user_private_data is now the authoritative source for dj_booking_contact_name.
+      // No fallback to the old column.
       const { data: privateData, error: privateError } = await supabase
         .from("user_private_data")
         .select("dj_booking_contact_name")
         .eq("user_id", userId)
         .maybeSingle();
 
-      // If row doesn't exist (new user or not yet backfilled), that's fine
+      // If row doesn't exist, treat as NULL (not an error)
       if (privateError && privateError.code !== "PGRST116") {
         throw privateError;
       }
 
       // Merge results: public fields + private contact field
-      // Fallback: if a private row exists, its value wins (even if NULL/empty).
-      // If no private row exists yet, temporarily use any value from my_profile
-      // (which still reads the old column during the migration window).
-      const dj_booking_contact_name =
-        privateData
-          ? privateData.dj_booking_contact_name  // Private row exists: use its value
-          : // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (publicProfile as any).dj_booking_contact_name; // Fallback: use old column value
+      // user_private_data is authoritative; if no private row exists, value is NULL
+      const dj_booking_contact_name = privateData?.dj_booking_contact_name ?? null;
 
       const profile: UserProfile = {
         ...publicProfile,
-        dj_booking_contact_name: dj_booking_contact_name || null,
+        dj_booking_contact_name,
       };
 
       applyCachedProfile(profile);
