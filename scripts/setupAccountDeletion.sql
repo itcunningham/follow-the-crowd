@@ -52,7 +52,7 @@ begin
     v_warnings := array_append(
       v_warnings,
       format(
-        '%s pending booking request%s will be cancelled automatically.',
+        '%s pending booking request%s will be cancelled',
         v_pending_count,
         case when v_pending_count = 1 then '' else 's' end
       )
@@ -75,9 +75,10 @@ begin
     v_warnings := array_append(
       v_warnings,
       format(
-        '%s accepted booking%s on upcoming events will be cancelled automatically.',
+        '%s accepted booking%s on %s will be cancelled',
         v_accepted_count,
-        case when v_accepted_count = 1 then '' else 's' end
+        case when v_accepted_count = 1 then '' else 's' end,
+        case when v_accepted_count = 1 then 'an upcoming event' else 'upcoming events' end
       )
     );
   end if;
@@ -92,7 +93,7 @@ begin
     v_warnings := array_append(
       v_warnings,
       format(
-        '%s draft or upcoming event%s you own will be cancelled or removed automatically.',
+        '%s draft or upcoming event%s you own will be cancelled or removed',
         v_owned_event_count,
         case when v_owned_event_count = 1 then '' else 's' end
       )

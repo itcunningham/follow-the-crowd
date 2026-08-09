@@ -161,7 +161,7 @@ export default function DeleteAccountSection({
               Delete your account permanently?
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-              This will permanently delete your account, profile, and attachments. Pending bookings and upcoming events you own will be cancelled. Messages you&apos;ve sent may remain as &quot;Deleted User&quot; to preserve other users&apos; conversations and booking history. This cannot be undone.
+              This will permanently delete your account, profile, and attachments. Pending bookings and upcoming events you own will be cancelled. Messages you&apos;ve sent may remain as &quot;Deleted User&quot; to preserve other users&apos; conversations and booking history. This cannot be undone
             </p>
 
             {warningItems.length > 0 ? (
