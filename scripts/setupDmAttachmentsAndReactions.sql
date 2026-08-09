@@ -141,24 +141,45 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Storage: dm-attachments bucket
--- Path format: {conversation_id}/{user_id}/{filename}
+-- Storage: dm-attachments bucket (private)
+-- Path format: {conversation_id|event_id}/{user_id}/{filename}
+-- Signed URLs enforce membership via RLS before creation; direct access is denied.
 -- ---------------------------------------------------------------------------
 
 insert into storage.buckets (id, name, public)
-values ('dm-attachments', 'dm-attachments', true)
-on conflict (id) do update set public = true;
+values ('dm-attachments', 'dm-attachments', false)
+on conflict (id) do update
+set public = false;
 
-drop policy if exists "dm_attachments_public_read" on storage.objects;
-drop policy if exists "dm_attachments_insert_member" on storage.objects;
-drop policy if exists "dm_attachments_update_own" on storage.objects;
-drop policy if exists "dm_attachments_delete_own" on storage.objects;
+drop policy if exists "dm_attachments_public_read"
+  on storage.objects;
 
-create policy "dm_attachments_public_read"
+drop policy if exists "dm_attachments_select_member"
+  on storage.objects;
+
+create policy "dm_attachments_select_member"
   on storage.objects
   for select
-  to public
-  using (bucket_id = 'dm-attachments');
+  to authenticated
+  using (
+    bucket_id = 'dm-attachments'
+    and case
+          when (storage.foldername(name))[1] ~*
+               '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          then (
+            public.is_conversation_member(
+              ((storage.foldername(name))[1])::uuid
+            )
+            or public.is_event_crew_member(
+              ((storage.foldername(name))[1])::uuid
+            )
+          )
+          else false
+        end
+  );
+
+drop policy if exists "dm_attachments_insert_member"
+  on storage.objects;
 
 create policy "dm_attachments_insert_member"
   on storage.objects
@@ -168,8 +189,18 @@ create policy "dm_attachments_insert_member"
     bucket_id = 'dm-attachments'
     and auth.uid() is not null
     and (storage.foldername(name))[2] = public.auth_user_id()
-    and public.is_conversation_member(((storage.foldername(name))[1])::uuid)
+    and (
+      public.is_conversation_member(
+        ((storage.foldername(name))[1])::uuid
+      )
+      or public.is_event_crew_member_for_message(
+        (storage.foldername(name))[1]
+      )
+    )
   );
+
+drop policy if exists "dm_attachments_update_own"
+  on storage.objects;
 
 create policy "dm_attachments_update_own"
   on storage.objects
@@ -183,6 +214,9 @@ create policy "dm_attachments_update_own"
     bucket_id = 'dm-attachments'
     and (storage.foldername(name))[2] = public.auth_user_id()
   );
+
+drop policy if exists "dm_attachments_delete_own"
+  on storage.objects;
 
 create policy "dm_attachments_delete_own"
   on storage.objects

@@ -8528,6 +8528,107 @@ function testDmAttachmentsRenderOnlySignedUrls() {
   assert.match(stripComments(helperSource), /decodeURIComponent/);
 }
 
+function testDmAttachmentsBucketIsPrivate() {
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+  const sql = stripComments(
+    readFileSync(
+      new URL("../scripts/setupDmAttachmentsAndReactions.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // Bucket must be private.
+  assert.match(
+    sql,
+    /insert into storage\.buckets.*public\s*=\s*false/i,
+    "dm-attachments bucket must have public = false",
+  );
+  assert.match(
+    sql,
+    /on conflict \(id\) do update\s+set public = false/i,
+    "update clause must also set public = false for idempotency",
+  );
+
+  // Public read policy must not be created — it was removed for security.
+  assert.doesNotMatch(
+    sql,
+    /create policy\s+"dm_attachments_public_read"/i,
+    "dm_attachments_public_read policy must not be created (bucket is private)",
+  );
+
+  // Member-scoped SELECT policy must exist with UUID-safe CASE guard.
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_select_member"/i,
+    "Member-scoped SELECT policy dm_attachments_select_member must exist",
+  );
+  assert.match(
+    sql,
+    /dm_attachments_select_member[\s\S]*?for select[\s\S]*?to authenticated/i,
+    "dm_attachments_select_member must be SELECT policy for authenticated role",
+  );
+
+  // UUID-safe regex CASE guard must prevent malformed UUIDs from casting.
+  assert.match(
+    sql,
+    /case\s+when[\s\S]*?\[1\]\s*~\*\s*'\^?\[0-9a-f\]\{8\}-/i,
+    "SELECT policy must have UUID-safe regex CASE guard before ::uuid casting",
+  );
+  assert.match(
+    sql,
+    /then[\s\S]*?is_conversation_member[\s\S]*?or[\s\S]*?is_event_crew_member/i,
+    "SELECT CASE then-branch must check both conversation and event membership",
+  );
+  assert.match(
+    sql,
+    /else\s+false\s+end/i,
+    "SELECT CASE else-branch must deny (false) for malformed UUIDs",
+  );
+
+  // INSERT policy must use is_event_crew_member_for_message, not is_event_crew_member.
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_insert_member"/i,
+    "INSERT policy dm_attachments_insert_member must exist",
+  );
+  assert.match(
+    sql,
+    /is_event_crew_member_for_message/,
+    "INSERT policy must use is_event_crew_member_for_message (for-message variant)",
+  );
+  assert.doesNotMatch(
+    sql,
+    /dm_attachments_insert_member[\s\S]*?is_event_crew_member\(\s*\(\(storage\.foldername/i,
+    "INSERT policy must NOT use generic is_event_crew_member() — only is_event_crew_member_for_message()",
+  );
+
+  // UPDATE and DELETE policies must be unchanged (own-folder scope only).
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_update_own"/i,
+    "UPDATE policy dm_attachments_update_own must exist",
+  );
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_delete_own"/i,
+    "DELETE policy dm_attachments_delete_own must exist",
+  );
+  assert.match(
+    sql,
+    /dm_attachments_update_own[\s\S]*?foldername.*\[2\]\s*=\s*public\.auth_user_id/i,
+    "UPDATE policy must check own-folder ownership",
+  );
+  assert.match(
+    sql,
+    /dm_attachments_delete_own[\s\S]*?foldername.*\[2\]\s*=\s*public\.auth_user_id/i,
+    "DELETE policy must check own-folder ownership",
+  );
+}
+
 /**
  * Behavioural counterpart to testDmAttachmentsRenderOnlySignedUrls: the source
  * assertions there prove the components call this, these prove it is correct.
@@ -18119,6 +18220,7 @@ async function main() {
   testDmImageGridNoCropping();
   testDmImageGroupFullViewerAndOwnershipAlignment();
   testDmAttachmentsRenderOnlySignedUrls();
+  testDmAttachmentsBucketIsPrivate();
   testToStorageObjectPathResolvesStoredUrls();
   testPrivateProfileFieldsAreDatabaseEnforced();
   testAccountDeletionClearsEveryProfileColumn();
