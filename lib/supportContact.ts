@@ -15,13 +15,14 @@ export function buildAccountDeletionRequestMailto(options: {
   accountEmail: string;
   username?: string | null;
 }): string {
-  const subject = "Follow The Crowd — Account deletion request";
+  const subject = "Account deletion request";
   const bodyLines = [
     "Hi FTC support,",
     "",
-    "I'd like to request deletion of my Follow The Crowd account.",
+    "I would like to request deletion of my Follow The Crowd account.",
     "",
-    `Account email: ${options.accountEmail}`,
+    "Account Details:",
+    `Email: ${options.accountEmail}`,
   ];
 
   const username = options.username?.trim();
@@ -30,7 +31,7 @@ export function buildAccountDeletionRequestMailto(options: {
     bodyLines.push(`Username: ${username}`);
   }
 
-  bodyLines.push("", "Thanks.");
+  bodyLines.push("", "Thank you");
 
   const params = new URLSearchParams({
     subject,
