@@ -994,7 +994,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
-- `e8fab50f` — fix(profile): stop avatar Save hanging on mobile uploads
+- `6cf8160e` — fix(profile): stop avatar Save hanging on mobile uploads
 - `83d62519` — fix(booking): hide Accept/Decline for DJ after rate proposal
 - `72475554` — fix(cancel): clear Crew Chats badge — no crew cancel msg, mark event read
 - `9a1b56f4` — fix(cancel): unique per-event cancel DM so DJ unread can fire

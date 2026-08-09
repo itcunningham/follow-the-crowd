@@ -139,25 +139,13 @@ export async function uploadProfileImage(file: File): Promise<string> {
   const userId = await getCurrentUserId();
   const path = `${userId}/profile-image-${Date.now()}.jpg`;
 
-<<<<<<< HEAD
-  const uploadPromise = supabase.storage
-    .from(PROFILE_IMAGES_BUCKET)
-    .upload(path, file, {
-=======
   const { error: uploadError } = await withProfileImageUploadTimeout(
     supabase.storage.from(PROFILE_IMAGES_BUCKET).upload(path, prepared, {
->>>>>>> e8fab50f (fix(profile): stop avatar Save hanging on mobile uploads)
       cacheControl: "3600",
       upsert: false,
       contentType: "image/jpeg",
     }),
   );
-
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("Image upload timed out after 30 seconds")), 30000)
-  );
-
-  const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise as Promise<any>]);
 
   if (uploadError) {
     throw new Error(getUploadErrorMessage(uploadError));
