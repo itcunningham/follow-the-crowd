@@ -35,13 +35,19 @@ export async function uploadProfileImage(file: File): Promise<string> {
   const userId = await getCurrentUserId();
   const path = `${userId}/profile-image-${timestamp}.${extension}`;
 
-  const { error: uploadError } = await supabase.storage
+  const uploadPromise = supabase.storage
     .from(PROFILE_IMAGES_BUCKET)
     .upload(path, file, {
       cacheControl: "3600",
       upsert: false,
       contentType: file.type,
     });
+
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Image upload timed out after 30 seconds")), 30000)
+  );
+
+  const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise as Promise<any>]);
 
   if (uploadError) {
     throw uploadError;
