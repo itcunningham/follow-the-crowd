@@ -7,7 +7,6 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import FtcAppVersionFooter from "@/app/components/settings/FtcAppVersionFooter";
 import DeleteAccountSection from "@/app/components/settings/DeleteAccountSection";
-import RequestAccountDeletionSection from "@/app/components/settings/RequestAccountDeletionSection";
 import {
   getCurrentAuthUser,
   getCurrentUserId,
@@ -25,7 +24,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [passwordResetCooldown, setPasswordResetCooldown] = useState(false);
@@ -41,7 +39,6 @@ export default function SettingsPage() {
       .then(([authUser, userId, profile]) => {
         setCurrentUserId(userId);
         setAccountEmail(authUser?.email?.trim() || null);
-        setUsername(profile?.username?.trim() || null);
         setRole(profile?.role ?? null);
       })
       .catch((loadError) => {
@@ -243,8 +240,6 @@ export default function SettingsPage() {
               </section>
 
               <DeleteAccountSection onError={setError} />
-
-              <RequestAccountDeletionSection accountEmail={accountEmail} username={username} />
 
               {error ? <p className="text-sm text-red-400">{error}</p> : null}
             </>
