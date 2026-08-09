@@ -104,7 +104,7 @@ export default function SettingsPage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text md:min-h-[100dvh] ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
 
@@ -131,7 +131,7 @@ export default function SettingsPage() {
                 <section className="ftc-card overflow-hidden p-0">
                   <div className="border-b border-ftc-border-subtle px-4 py-3 sm:px-5">
                     <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-                      Workspace
+                      DJ Management
                     </h2>
                   </div>
 
@@ -139,11 +139,8 @@ export default function SettingsPage() {
                     href="/my-djs"
                     className="flex items-center justify-between gap-3 px-4 py-4 transition hover:bg-ftc-bg-elevated/60 sm:px-5"
                   >
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-ftc-text">DJ Roster</span>
-                      <span className="mt-0.5 block text-sm text-ftc-text-muted">
-                        Manage the DJs you work with
-                      </span>
+                    <span className="block text-sm text-ftc-text-muted">
+                      Manage the DJs you work with
                     </span>
                     <svg
                       aria-hidden="true"
