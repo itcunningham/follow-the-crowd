@@ -60,19 +60,35 @@ export async function withOnboardingAccessCheckTimeout<T>(
   }
 }
 
-const cachedNavigationOnLoad = readCachedNavigation();
+// Runs at module scope, before any component mounts. Every prefetch below hits
+// a table only `authenticated` may read, so it must not fire without a real
+// session — a cached role is not one.
+//
+// Without the session check this warmed badges from sessionStorage alone: after
+// a sign-out, or for an account deleted server-side, the cached role survived on
+// the device and drove queries that reached PostgREST as `anon`. booking_requests
+// correctly refused with 42501, and three prefetches each logged it, so one
+// mistake looked like a page full of errors. The fix is to stop asking, not to
+// grant `anon` the table.
+const sessionUserIdOnLoad = readSupabaseSessionUserIdSync();
+const cachedNavigationOnLoad = sessionUserIdOnLoad
+  ? readCachedNavigation()
+  : { role: null, userId: null };
+
 if (cachedNavigationOnLoad.role) {
   if (cachedNavigationOnLoad.role === "dj" || cachedNavigationOnLoad.role === "both") {
     void ensureGigsPendingPrefetched(cachedNavigationOnLoad.role);
   }
 
+  // Prefer the live session id over anything cached: a stale sessionStorage id
+  // belongs to whoever was signed in last, which may be a deleted account.
   void ensureNavMessagesPrefetched(
-    cachedNavigationOnLoad.userId,
+    sessionUserIdOnLoad,
     cachedNavigationOnLoad.role,
   );
 
   void ensureNavigationBadgesPrefetched(
-    cachedNavigationOnLoad.userId,
+    sessionUserIdOnLoad,
     cachedNavigationOnLoad.role,
   );
 }
@@ -93,7 +109,6 @@ function buildOptimisticProfile(): UserProfile | null {
     user_id: userId,
     role,
     onboarding_complete: true,
-    full_name: null,
     username: null,
     display_name: null,
     bio: null,

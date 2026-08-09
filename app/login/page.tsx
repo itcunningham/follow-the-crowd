@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 import {
   getPostAuthRedirectPath,
   SIGNUP_PATH,
+  FORGOT_PASSWORD_PATH,
   signInWithEmail,
   updateAuthPassword,
 } from "@/lib/user/currentUser";
@@ -129,7 +130,7 @@ export default function LoginPage() {
         </h1>
         <p className="mt-2 text-sm text-ftc-text-secondary">
           {recoveryMode
-            ? "Choose a new password for your account."
+            ? "Choose a new password for your account"
             : "Sign in to continue"}
         </p>
 
@@ -220,6 +221,18 @@ export default function LoginPage() {
                 {submitting ? "Logging in" : "Log in"}
               </button>
             </form>
+
+            {/* Inside the non-recovery branch only: offering "Forgot password?"
+                to someone already setting a new one would send them back to the
+                start of the flow they are finishing. */}
+            <p className="mt-4 text-center text-sm">
+              <Link
+                href={FORGOT_PASSWORD_PATH}
+                className="font-semibold text-ftc-primary transition hover:text-ftc-primary/90"
+              >
+                Forgot password?
+              </Link>
+            </p>
 
             <p className="mt-6 text-center text-sm text-ftc-text-muted">
               Don&apos;t have an account?{" "}

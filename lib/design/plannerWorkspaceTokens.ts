@@ -7,14 +7,14 @@
 export const MOBILE_NAV_OFFSET_CLASS =
   "ftc-mobile-nav-offset pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
 
-export const PLANNER_WORKSPACE_SHELL_CLASS = `mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`;
+export const PLANNER_WORKSPACE_SHELL_CLASS = `mx-auto w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text md:min-h-[100dvh] ${MOBILE_NAV_OFFSET_CLASS}`;
 
 /** Shared desktop width for Events, Event Plans, Calendar, and Gigs. */
-export const PLANNER_CALENDAR_SHELL_CLASS = `mx-auto min-h-[100dvh] w-full max-w-2xl md:max-w-5xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`;
+export const PLANNER_CALENDAR_SHELL_CLASS = `mx-auto w-full max-w-2xl md:max-w-5xl bg-ftc-bg font-sans text-ftc-text md:min-h-[100dvh] ${MOBILE_NAV_OFFSET_CLASS}`;
 
 export const PLANNER_WORKSPACE_PAGE_SHELL_CLASS = PLANNER_CALENDAR_SHELL_CLASS;
 
-export const PLANNER_WORKSPACE_SHELL_WIDE_CLASS = `mx-auto min-h-[100dvh] w-full max-w-6xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`;
+export const PLANNER_WORKSPACE_SHELL_WIDE_CLASS = `mx-auto w-full max-w-6xl bg-ftc-bg font-sans text-ftc-text md:min-h-[100dvh] ${MOBILE_NAV_OFFSET_CLASS}`;
 
 export const PLANNER_WORKSPACE_PAGE_INSET_CLASS = "px-4 sm:px-6";
 

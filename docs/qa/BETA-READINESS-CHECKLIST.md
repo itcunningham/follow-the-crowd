@@ -2,7 +2,7 @@
 
 Master gate checklist for FTC private beta.
 
-**Last updated:** 2026-07-16 (coached private beta GO)  
+**Last updated:** 2026-08-08 (beta-readiness QA pass — see Two-account live pass below)  
 **Beta target:** Coached private beta — 5–10 Planner/DJ pairs  
 **Go-live record:** [PRIVATE-BETA-GO-LIVE.md](./PRIVATE-BETA-GO-LIVE.md)  
 **Known issues:** [KNOWN-ISSUES.md](./KNOWN-ISSUES.md)
@@ -18,21 +18,96 @@ Master gate checklist for FTC private beta.
 
 ---
 
+## Two-account live pass — 2026-08-08
+
+One end-to-end promoter/DJ journey on `FTC QA Planner` and `FTC QA DJ`, run from a
+reset environment so every row observed had a known cause. **Only directly
+observed outcomes are recorded here.** Anything not seen is absent rather than
+assumed — a checklist that credits inferred passes is worse than a short one.
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| BUG-003 — gigs badge race | Passed | Settled `Incoming = 0` → booking sent → DJ loads straight to `1`, no transient zero. The race the unit harness cannot produce. |
+| Booking send | Passed | Promoter send completed cleanly; DJ received the pending booking immediately. |
+| DM read path | Passed | DJ opened the private DM, message and history rendered, unread cleared. **First confirmation of `messages_select_conversation_member` working without the broad policy beneath it.** |
+| Crew Chat creation + access | Passed | Planner started Crew Chat; DJ gained access and an unread. |
+| Crew Chat two-way messaging | Passed | planner→DJ and DJ→planner both delivered. Confirms `messages_select_event_crew` post-drop. |
+| Crew Chat unread clearing | Passed | |
+| Untouched Run Sheet | Passed | No erroneous Save or dirty state on entering edit mode. |
+| Run Sheet save notification | Passed | DJ saw the update in Crew Chat with unread state. |
+| Run Sheet progress visibility | Passed | Planner sees the progress line, DJ does not. |
+| Crew Chat "Seen" label | Deferred | Not part of beta. The `message_reads` SELECT policy has no cross-user branch for `event_id`, so the label cannot appear. Not a defect for this release — decide before promising read receipts in Crew Chat. |
+| Run Sheet update deep link | N/A | The update card is not clickable. Only becomes a check if click-through is made a requirement. |
+
+**Why the DM and Crew Chat rows matter beyond their own scope:** both read paths
+ran for the first time without `allow public read messages` underneath them (see
+Environment readiness). An RLS read gap surfaces as an empty thread, not an
+error, so these two passes are what confirm the P0 removal did not cost
+legitimate access.
+
+**Not covered by this pass:** Crew Chat scrollback over pre-existing history —
+the reset left no historical crew data, so there is no backlog to scroll and the
+case is moot for beta. Re-check once real testers have accumulated history.
+
+---
+
+## Private planner→DJ roster — live isolation test, 2026-08-08
+
+**Observed with two real planner accounts on a flag-on build, not reasoned about.**
+Run against a local dev server on the LAN from an iPhone, pointed at the
+production Supabase database, with `ROSTER_SCOPING_ENABLED = true` **uncommitted**
+so production was never affected.
+
+| Check | Result |
+|-------|--------|
+| Planner 1 sees only Planner 1's roster | Passed |
+| Planner 2 does not inherit Planner 1's DJ | Passed — the property the feature exists for |
+| Manual add by exact `@username` | Passed |
+| No global fallback leaking unrelated DJs | Passed |
+| Historical backfill behaves as expected | Passed |
+
+**Why this could not be established statically.** RLS restricts
+`planner_dj_roster` to `planner_id = auth_user_id()`, and the client filters the
+same way — but both are assertions about intent. Only two signed-in accounts
+prove that planner B's session genuinely cannot see planner A's rows.
+
+**A real bug was found by running it.** The migration created the table and three
+policies but granted no table privileges, so `authenticated` could not reach it
+at all — every read and write failed with `42501 permission denied for table`.
+RLS narrows access; it never grants it, and Postgres checks the privilege first.
+
+Two things made it look like something else:
+
+* the roster **empty state rendered correctly**, because `listRosterDjs()` threw
+  and the caller caught the error and set an empty list — a failure wearing the
+  costume of a working feature;
+* the post-migration verification **passed 19/19**, because it checked policies,
+  RLS and row integrity but never that any role could reach the table.
+
+`scripts/verifyPlannerDjRoster.sql` now asserts `has_table_privilege` for
+SELECT/INSERT/DELETE, that UPDATE is absent, and that `anon` holds nothing — 24
+rows instead of 19. A regression test pins the `grant` line in the migration.
+
+**Standing lesson:** a check that cannot fail for the most basic possible reason
+is not a check. Verify reachability before verifying correctness.
+
+---
+
 ## Environment readiness
 
 | Item | Status | Severity if failed | Owner | Notes |
 |------|--------|-------------------|-------|-------|
 | Vercel production deploy stable | Passed | Critical | Isaac | Confirmed stable at GO |
 | Supabase migrations applied | Passed | Critical | Isaac | Including crew-chat auth + legacy message INSERT remediation |
-| Production security audit 16/16 | Passed | Critical | Isaac | Confirmed 2026-07-16 |
-| Production RLS hardened | Passed | Critical | Isaac | Legacy `allow public insert messages` removed |
+| Production security audit | Passed | Critical | Isaac | Re-run 2026-08-08 with `supabaseSecurityAuditChecklistSupplement.sql`. 15/16 on the main checklist plus the supplement; the one failure (helper RPCs callable by `authenticated`) was revoked. RLS confirmed **enabled** on all 16 tables — policies are load-bearing, not inert. `message_reads` one-ID invariant enforced by CHECK. Two `create_notification` overloads remain (P4, unreachable). |
+| Production RLS hardened | Passed | Critical | Isaac | `allow public insert messages` removed 2026-07-16. **Its read twin `allow public read messages` was found live on 2026-08-08** — granted to `PUBLIC` (every role, `authenticated` included) with `USING (true)`, so it silently overrode `messages_select_conversation_member` and let any logged-in account read every message row. Dropped with five dormant `anon` siblings on `messages`/`conversations`/`conversation_members`. None existed in this repo; all were hand-created in the dashboard. Names now in `setupProductionRls.sql`. |
 | Supabase Auth: email confirmation, password policy, rate limits reviewed | Not Started | High | Isaac | Operational — confirm before broad invite |
 | Google Maps API key restricted to approved domains | Not Started | High | Isaac | Operational — confirm before broad invite |
 | Private beta signup controlled (invitations/allowlist) | Not Started | High | Isaac | Confirm approach before first tester invite |
 | Test planner account available | Passed | Critical | QA | |
 | Test DJ account available | Passed | Critical | QA | |
 | Test “both” role account (optional) | Passed | Medium | QA | |
-| QA transactional data reset procedure | Passed | High | Builder | `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md` + `scripts/resetQaEnvironment.sql` |
+| QA transactional data reset procedure | Passed | High | Builder | `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md` + `scripts/resetQaEnvironment.sql`. **The 2026-08-08 reset used an explicit four-id scope, not the script's detection rules** — `FTC QABot` and `Synergy` match none of them, so the script would have deleted almost nothing and reported success. Explicit-scope procedure is documented in the reset doc. |
 | Mobile test device / 390px emulator | Passed | High | QA | |
 | iPhone Safari physical smoke | Passed | High | QA | 7/7 passed |
 

@@ -26,6 +26,13 @@ function makeImageAttachment(id: string): DmMessageAttachment {
   };
 }
 
+// DmMessageAttachmentView renders only a signed URL supplied by its parent -
+// it never reads attachment.file_url. This test's subject is aspect-ratio
+// reservation, so it stands in for the signing the group component does.
+function signedUrlFor(attachment: DmMessageAttachment): string {
+  return `https://example.test/signed/${attachment.id}.jpg?token=test`;
+}
+
 export async function runDmImageAttachmentDimensionsTest(): Promise<void> {
   const window = new Window();
   const globalRef = globalThis as Record<string, unknown>;
@@ -48,7 +55,12 @@ export async function runDmImageAttachmentDimensionsTest(): Promise<void> {
     // is reserved up front — matches today's behaviour for a brand-new image.
     await act(async () => {
       root?.render(
-        React.createElement(DmMessageAttachmentView, { attachment, isOwnMessage: false }),
+        React.createElement(DmMessageAttachmentView, {
+          attachment,
+          src: signedUrlFor(attachment),
+          onExpired: () => {},
+          isOwnMessage: false,
+        }),
       );
     });
     let img = container.querySelector("img") as HTMLImageElement | null;
@@ -75,7 +87,12 @@ export async function runDmImageAttachmentDimensionsTest(): Promise<void> {
     root = createRoot(container as unknown as HTMLElement);
     await act(async () => {
       root?.render(
-        React.createElement(DmMessageAttachmentView, { attachment, isOwnMessage: false }),
+        React.createElement(DmMessageAttachmentView, {
+          attachment,
+          src: signedUrlFor(attachment),
+          onExpired: () => {},
+          isOwnMessage: false,
+        }),
       );
     });
     img = container.querySelector("img") as HTMLImageElement | null;
@@ -96,6 +113,8 @@ export async function runDmImageAttachmentDimensionsTest(): Promise<void> {
       root?.render(
         React.createElement(DmMessageAttachmentView, {
           attachment: neverSeenAttachment,
+          src: signedUrlFor(neverSeenAttachment),
+          onExpired: () => {},
           isOwnMessage: false,
         }),
       );

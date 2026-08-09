@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 export const LOGIN_PATH = "/login";
 export const SIGNUP_PATH = "/signup";
+export const FORGOT_PASSWORD_PATH = "/forgot-password";
 export const PROFILE_SETUP_PATH = "/profile/setup";
 export const SETTINGS_PATH = "/settings";
 export const BOOKING_PLANS_PATH = "/booking-plans";
@@ -18,7 +19,6 @@ export type UserProfile = {
   user_id: string;
   role: UserRole | null;
   onboarding_complete: boolean;
-  full_name: string | null;
   username: string | null;
   display_name: string | null;
   bio: string | null;
@@ -30,7 +30,8 @@ export type UserProfile = {
   location: string | null;
   avatar_url: string | null;
   artist_name: string | null;
-  dj_booking_contact_name: string | null;
+  /** Present only on the owner's own profile — omitted from public reads. */
+  dj_booking_contact_name?: string | null;
   dj_availability: string | null;
   dj_past_gigs: string | null;
   promoter_brand_name: string | null;
@@ -61,8 +62,50 @@ export type UserProfileInput = {
   promoter_past_events: string;
 };
 
+/**
+ * Fields any authenticated user may be shown about another user.
+ *
+ * DATA MINIMISATION, NOT CONFIDENTIALITY. `users_select_authenticated` still
+ * permits `select to authenticated using (auth.uid() is not null)`, so a
+ * determined API client can read the underlying row regardless of what this
+ * projection asks for. This narrows what ordinary application traffic carries;
+ * it is not a security boundary. Database-enforced private profile fields are
+ * tracked as post-beta security debt.
+ *
+ * Two fields are deliberately absent:
+ *   full_name               - never written by any form and rendered nowhere;
+ *                             it was fetched on every profile read and used by
+ *                             nothing. Removed from the type too, so it cannot
+ *                             quietly come back.
+ *   dj_booking_contact_name - written by the owner's profile form and displayed
+ *                             on no surface. Owner-only below.
+ */
 const PROFILE_FIELDS =
-  "user_id, role, onboarding_complete, full_name, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_booking_contact_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
+  "user_id, role, onboarding_complete, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
+
+/** The owner's own profile: everything above, plus their private contact field. */
+const OWN_PROFILE_FIELDS = `${PROFILE_FIELDS}, dj_booking_contact_name`;
+
+/**
+ * Where the owner's own profile is read from.
+ *
+ * NOT `users`. `authenticated` no longer holds SELECT on
+ * `dj_booking_contact_name` at the table level - see
+ * scripts/setupPrivateProfileFields.sql - because table privileges are checked
+ * per column and before RLS, which is the only way to stop another signed-in
+ * user reading it with a direct query. Column grants are role-wide, so that
+ * revoke locks the owner out too.
+ *
+ * `public.my_profile` is a view over public.users filtered to
+ * `user_id = auth_user_id()`, exposing exactly OWN_PROFILE_FIELDS. It takes no
+ * parameters, so a caller can narrow the result but never widen it to someone
+ * else's row.
+ *
+ * Reads of OTHER users stay on `users` with PROFILE_FIELDS. Writes stay on
+ * `users` too - INSERT/UPDATE were left table-level, so profile editing is
+ * unchanged.
+ */
+const OWN_PROFILE_SOURCE = "my_profile";
 
 const PROFILE_LOCAL_CACHE_KEY = "ftc-user-profile-local";
 
@@ -316,6 +359,15 @@ export async function signUpWithEmail(email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
+    // Without this, Supabase falls back to the project's Site URL for the
+    // confirmation link — which was still the default localhost:3000, so anyone
+    // confirming on a phone landed on a dead page. Password reset already used
+    // this helper; signup was the one that missed it.
+    //
+    // getAuthRedirectUrl resolves NEXT_PUBLIC_APP_URL, then a non-localhost
+    // window origin, then the production fallback — so it never emits a
+    // localhost or LAN address into an email that outlives the session.
+    options: { emailRedirectTo: getAuthRedirectUrl(LOGIN_PATH) },
   });
 
   if (error) {
@@ -443,8 +495,8 @@ export async function getCurrentUserProfile(options?: {
   profileRequest = (async () => {
     try {
       const { data, error } = await supabase
-        .from("users")
-        .select(PROFILE_FIELDS)
+        .from(OWN_PROFILE_SOURCE)
+        .select(OWN_PROFILE_FIELDS)
         .eq("user_id", userId)
         .maybeSingle();
 
@@ -779,7 +831,11 @@ export function getRoleLabel(role: UserRole | null): string {
   }
 
   if (role === "promoter") {
-    return "Promoter";
+    // "Promoter / Event Planner", not "Promoter": onboarding and Edit Profile
+    // have always offered this role under the long name, so the short label
+    // here was the drift the comment above warns about, not a deliberate
+    // abbreviation.
+    return "Promoter / Event Planner";
   }
 
   if (role === "both") {
@@ -805,6 +861,65 @@ export async function listBookableDjs(): Promise<UserProfile[]> {
   const currentUserId = await getCurrentUserId();
 
   const { data, error } = await supabase.from("users").select(PROFILE_FIELDS);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as UserProfile[])
+    .filter(
+      (user) =>
+        user.user_id !== currentUserId &&
+        user.onboarding_complete &&
+        Boolean(user.display_name?.trim()) &&
+        (user.role === "dj" || user.role === "both"),
+    )
+    .sort((a, b) => (a.display_name ?? "").localeCompare(b.display_name ?? ""));
+}
+
+/**
+ * The planner's own roster, in the same shape `listBookableDjs` returns.
+ *
+ * `listBookableDjs` is deliberately left untouched beside this: while the
+ * scoping flag is off it stays the only caller-visible behaviour, so the
+ * rollback for anything wrong here is a flag rather than a migration.
+ *
+ * RLS already restricts `planner_dj_roster` to `planner_id = auth_user_id()`,
+ * so the roster query needs no planner filter of its own — but relying on that
+ * silently would make a policy change look like a product bug, so the eq() is
+ * stated anyway.
+ */
+export async function listRosterDjs(): Promise<UserProfile[]> {
+  const currentUserId = await getCurrentUserId();
+
+  if (!currentUserId) {
+    return [];
+  }
+
+  const { data: rosterRows, error: rosterError } = await supabase
+    .from("planner_dj_roster")
+    .select("dj_id")
+    .eq("planner_id", currentUserId);
+
+  if (rosterError) {
+    throw rosterError;
+  }
+
+  const djIds = (rosterRows ?? []).map((row) => row.dj_id as string);
+
+  if (djIds.length === 0) {
+    return [];
+  }
+
+  // `.is("deleted_at", null)` filters server-side on a column PROFILE_FIELDS
+  // does not select, which is why the projection stays unchanged. It is
+  // redundant today — anonymisation already clears onboarding_complete — but
+  // stated so this filter does not silently depend on that staying true.
+  const { data, error } = await supabase
+    .from("users")
+    .select(PROFILE_FIELDS)
+    .in("user_id", djIds)
+    .is("deleted_at", null);
 
   if (error) {
     throw error;

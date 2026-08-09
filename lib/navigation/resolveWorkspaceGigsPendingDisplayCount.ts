@@ -56,10 +56,7 @@ export function resolveWorkspaceGigsPendingDisplayCount(input: {
     if (sessionCount != null && sessionCount > 0) {
       return sessionCount;
     }
-    const latchedWhenCachedZero = readWorkspaceGigsSubNavDisplayLatch(userId, role);
-    if (latchedWhenCachedZero != null && latchedWhenCachedZero > 0) {
-      return latchedWhenCachedZero;
-    }
+    // Authoritative cached zero should not defer to latched high-water mark
     writeWorkspaceGigsDisplaySessionCount(userId, role, 0);
     return 0;
   }

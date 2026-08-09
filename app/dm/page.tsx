@@ -767,9 +767,9 @@ function DmInboxPageContent() {
     }
 
     function softReloadGroupChatsFromBadgeBus() {
-      // Badge bus fires often (including mark-read). Soft avoids skeleton spam;
-      // crew unlock INSERTs use reloadGroupChatsForCrewUnlock instead.
-      void loadGroupChats({ soft: true });
+      // Always refetch (no 30s soft skip): cancel must drop the event from Crew
+      // Chats or the tab badge stays at 1. Loading spinner stays off unless empty.
+      void loadGroupChats();
     }
 
     window.addEventListener("ftc-notifications-updated", softReloadGroupChatsFromBadgeBus);
@@ -800,8 +800,28 @@ function DmInboxPageContent() {
 
     const cancellationChannel = supabase
       .channel("event-cancellations")
-      .on("broadcast", { event: "event_cancelled" }, () => {
-        // Event was cancelled; reload crew chats to remove it from DJ's list
+      .on("broadcast", { event: "event_cancelled" }, (broadcast) => {
+        const eventId =
+          broadcast?.payload &&
+          typeof broadcast.payload === "object" &&
+          "eventId" in broadcast.payload
+            ? String((broadcast.payload as { eventId?: string }).eventId ?? "")
+            : "";
+
+        if (eventId) {
+          setGroupChats((previous) => {
+            const next = previous.filter(
+              (chat) => normalizeInboxId(chat.eventId) !== normalizeInboxId(eventId),
+            );
+
+            if (next.length !== previous.length) {
+              writeGroupChatsInboxCache(next);
+            }
+
+            return next;
+          });
+        }
+
         void loadGroupChats({ forceLoading: true });
       })
       .subscribe();

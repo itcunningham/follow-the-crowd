@@ -157,7 +157,12 @@ function applyBadgeState(
   nextState: NavBadgeContextValue,
 ): NavBadgeContextValue {
   writeRuntimeSnapshot(userId, role, nextState);
-  writeRuntimeGigsPendingCount(userId, role, nextState.gigsPendingCount);
+  // `gigsPendingCount` is `gigsFromStore ?? cached?.gigsPending ?? 0`, so before
+  // the first fetch resolves it is a placeholder zero rather than a real count.
+  // `badgesReady` is what separates the two.
+  writeRuntimeGigsPendingCount(userId, role, nextState.gigsPendingCount, {
+    authoritative: nextState.badgesReady,
+  });
   return nextState;
 }
 

@@ -36,6 +36,14 @@ function isUserRole(value: unknown): value is UserRole {
 let memoryCache: NavigationBadgeCache | null = null;
 let runtimeGigsPendingCount: number | null = null;
 let runtimeGigsPendingIdentity: { userId: string; role: UserRole } | null = null;
+/**
+ * Whether `runtimeGigsPendingCount` came from a completed fetch.
+ *
+ * A zero means two different things and the number alone cannot tell them
+ * apart: "the server says there are none" and "we have not loaded yet, so this
+ * is the `?? 0` default". Only the first may override a persisted count.
+ */
+let runtimeGigsPendingAuthoritative = false;
 let runtimeMessagesUnreadCount: number | null = null;
 let runtimeMessagesUnreadIdentity: { userId: string; role: UserRole } | null = null;
 let runtimeBadgeFetchedAt = 0;
@@ -396,7 +404,9 @@ export function applyPersistedGigsPendingCount(
 ): void {
   const normalizedCount = Math.max(0, Math.floor(count));
 
-  writeRuntimeGigsPendingCount(userId, role, normalizedCount);
+  // This is the persisted path — it only runs with a count we actually hold, so
+  // its zero is a real zero and may clear a stale cached value.
+  writeRuntimeGigsPendingCount(userId, role, normalizedCount, { authoritative: true });
   writeLocalGigsPendingCount(userId, role, normalizedCount);
 
   const existing = readNavigationBadgeCache(userId, role);
@@ -626,6 +636,7 @@ export function clearNavigationBadgeCache(): void {
   memoryCache = null;
   runtimeGigsPendingCount = null;
   runtimeGigsPendingIdentity = null;
+  runtimeGigsPendingAuthoritative = false;
   runtimeMessagesUnreadCount = null;
   runtimeMessagesUnreadIdentity = null;
   runtimeBadgeFetchedAt = 0;
@@ -663,6 +674,9 @@ export function writeRuntimeNavBadgeSnapshot(snapshot: RuntimeNavBadgeSnapshot):
   runtimeNavBadgeSnapshot = snapshot;
   runtimeGigsPendingIdentity = { userId: snapshot.userId, role: snapshot.role };
   runtimeGigsPendingCount = snapshot.gigsPending;
+  // The snapshot already carries its own provenance, so reuse it rather than
+  // introducing a second notion of "loaded".
+  runtimeGigsPendingAuthoritative = snapshot.badgesReady === true;
 }
 
 export function readRuntimeGigsPendingCount(
@@ -684,9 +698,30 @@ export function writeRuntimeGigsPendingCount(
   userId: string,
   role: UserRole,
   count: number,
+  options?: { authoritative?: boolean },
 ): void {
+  const authoritative = options?.authoritative === true;
+  const normalizedCount = Math.max(0, Math.floor(count));
+
+  // A provisional zero must not overwrite a count a fetch already confirmed for
+  // the same identity. Rejecting the write is what protects the value; checking
+  // provenance only at read time is too late, because by then the confirmed
+  // count has already been replaced.
+  if (
+    !authoritative &&
+    normalizedCount === 0 &&
+    runtimeGigsPendingAuthoritative &&
+    runtimeGigsPendingIdentity?.userId === userId &&
+    runtimeGigsPendingIdentity.role === role
+  ) {
+    return;
+  }
+
   runtimeGigsPendingIdentity = { userId, role };
-  runtimeGigsPendingCount = Math.max(0, Math.floor(count));
+  runtimeGigsPendingCount = normalizedCount;
+  // Provisional unless the caller states otherwise: the default `?? 0` a
+  // provider writes before its first fetch must not look like a real zero.
+  runtimeGigsPendingAuthoritative = authoritative;
 }
 
 export function readRuntimeMessagesUnreadCount(
@@ -732,23 +767,10 @@ export function getCachedGigsPendingCount(
   const localGigsCount = readLocalGigsPendingCount(userId, role);
   const runtimeCount = readRuntimeGigsPendingCount(userId, role);
 
-  if (runtimeCount != null) {
-    if (runtimeCount === 0) {
-      if (localGigsCount != null && localGigsCount > 0) {
-        return localGigsCount;
-      }
-
-      const latchedCount = readWorkspaceGigsSubNavDisplayLatch(userId, role);
-      if (latchedCount != null && latchedCount > 0) {
-        return latchedCount;
-      }
-
-      const sessionCount = readWorkspaceGigsDisplaySessionCount(userId, role);
-      if (sessionCount != null && sessionCount > 0) {
-        return sessionCount;
-      }
-    }
-
+  if (runtimeCount != null && (runtimeCount > 0 || runtimeGigsPendingAuthoritative)) {
+    // A runtime count wins whenever it carries information: any non-zero value,
+    // or a zero a completed fetch actually confirmed. A provisional zero does
+    // not, so it falls through to the persisted count rather than hiding it.
     return runtimeCount;
   }
 

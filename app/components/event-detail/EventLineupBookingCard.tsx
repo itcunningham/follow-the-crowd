@@ -3,6 +3,7 @@
 import Link from "next/link";
 import BookingRateProposalPanel, {
   BookingRateProposalNotice,
+  BookingProposalCardAmount,
 } from "@/app/components/booking/BookingRateProposalPanel";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
@@ -144,17 +145,12 @@ export default function EventLineupBookingCard({
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <BookingStatusBadge status={booking.status} variant="compact" />
-              {pendingProposal ? (
-                <span
-                  className={`${EVENT_DETAIL_BADGE_COMPACT} border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-primary`}
-                >
-                  Proposed
-                </span>
-              ) : null}
             </div>
           </div>
 
-          <p className="mt-1 text-xs leading-snug text-ftc-text-muted">{rateLine}</p>
+          {!pendingProposal ? (
+            <p className="mt-1 text-xs leading-snug text-ftc-text-muted">{rateLine}</p>
+          ) : null}
 
           {cancelledByLabel || cancellationReasonLabel ? (
             <EventDetailBookingCancellationDetails
@@ -166,6 +162,8 @@ export default function EventLineupBookingCard({
 
           {readOnly ? (
             <BookingRateProposalNotice booking={booking} currentUserId={currentUserId} />
+          ) : pendingProposal && booking.recipient_id === currentUserId ? (
+            <BookingProposalCardAmount value={booking.proposed_rate} />
           ) : (
             <BookingRateProposalPanel
               booking={booking}
