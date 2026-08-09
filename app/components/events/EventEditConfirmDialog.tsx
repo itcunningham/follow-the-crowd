@@ -35,7 +35,7 @@ export default function EventEditConfirmDialog({
           Update event and notify group chat?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-          DJs with bookings will be notified of these changes in the group chat
+          DJs with bookings will be notified of these changes in the crew chat
         </p>
 
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
