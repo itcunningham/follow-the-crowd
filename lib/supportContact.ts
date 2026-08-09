@@ -33,10 +33,8 @@ export function buildAccountDeletionRequestMailto(options: {
 
   bodyLines.push("", "Thank you");
 
-  const params = new URLSearchParams({
-    subject,
-    body: bodyLines.join("\n"),
-  });
+  const encodedSubject = encodeURIComponent(subject);
+  const encodedBody = encodeURIComponent(bodyLines.join("\n"));
 
-  return `mailto:${getSupportEmail()}?${params.toString()}`;
+  return `mailto:${getSupportEmail()}?subject=${encodedSubject}&body=${encodedBody}`;
 }
