@@ -8052,12 +8052,9 @@ function testAccountDeletionClearsEveryProfileColumn() {
 
   // Structural columns, not profile content.
   const notProfileContent = new Set(["user_id", "role", "onboarding_complete"]);
-  // username carries a unique index; clearing it collides on the second
-  // deletion. Deliberately retained - see the comment in the SQL.
-  const deliberatelyKept = new Set(["username"]);
 
   for (const column of profileColumns) {
-    if (notProfileContent.has(column) || deliberatelyKept.has(column)) {
+    if (notProfileContent.has(column)) {
       continue;
     }
 
@@ -8068,16 +8065,17 @@ function testAccountDeletionClearsEveryProfileColumn() {
     );
   }
 
-  // The two private fields specifically, since they are the ones a deleted user
-  // most expects to be gone.
-  assert.match(anonymiseBlock, /\bfull_name\s*=/);
-  assert.match(anonymiseBlock, /\bdj_booking_contact_name\s*=/);
+  // The two private fields specifically: must be set to NULL to preserve
+  // the zero-non-null invariant, not empty strings.
+  assert.match(anonymiseBlock, /\bfull_name\s*=\s*NULL/);
+  assert.match(anonymiseBlock, /\bdj_booking_contact_name\s*=\s*NULL/);
 
-  // username must NOT be cleared - the unique index makes it a collision.
-  assert.doesNotMatch(
+  // username must be set to NULL (safe per unique index WHERE clause that excludes NULL)
+  // rather than a tombstone, to avoid exposing the internal user_id as a public identifier.
+  assert.match(
     anonymiseBlock,
-    /\busername\s*=/,
-    "username is unique-indexed and must stay retained",
+    /\busername\s*=\s*NULL/,
+    "username must be set to NULL to prevent exposing user_id linkability",
   );
 }
 

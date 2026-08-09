@@ -247,6 +247,7 @@ begin
 
   update public.users
   set
+    username = NULL,
     display_name = 'Deleted User',
     bio = '',
     genre = '',
@@ -263,13 +264,12 @@ begin
     -- users their name, images, links and other profile details are cleared,
     -- and artist_name is a name while tiktok_url and website_url are links, so
     -- the policy described something the function did not do.
-    -- dj_booking_contact_name and full_name matter most: they are the fields
-    -- treated as private, and leaving them on an anonymised row meant the one
-    -- category of data a deleted user most expects to be gone was not.
-    -- username is still deliberately kept - it carries a unique index, and
-    -- clearing it would collide the moment a second account is deleted.
-    full_name = '',
-    dj_booking_contact_name = '',
+    -- dj_booking_contact_name and full_name are the fields treated as private,
+    -- and must be set to NULL (not '') to preserve the zero-non-null invariant.
+    -- username is set to NULL (safe per unique index WHERE clause) rather than
+    -- a tombstone, to avoid exposing the internal user_id and creating linkability.
+    full_name = NULL,
+    dj_booking_contact_name = NULL,
     artist_name = '',
     tiktok_url = '',
     website_url = '',
@@ -283,18 +283,21 @@ begin
   if not found then
     insert into public.users (
       user_id,
+      username,
       display_name,
       onboarding_complete,
       deleted_at
     )
     values (
       v_user_id,
+      NULL,
       'Deleted User',
       false,
       now()
     )
     on conflict (user_id) do update
     set
+      username = NULL,
       display_name = excluded.display_name,
       onboarding_complete = excluded.onboarding_complete,
       deleted_at = excluded.deleted_at;
