@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import FtcAppVersionFooter from "@/app/components/settings/FtcAppVersionFooter";
+import DeleteAccountSection from "@/app/components/settings/DeleteAccountSection";
 import RequestAccountDeletionSection from "@/app/components/settings/RequestAccountDeletionSection";
 import {
   getCurrentAuthUser,
@@ -240,6 +241,8 @@ export default function SettingsPage() {
                   </Link>
                 ))}
               </section>
+
+              <DeleteAccountSection onError={setError} />
 
               <RequestAccountDeletionSection accountEmail={accountEmail} username={username} />
 
