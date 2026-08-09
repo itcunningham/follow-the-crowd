@@ -1,4 +1,12 @@
-# Current state (last updated: 2026-08-08)
+# Current state (last updated: 2026-08-09)
+
+## Edit Profile avatar Save hung on “Saving”
+
+**Bug:** Changing avatar on mobile left the form on **Saving** indefinitely. Uploads sent full iPhone camera files (often multi‑MB) with no timeout; post-save navigation wasn’t awaited and Saving wasn’t cleared if redirect stalled. The claimed 30s timeout was never on `main`.
+
+**Fix:** Client resize/re-encode to ≤1024px JPEG before storage upload; 30s upload timeout with a clear error; HEIC allowed when the browser can decode; Save clears Saving in `finally` before follow-up navigation; real upload error messages surface in the form.
+
+---
 
 ## System cards are centred, not left-aligned (2026-08-08)
 

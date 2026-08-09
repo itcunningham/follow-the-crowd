@@ -126,6 +126,11 @@ import {
   resolveAvatarObjectUrl,
 } from "../lib/user/avatarImageUrl";
 import {
+  PROFILE_IMAGE_MAX_EDGE_PX,
+  PROFILE_IMAGE_UPLOAD_TIMEOUT_MS,
+  withProfileImageUploadTimeout,
+} from "../lib/user/uploadProfileImage";
+import {
   buildChatMessageGroupLayout,
   CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS,
   CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS,
@@ -14385,6 +14390,48 @@ function testChatEmptyStateComponentized() {
 }
 
 /**
+ * Edit Profile avatar Save was hanging on “Saving” when iPhone camera JPEGs
+ * (multi‑MB) uploaded with no timeout, and Saving was not cleared if post-save
+ * navigation stalled.
+ */
+async function testProfileAvatarUploadCannotHangOnSaving() {
+  const uploadSource = readFileSync(
+    new URL("../lib/user/uploadProfileImage.ts", import.meta.url),
+    "utf8",
+  );
+  const formSource = readFileSync(
+    new URL("../app/components/profile/EditProfileForm.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.ok(PROFILE_IMAGE_MAX_EDGE_PX <= 1280);
+  assert.ok(PROFILE_IMAGE_UPLOAD_TIMEOUT_MS <= 30_000);
+  assert.match(uploadSource, /prepareProfileImageForUpload/);
+  assert.match(uploadSource, /withProfileImageUploadTimeout/);
+  assert.match(uploadSource, /createImageBitmap/);
+  assert.match(uploadSource, /image\/jpeg/);
+
+  assert.match(formSource, /finally \{\s*[\s\S]*?setSaving\(false\)/);
+  assert.match(formSource, /await onSaved\(\)/);
+  assert.doesNotMatch(
+    formSource,
+    /setUploadError\("Image upload failed"\)/,
+    "upload errors must surface the real message, not a dead-end label",
+  );
+
+  // Timeout helper must reject — not hang — when the underlying call never settles.
+  const hang = new Promise<void>(() => {});
+
+  await assert.rejects(
+    () => withProfileImageUploadTimeout(hang, 20),
+    (error: unknown) => {
+      assert.match(String((error as Error).message ?? error), /timed out/i);
+      return true;
+    },
+  );
+}
+
+/**
  * Chat media must reserve a box before it decodes, and avatars must be fetched
  * at the size they are drawn at.
  */
@@ -17997,6 +18044,7 @@ async function main() {
   testCrewChatComposerKeepsFocusAfterSend();
   testCrewChatMessageGrouping();
   testChatMediaLoadsWithoutARefresh();
+  await testProfileAvatarUploadCannotHangOnSaving();
   testChatBubbleCannotCollapseToOneCharacterColumn();
   testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();
