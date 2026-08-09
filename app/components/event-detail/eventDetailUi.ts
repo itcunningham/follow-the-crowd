@@ -5,7 +5,7 @@ import {
 } from "@/lib/design/plannerWorkspaceTokens";
 
 export const EVENT_DETAIL_PAGE_SHELL_CLASS =
-  "mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text";
+  "mx-auto w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text md:min-h-[100dvh]";
 
 /** Scrollable Event Details body — mobile nav offset must live here, not only on the shell. */
 export const EVENT_DETAIL_PAGE_CONTENT_CLASS = `${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pt-5 ${MOBILE_NAV_OFFSET_CLASS} md:pb-6`;
