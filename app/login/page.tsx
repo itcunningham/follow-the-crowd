@@ -112,9 +112,8 @@ export default function LoginPage() {
       router.replace(redirectPath);
     } catch (recoveryError) {
       console.error("Password recovery failed:", recoveryError);
-      setError(
-        recoveryError instanceof Error ? recoveryError.message : "Failed to update password",
-      );
+      const errorMessage = recoveryError instanceof Error ? recoveryError.message : "Failed to update password";
+      setError(errorMessage.replace(/\.$/, ""));
       setSubmitting(false);
     }
   }
