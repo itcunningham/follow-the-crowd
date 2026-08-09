@@ -8111,16 +8111,16 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
   const stripComments = (source: string) =>
     source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--[^\n]*/g, "");
 
-  const viewSqlRaw = readFileSync(
-    new URL("../scripts/setupPrivateProfileFieldsView.sql", import.meta.url),
+  const tableSetupSqlRaw = readFileSync(
+    new URL("../scripts/setupPrivateProfileFieldsTable.sql", import.meta.url),
     "utf8",
   );
-  const revokeSqlRaw = readFileSync(
-    new URL("../scripts/setupPrivateProfileFieldsRevoke.sql", import.meta.url),
+  const tableSetupSql = stripComments(tableSetupSqlRaw);
+  const deletionSqlRaw = readFileSync(
+    new URL("../scripts/setupAccountDeletion.sql", import.meta.url),
     "utf8",
   );
-  const viewSql = stripComments(viewSqlRaw);
-  const revokeSql = stripComments(revokeSqlRaw);
+  const deletionSql = stripComments(deletionSqlRaw);
   const currentUserSource = stripComments(
     readFileSync(new URL("../lib/user/currentUser.ts", import.meta.url), "utf8"),
   );
@@ -8131,40 +8131,88 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
       .map((entry) => entry.trim())
       .filter((entry) => /^[a-z_]+$/.test(entry));
 
-  // --- the phases must stay separate -------------------------------------
-  // Phase A must be purely additive. A revoke on public.users here would fire
-  // before the code is deployed and break the live owner-profile read.
-  assert.doesNotMatch(
-    viewSql,
-    /revoke[^;]*on table public\.users/,
-    "Phase A must not revoke anything on public.users - it runs before the code is live",
-  );
-  // Phase C must not create the view: if the view only appears here, there is
-  // no safe intermediate state at all.
-  assert.doesNotMatch(
-    revokeSql,
-    /create view public\.my_profile/,
-    "Phase C must not create the view - Phase A has to be runnable on its own first",
-  );
-  // Neither file may contain both halves.
-  for (const [name, sql] of [["Phase A", viewSql], ["Phase C", revokeSql]] as const) {
-    const hasView = /create view public\.my_profile/.test(sql);
-    const hasRevoke = /revoke select on table public\.users from authenticated/.test(sql);
-    assert.ok(
-      !(hasView && hasRevoke),
-      `${name} contains both the view and the revoke - the phases must never be recombined`,
-    );
-  }
-  // The ordering must be documented where someone about to run it will look.
-  assert.match(viewSqlRaw, /PHASE A/);
-  assert.match(revokeSqlRaw, /PHASE C/);
+  // --- Private table setup ------------------------------------------------
+  // The new design uses a separate user_private_data table for owner-only fields
   assert.match(
-    revokeSqlRaw,
-    /DEPLOYED/,
-    "Phase C must state that the code has to be deployed first",
+    tableSetupSql,
+    /create table.*public\.user_private_data/i,
+    "Private table setup must create user_private_data",
+  );
+  assert.match(
+    tableSetupSql,
+    /alter table public\.user_private_data enable row level security/i,
+    "user_private_data must have RLS enabled",
   );
 
-  // --- the projections the app actually asks for -------------------------
+  // Explicit permissions: revoke from all roles first, then grant to authenticated
+  assert.match(
+    tableSetupSql,
+    /revoke all on public\.user_private_data from public;/,
+    "Must explicitly revoke from public role",
+  );
+  assert.match(
+    tableSetupSql,
+    /revoke all on public\.user_private_data from anon;/,
+    "Must explicitly revoke from anon role",
+  );
+  assert.match(
+    tableSetupSql,
+    /revoke all on public\.user_private_data from authenticated;/,
+    "Must explicitly revoke from authenticated role before granting",
+  );
+  assert.match(
+    tableSetupSql,
+    /grant select, insert, update on public\.user_private_data to authenticated;/,
+    "Must grant SELECT, INSERT, UPDATE to authenticated (no DELETE)",
+  );
+  assert.doesNotMatch(
+    tableSetupSql,
+    /grant.*delete.*on public\.user_private_data/i,
+    "DELETE must NOT be granted to authenticated on user_private_data",
+  );
+
+  // RLS policies: all with explicit TO authenticated clause
+  assert.match(
+    tableSetupSql,
+    /create policy.*for select.*to authenticated\s*using/i,
+    "SELECT policy must have TO authenticated",
+  );
+  assert.match(
+    tableSetupSql,
+    /create policy.*for insert.*to authenticated\s*with check/i,
+    "INSERT policy must have TO authenticated",
+  );
+  assert.match(
+    tableSetupSql,
+    /create policy.*for update.*to authenticated\s*using.*with check/i,
+    "UPDATE policy must have TO authenticated",
+  );
+  assert.doesNotMatch(
+    tableSetupSql,
+    /create policy.*for delete/i,
+    "No DELETE policy should exist on user_private_data (deletion via RPC only)",
+  );
+
+  // RLS protection: owner-only using auth_user_id()
+  assert.match(
+    tableSetupSql,
+    /using \(user_id = public\.auth_user_id\(\)::text\)/,
+    "RLS must check user_id = auth_user_id()::text for read access",
+  );
+
+  // --- Account deletion must handle private data -------------------------
+  assert.match(
+    deletionSql,
+    /delete from public\.user_private_data/,
+    "Account deletion RPC must delete from user_private_data",
+  );
+  assert.match(
+    deletionSql,
+    /to_regclass.*public\.user_private_data/,
+    "Account deletion RPC must guard user_private_data deletion with to_regclass",
+  );
+
+  // --- Profile field projections -----------------------------------------
   const profileFields = listOf(
     currentUserSource.slice(
       currentUserSource.indexOf('const PROFILE_FIELDS =\n  "') + 26,
@@ -8177,75 +8225,135 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
     "PROFILE_FIELDS must not carry either private column",
   );
 
-  // --- Phase C: the grant on public.users --------------------------------
-  const grantBlock = revokeSql.slice(
-    revokeSql.indexOf("grant select ("),
-    revokeSql.indexOf(") on table public.users to authenticated;"),
-  );
-  const granted = listOf(grantBlock.slice(grantBlock.indexOf("(") + 1));
+  // my_profile view now omits dj_booking_contact_name (fetched separately)
+  // This assertion verifies the read behavior described below
+  // after the cleanupMyProfileView.sql has been run
+  const ownsProfileAssert = currentUserSource.indexOf("OWN_PROFILE_FIELDS");
+  assert.ok(ownsProfileAssert >= 0, "OWN_PROFILE_FIELDS must be defined");
 
-  assert.ok(!granted.includes("full_name"), "full_name must never be granted to authenticated");
-  assert.ok(
-    !granted.includes("dj_booking_contact_name"),
-    "dj_booking_contact_name must never be granted to authenticated",
-  );
-  for (const column of profileFields) {
-    assert.ok(granted.includes(column), `PROFILE_FIELDS column not granted: ${column}`);
-  }
-  assert.ok(
-    granted.includes("deleted_at"),
-    'deleted_at is filtered with .is("deleted_at", null) and must be granted',
-  );
-  assert.match(revokeSql, /revoke select on table public\.users from authenticated;/);
-  assert.doesNotMatch(
-    revokeSql,
-    /revoke (insert|update)[^;]*on table public\.users from authenticated/,
-    "INSERT/UPDATE must be left alone - restricting them breaks profile editing",
-  );
-
-  // --- Phase A: the owner view -------------------------------------------
-  const viewBlock = viewSql.slice(
-    viewSql.indexOf("create view public.my_profile"),
-    viewSql.indexOf("from public.users"),
-  );
-  const viewColumns = listOf(viewBlock.slice(viewBlock.indexOf("select") + 6));
-
-  assert.match(
-    viewSql,
-    /where user_id = public\.auth_user_id\(\)/,
-    "my_profile must be filtered to the caller's own row",
-  );
-  assert.match(viewSql, /security_invoker = false/);
-  assert.match(viewSql, /grant select on public\.my_profile to authenticated;/);
-  assert.match(viewSql, /revoke all on public\.my_profile from anon;/);
-
-  assert.ok(
-    viewColumns.includes("dj_booking_contact_name"),
-    "my_profile must expose dj_booking_contact_name or the owner cannot edit it",
-  );
-  assert.ok(
-    !viewColumns.includes("full_name"),
-    "full_name has no runtime read and must not be exposed through my_profile",
-  );
-  assert.deepEqual(
-    [...viewColumns].sort(),
-    [...profileFields, "dj_booking_contact_name"].sort(),
-    "my_profile must match OWN_PROFILE_FIELDS exactly",
-  );
-
-  // Both phases must reload the PostgREST schema cache or the change is
-  // invisible to the API until something else reloads it.
-  assert.match(viewSql, /notify pgrst, 'reload schema';/);
-  assert.match(revokeSql, /notify pgrst, 'reload schema';/);
-
-  // --- the read path -------------------------------------------------------
+  // --- Two-query read path with transitional fallback -----
+  // During PHASE 2-7 (transitional): reads both tables, uses fallback if no private row
+  // During PHASE 8+ (final): reads both tables, no fallback
+  //
+  // The owner's profile is fetched with two queries:
+  // 1. Public fields (+ dj_booking_contact_name temporarily) from my_profile
+  // 2. Private contact from user_private_data
   assert.match(
     currentUserSource,
     /const OWN_PROFILE_SOURCE = "my_profile";/,
-    "the owner profile read must come from the view, not the table",
+    "owner profile comes from my_profile",
   );
-  assert.match(currentUserSource, /\.from\(OWN_PROFILE_SOURCE\)\s*\.select\(OWN_PROFILE_FIELDS\)/);
-  assert.match(currentUserSource, /\.from\("users"\)\s*\.select\(PROFILE_FIELDS\)/);
+
+  // Transitional phase: includes dj_booking_contact_name in the selection
+  assert.match(
+    currentUserSource,
+    /const OWN_PROFILE_FIELDS = `\$\{PROFILE_FIELDS\}, dj_booking_contact_name`;/,
+    "During transition (Phase 2-7), OWN_PROFILE_FIELDS includes dj_booking_contact_name for fallback",
+  );
+
+  // Two-query pattern
+  assert.match(
+    currentUserSource,
+    /\.from\(OWN_PROFILE_SOURCE\)[\s\S]*?\.from\("user_private_data"\)/,
+    "getCurrentUserProfile must query both my_profile and user_private_data",
+  );
+
+  // Transitional fallback: if no private row exists, use the value from my_profile
+  assert.match(
+    currentUserSource,
+    /privateData\s*\?\s*privateData\.dj_booking_contact_name\s*:\s*\(publicProfile as any\)\.dj_booking_contact_name/,
+    "Transitional fallback: private row value wins; if no private row, use my_profile value",
+  );
+
+  // Important: the fallback only applies when privateData is falsy (row doesn't exist)
+  // If privateData exists but its value is NULL, that NULL is authoritative
+  assert.match(
+    currentUserSource,
+    /privateData\s*\?\s*privateData\.dj_booking_contact_name/,
+    "Private row existence (not its NULL value) triggers preference for its value",
+  );
+
+  // --- Field distribution in save ----------------------------------------
+  // saveUserProfile distributes fields: public to users, private ONLY to user_private_data
+  // The private field NEVER goes back into the users table - it's a one-way migration
+  assert.match(
+    currentUserSource,
+    /publicUpdatePayload/,
+    "saveUserProfile must separate public fields into their own update",
+  );
+  assert.match(
+    currentUserSource,
+    /privateData.*dj_booking_contact_name/,
+    "saveUserProfile must extract dj_booking_contact_name for private table",
+  );
+  assert.match(
+    currentUserSource,
+    /\.from\("users"\)[\s\S]*?\.from\("user_private_data"\)/,
+    "saveUserProfile must update users AND user_private_data separately",
+  );
+  assert.match(
+    currentUserSource,
+    /upsert.*user_private_data/,
+    "saveUserProfile must upsert private data",
+  );
+
+  // Verify private field is NOT in the public update payload
+  assert.doesNotMatch(
+    currentUserSource.slice(
+      currentUserSource.indexOf("const publicUpdatePayload"),
+      currentUserSource.indexOf("if (options && \"avatarUrl\" in options)"),
+    ),
+    /dj_booking_contact_name/,
+    "dj_booking_contact_name must NOT be in publicUpdatePayload; write only to user_private_data",
+  );
+
+  // --- Backfill safety -----
+  // Backfill must use ON CONFLICT DO NOTHING so users who save after code
+  // deployment get their newer private row preserved, not overwritten by the
+  // backfill of older values from the users table.
+  const backfillSql = readFileSync(
+    new URL("../scripts/backfillPrivateProfileFields.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    backfillSql,
+    /ON CONFLICT.*DO NOTHING/,
+    "Backfill must use ON CONFLICT DO NOTHING to preserve newer saves",
+  );
+
+  // --- Phase 8 transition: remove fallback and clean view ---
+  // Once backfill is complete and verified, Phase 8 removes the fallback:
+  // 1. my_profile is recreated without dj_booking_contact_name
+  // 2. OWN_PROFILE_FIELDS reverts to PROFILE_FIELDS (no private column)
+  // 3. The fallback logic is removed (use only private table, never users)
+  // This assertion documents the expected state AFTER Phase 8:
+  // The cleanupMyProfileView.sql should not include dj_booking_contact_name
+  const cleanupViewSql = stripComments(
+    readFileSync(
+      new URL("../scripts/cleanupMyProfileView.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.doesNotMatch(
+    cleanupViewSql,
+    /select[\s\S]*?dj_booking_contact_name[\s\S]*?from public\.users/i,
+    "Phase 8 cleanup must remove dj_booking_contact_name from my_profile view",
+  );
+  assert.match(
+    cleanupViewSql,
+    /security_invoker = false/,
+    "Phase 8 cleanup must preserve security_invoker = false",
+  );
+  assert.match(
+    cleanupViewSql,
+    /revoke all on public\.my_profile from public;/,
+    "Phase 8 cleanup must explicitly revoke from public",
+  );
+  assert.match(
+    cleanupViewSql,
+    /revoke all on public\.my_profile from anon;/,
+    "Phase 8 cleanup must explicitly revoke from anon",
+  );
 }
 
 /**

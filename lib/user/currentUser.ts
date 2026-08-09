@@ -78,28 +78,40 @@ export type UserProfileInput = {
  *                             nothing. Removed from the type too, so it cannot
  *                             quietly come back.
  *   dj_booking_contact_name - written by the owner's profile form and displayed
- *                             on no surface. Owner-only below.
+ *                             on no surface. Stored separately in user_private_data;
+ *                             owner-only read below.
  */
 const PROFILE_FIELDS =
   "user_id, role, onboarding_complete, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
 
-/** The owner's own profile: everything above, plus their private contact field. */
+/**
+ * The owner's own profile during the TRANSITIONAL PHASE (Phase 2-7).
+ * Includes dj_booking_contact_name from my_profile to support the temporary fallback
+ * during backfill. Once all users are backfilled and the old column is scrubbed,
+ * this reverts to just PROFILE_FIELDS and the fallback is removed (Phase 8).
+ *
+ * During transition:
+ *   - my_profile still includes dj_booking_contact_name (not yet cleaned up)
+ *   - If no private row exists, we use the value from my_profile (fallback)
+ *   - If a private row exists, its value takes precedence
+ *
+ * Phase 8 (final):
+ *   - my_profile is recreated without dj_booking_contact_name
+ *   - OWN_PROFILE_FIELDS reverts to PROFILE_FIELDS
+ *   - The fallback is removed
+ */
 const OWN_PROFILE_FIELDS = `${PROFILE_FIELDS}, dj_booking_contact_name`;
 
 /**
- * Where the owner's own profile is read from.
- *
- * NOT `users`. `authenticated` no longer holds SELECT on
- * `dj_booking_contact_name` at the table level - see
- * scripts/setupPrivateProfileFields.sql - because table privileges are checked
- * per column and before RLS, which is the only way to stop another signed-in
- * user reading it with a direct query. Column grants are role-wide, so that
- * revoke locks the owner out too.
+ * Where the owner's own profile public fields come from.
  *
  * `public.my_profile` is a view over public.users filtered to
- * `user_id = auth_user_id()`, exposing exactly OWN_PROFILE_FIELDS. It takes no
- * parameters, so a caller can narrow the result but never widen it to someone
- * else's row.
+ * `user_id = auth_user_id()`, exposing exactly PROFILE_FIELDS (no private columns).
+ * It takes no parameters, so a caller can narrow the result but never widen it
+ * to someone else's row.
+ *
+ * The private contact field (dj_booking_contact_name) is fetched in a separate
+ * query from user_private_data and merged in application code.
  *
  * Reads of OTHER users stay on `users` with PROFILE_FIELDS. Writes stay on
  * `users` too - INSERT/UPDATE were left table-level, so profile editing is
@@ -494,25 +506,56 @@ export async function getCurrentUserProfile(options?: {
 
   profileRequest = (async () => {
     try {
-      const { data, error } = await supabase
+      // Query 1: Public/owner profile fields from my_profile
+      const { data: publicData, error: publicError } = await supabase
         .from(OWN_PROFILE_SOURCE)
         .select(OWN_PROFILE_FIELDS)
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (error) {
-        throw error;
+      if (publicError) {
+        throw publicError;
       }
 
-      const profile = (data as UserProfile | null) ?? null;
+      const publicProfile = (publicData as UserProfile | null) ?? null;
 
-      if (profile) {
-        applyCachedProfile(profile);
-        writeLocalProfileCache(profile);
-      } else {
+      if (!publicProfile) {
         cachedProfile = null;
         cachedProfileUserId = userId;
+        return null;
       }
+
+      // Query 2: Private contact field from user_private_data
+      // This is a temporary fallback path during migration. Once all users have
+      // been backfilled and the old column scrubbed, we can remove the fallback.
+      const { data: privateData, error: privateError } = await supabase
+        .from("user_private_data")
+        .select("dj_booking_contact_name")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      // If row doesn't exist (new user or not yet backfilled), that's fine
+      if (privateError && privateError.code !== "PGRST116") {
+        throw privateError;
+      }
+
+      // Merge results: public fields + private contact field
+      // Fallback: if a private row exists, its value wins (even if NULL/empty).
+      // If no private row exists yet, temporarily use any value from my_profile
+      // (which still reads the old column during the migration window).
+      const dj_booking_contact_name =
+        privateData
+          ? privateData.dj_booking_contact_name  // Private row exists: use its value
+          : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (publicProfile as any).dj_booking_contact_name; // Fallback: use old column value
+
+      const profile: UserProfile = {
+        ...publicProfile,
+        dj_booking_contact_name: dj_booking_contact_name || null,
+      };
+
+      applyCachedProfile(profile);
+      writeLocalProfileCache(profile);
 
       return profile;
     } finally {
@@ -621,7 +664,8 @@ export async function saveUserProfile(
     throw new Error("Complete role onboarding before saving your profile");
   }
 
-  const updatePayload: Record<string, string> = {
+  // Distribute fields to their respective tables
+  const publicUpdatePayload: Record<string, string> = {
     username: normalizeUsername(input.username),
     display_name: input.display_name.trim().slice(0, MAX_PROFILE_DISPLAY_NAME_LENGTH),
     bio: input.bio.trim(),
@@ -632,7 +676,6 @@ export async function saveUserProfile(
     soundcloud_url: input.soundcloud_url.trim(),
     website_url: input.website_url.trim(),
     artist_name: input.artist_name.trim(),
-    dj_booking_contact_name: input.dj_booking_contact_name.trim(),
     promoter_brand_name: input.promoter_brand_name.trim(),
     promoter_brand_description: input.promoter_brand_description.trim(),
     dj_availability: input.dj_availability.trim(),
@@ -643,43 +686,65 @@ export async function saveUserProfile(
   };
 
   if (options && "avatarUrl" in options) {
-    updatePayload.avatar_url = options.avatarUrl?.trim() ?? "";
+    publicUpdatePayload.avatar_url = options.avatarUrl?.trim() ?? "";
   }
 
-  const { data, error } = await supabase
+  const privateData = {
+    user_id: userId,
+    dj_booking_contact_name: input.dj_booking_contact_name.trim(),
+  };
+
+  // Save public fields to users table
+  const { data: publicData, error: publicError } = await supabase
     .from("users")
-    .update(updatePayload)
+    .update(publicUpdatePayload)
     .eq("user_id", userId)
     .select("user_id, role, onboarding_complete, display_name")
     .maybeSingle();
 
-  if (error) {
-    console.error("[users] Failed to save profile:", {
+  if (publicError) {
+    console.error("[users] Failed to save public profile fields:", {
       userId,
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
+      message: publicError.message,
+      code: publicError.code,
+      details: publicError.details,
+      hint: publicError.hint,
     });
 
-    if (error.code === "23505") {
+    if (publicError.code === "23505") {
       throw new Error("That username is already taken");
     }
 
-    throw error;
+    throw publicError;
   }
 
-  if (!data) {
+  if (!publicData) {
     console.error("[users] Profile update matched no row for current user:", { userId });
     throw new Error("Profile row not found for the current user");
   }
 
-  if (!data.display_name?.trim()) {
+  if (!publicData.display_name?.trim()) {
     console.error("[users] Profile save did not persist display name:", {
       userId,
-      display_name: data.display_name,
+      display_name: publicData.display_name,
     });
     throw new Error("Failed to save your profile. Please try again.");
+  }
+
+  // Save private contact field to user_private_data table
+  const { error: privateError } = await supabase
+    .from("user_private_data")
+    .upsert(privateData, { onConflict: "user_id" });
+
+  if (privateError) {
+    console.error("[users] Failed to save private profile fields:", {
+      userId,
+      message: privateError.message,
+      code: privateError.code,
+      details: privateError.details,
+      hint: privateError.hint,
+    });
+    throw privateError;
   }
 
   invalidateCurrentUserProfileCache();

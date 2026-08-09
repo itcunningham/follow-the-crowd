@@ -219,6 +219,16 @@ begin
   delete from public.booking_plans
   where owner_id = v_user_id;
 
+  -- Private profile data: owner-only contact field stored separately in user_private_data.
+  -- Guarded and dynamic on purpose. If setupPrivateProfileFieldsTable.sql has not
+  -- been applied yet, account deletion should still succeed. EXECUTE defers resolution,
+  -- and to_regclass makes the branch skip cleanly. That keeps script order-independence.
+  if to_regclass('public.user_private_data') is not null then
+    execute
+      'delete from public.user_private_data where user_id = $1'
+      using v_user_id;
+  end if;
+
   -- Private planner->DJ roster, BOTH directions. The dj_id half is the one that
   -- is easy to forget: without it a deleted DJ leaves a stale row on every
   -- planner's roster forever, invisible in the UI but permanent.
