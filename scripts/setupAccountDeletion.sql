@@ -4,6 +4,8 @@
 -- Auth user removal is handled inside delete_account_data().
 -- Storage files are removed via the Storage API before this RPC runs.
 
+BEGIN;
+
 -- ---------------------------------------------------------------------------
 -- Profile soft-delete marker
 -- ---------------------------------------------------------------------------
@@ -308,10 +310,27 @@ begin
 end;
 $$;
 
+-- Explicit permission hardening: revoke all from public, anon, and authenticated first,
+-- then grant only the necessary execute permissions. This ensures idempotency in
+-- production: a re-run will not leave stale permissions if roles were previously granted.
 revoke all on function public.check_account_deletion_blockers() from public;
+revoke all on function public.check_account_deletion_blockers() from anon;
+revoke all on function public.check_account_deletion_blockers() from authenticated;
+
 revoke all on function public.cleanup_account_deletion_dependencies() from public;
+revoke all on function public.cleanup_account_deletion_dependencies() from anon;
+revoke all on function public.cleanup_account_deletion_dependencies() from authenticated;
+
 revoke all on function public.delete_account_data() from public;
+revoke all on function public.delete_account_data() from anon;
+revoke all on function public.delete_account_data() from authenticated;
+
+-- Grant only the intended permissions.
+-- check_account_deletion_blockers() and delete_account_data() are directly callable by authenticated users.
+-- cleanup_account_deletion_dependencies() is internal only, called by delete_account_data().
 grant execute on function public.check_account_deletion_blockers() to authenticated;
 grant execute on function public.delete_account_data() to authenticated;
 
-notify pgrst, 'reload schema';
+COMMIT;
+
+NOTIFY pgrst, 'reload schema';

@@ -8210,6 +8210,72 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
     "Account deletion RPC must guard user_private_data deletion with to_regclass",
   );
 
+  // --- Explicit permission hardening for deletion functions ----------------
+  // All three functions must have explicit revokes from public, anon, authenticated
+  // before granting specific execute permissions. This ensures idempotency.
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.check_account_deletion_blockers\(\) from public;/,
+    "check_account_deletion_blockers must explicitly revoke from public",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.check_account_deletion_blockers\(\) from anon;/,
+    "check_account_deletion_blockers must explicitly revoke from anon",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.check_account_deletion_blockers\(\) from authenticated;/,
+    "check_account_deletion_blockers must explicitly revoke from authenticated",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.cleanup_account_deletion_dependencies\(\) from public;/,
+    "cleanup_account_deletion_dependencies must explicitly revoke from public",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.cleanup_account_deletion_dependencies\(\) from anon;/,
+    "cleanup_account_deletion_dependencies must explicitly revoke from anon",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.cleanup_account_deletion_dependencies\(\) from authenticated;/,
+    "cleanup_account_deletion_dependencies must explicitly revoke from authenticated",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.delete_account_data\(\) from public;/,
+    "delete_account_data must explicitly revoke from public",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.delete_account_data\(\) from anon;/,
+    "delete_account_data must explicitly revoke from anon",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.delete_account_data\(\) from authenticated;/,
+    "delete_account_data must explicitly revoke from authenticated",
+  );
+
+  // Grant execute only to the public-facing functions, not the internal one
+  assert.match(
+    deletionSql,
+    /grant execute on function public\.check_account_deletion_blockers\(\) to authenticated;/,
+    "check_account_deletion_blockers must grant EXECUTE to authenticated",
+  );
+  assert.match(
+    deletionSql,
+    /grant execute on function public\.delete_account_data\(\) to authenticated;/,
+    "delete_account_data must grant EXECUTE to authenticated",
+  );
+  assert.doesNotMatch(
+    deletionSql,
+    /grant execute on function public\.cleanup_account_deletion_dependencies\(\) to authenticated;/,
+    "cleanup_account_deletion_dependencies must NOT grant EXECUTE to authenticated (internal only)",
+  );
+
   // --- Profile field projections -----------------------------------------
   const profileFields = listOf(
     currentUserSource.slice(
