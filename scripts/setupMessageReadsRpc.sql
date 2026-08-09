@@ -1,6 +1,7 @@
--- RPC function to mark conversations as unread for a specific user
--- Runs with elevated permissions, bypassing RLS
--- Used when planners cancel events to ensure DJs get notification badges
+-- Internal RPC helpers to mark conversations unread for specific users.
+-- These are SECURITY DEFINER functions for use ONLY from other internal SECURITY DEFINER
+-- functions (e.g., cancel_event, event-cancellation handlers).
+-- Direct client access is forbidden via explicit REVOKE below.
 -- Idempotent: safe to re-run.
 
 CREATE OR REPLACE FUNCTION public.mark_conversation_unread(
@@ -41,5 +42,9 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Grant execute to authenticated users so they can call it
-GRANT EXECUTE ON FUNCTION public.mark_conversation_unread(text, uuid, uuid) TO authenticated;
+-- Revoke all access from public roles. These are internal helpers only.
+-- They must ONLY be called from SECURITY DEFINER functions with proper
+-- authorization checks (cancel_event, etc.), never directly from clients.
+REVOKE ALL ON FUNCTION public.mark_conversation_unread(text, uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.mark_conversation_unread(text, uuid, uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.mark_conversation_unread(text, uuid, uuid) FROM authenticated;

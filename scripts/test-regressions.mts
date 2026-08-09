@@ -8630,6 +8630,54 @@ function testDmAttachmentsBucketIsPrivate() {
 }
 
 /**
+ * P1 security: mark_conversation_unread and mark_conversation_unread_for_cancellation
+ * are internal SECURITY DEFINER helpers that must never be directly callable from the
+ * browser/client. They must be explicitly revoked from PUBLIC, anon, and authenticated
+ * roles to enforce this boundary.
+ */
+function testMessageReadsUnreadHelpersAreInternalOnly() {
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+  const sql = stripComments(
+    readFileSync(
+      new URL("../scripts/setupMessageReadsRpc.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // mark_conversation_unread must explicitly revoke ALL from PUBLIC to deny default access.
+  assert.match(
+    sql,
+    /revoke all on function public\.mark_conversation_unread\(text,\s*uuid,\s*uuid\) from public;/i,
+    "mark_conversation_unread must revoke ALL from PUBLIC",
+  );
+
+  // Must revoke from anon to prevent unauthenticated access.
+  assert.match(
+    sql,
+    /revoke all on function public\.mark_conversation_unread\(text,\s*uuid,\s*uuid\) from anon;/i,
+    "mark_conversation_unread must revoke ALL from anon",
+  );
+
+  // Must revoke from authenticated to prevent direct browser calls.
+  assert.match(
+    sql,
+    /revoke all on function public\.mark_conversation_unread\(text,\s*uuid,\s*uuid\) from authenticated;/i,
+    "mark_conversation_unread must revoke ALL from authenticated",
+  );
+
+  // No GRANT statements to this function for any client-facing role.
+  assert.doesNotMatch(
+    sql,
+    /grant\s+execute\s+on\s+function\s+public\.mark_conversation_unread/i,
+    "mark_conversation_unread must not grant EXECUTE to any client-facing role",
+  );
+}
+
+/**
  * Behavioural counterpart to testDmAttachmentsRenderOnlySignedUrls: the source
  * assertions there prove the components call this, these prove it is correct.
  * Every existing `message_attachments` row holds the public-URL form, and none
@@ -18221,6 +18269,7 @@ async function main() {
   testDmImageGroupFullViewerAndOwnershipAlignment();
   testDmAttachmentsRenderOnlySignedUrls();
   testDmAttachmentsBucketIsPrivate();
+  testMessageReadsUnreadHelpersAreInternalOnly();
   testToStorageObjectPathResolvesStoredUrls();
   testPrivateProfileFieldsAreDatabaseEnforced();
   testAccountDeletionClearsEveryProfileColumn();

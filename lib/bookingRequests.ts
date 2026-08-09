@@ -1146,56 +1146,9 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       }
     }
 
-    // Always mark conversation as unread for the DJ recipient (even if message already existed)
-    console.log("[bookings] Marking conversation as unread for recipient...");
-    if (booking.recipient_id && booking.conversation_id) {
-      try {
-        console.log("[bookings] Calling mark_conversation_unread RPC for:", {
-          user_id: booking.recipient_id,
-          conversation_id: booking.conversation_id,
-          event_id: booking.event_id,
-        });
-
-        // Call RPC function to mark conversation as unread (bypasses RLS)
-        const { data: rpcResult, error: rpcError } = await supabase.rpc(
-          "mark_conversation_unread",
-          {
-            p_user_id: booking.recipient_id,
-            p_conversation_id: booking.conversation_id,
-            p_event_id: booking.event_id,
-          }
-        );
-
-        const rpcRow = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
-        const rpcFailed =
-          Boolean(rpcError) ||
-          (rpcRow &&
-            typeof rpcRow === "object" &&
-            "success" in rpcRow &&
-            (rpcRow as { success?: boolean }).success === false);
-
-        if (rpcFailed) {
-          console.error("[bookings] ❌ Failed to mark conversation unread via RPC:", {
-            error: rpcError,
-            result: rpcResult,
-            user_id: booking.recipient_id,
-            conversation_id: booking.conversation_id,
-          });
-        } else {
-          console.log("[bookings] ✅ Marked conversation unread for DJ via RPC:", {
-            result: rpcResult,
-            recipient_id: booking.recipient_id,
-          });
-        }
-      } catch (error) {
-        console.error("[bookings] ❌ Exception during mark unread:", error);
-      }
-    } else {
-      console.warn("[bookings] ❌ Cannot mark unread: missing recipient_id or conversation_id", {
-        recipient_id: booking.recipient_id,
-        conversation_id: booking.conversation_id,
-      });
-    }
+    // Note: Marking conversation as unread is now handled server-side by cancel_event RPC
+    // after authorization check. The RPC marks all affected bookings as unread to ensure
+    // DJs get notification badges for cancelled event conversations.
   }
 }
 
