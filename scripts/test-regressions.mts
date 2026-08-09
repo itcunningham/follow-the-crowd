@@ -8080,6 +8080,44 @@ function testAccountDeletionClearsEveryProfileColumn() {
 }
 
 /**
+ * Account deletion success state: after server deletion succeeds, local cleanup failures
+ * must not mask deletion success or leave user stranded on Settings with stale session.
+ */
+function testAccountDeletionSuccessState() {
+  const deleteAccountSectionSource = readFileSync(
+    new URL("../app/components/settings/DeleteAccountSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // After deleteAccount() succeeds, sign-out is best-effort and must not block navigation.
+  // Pattern: deleteAccount() call followed by nested try-catch for signOut().
+  assert.match(
+    deleteAccountSectionSource,
+    /await deleteAccount\(/,
+    "DeleteAccountSection must call deleteAccount()",
+  );
+  assert.match(
+    deleteAccountSectionSource,
+    /try\s*\{\s+await signOut\(\);\s*\}\s*catch/,
+    "Sign-out after successful deletion must be in its own try-catch block",
+  );
+
+  // Navigation must use replace() to prevent Back button returning to deleted-account Settings.
+  assert.match(
+    deleteAccountSectionSource,
+    /window\.location\.replace\(LOGIN_PATH\)/,
+    "Navigation after deletion must use replace() to prevent Back button returning to deleted Settings",
+  );
+
+  // Comment explaining that only server-side deletion errors should be reported
+  assert.match(
+    deleteAccountSectionSource,
+    /Only server-side deletion errors/,
+    "Code must document that only server-side deletion errors should be reported",
+  );
+}
+
+/**
  * P1: private profile fields are denied by table privilege, not by projection.
  *
  * RLS has no column granularity, so PROFILE_FIELDS only narrows ordinary
@@ -18084,6 +18122,7 @@ async function main() {
   testToStorageObjectPathResolvesStoredUrls();
   testPrivateProfileFieldsAreDatabaseEnforced();
   testAccountDeletionClearsEveryProfileColumn();
+  testAccountDeletionSuccessState();
   testDmImageGalleryOverviewForLargeGroups();
   testDmMediaViewerCloseButtonConsistentAndClickable();
   testDmImageLightboxUsesPagedTrackNotFloatingCard();

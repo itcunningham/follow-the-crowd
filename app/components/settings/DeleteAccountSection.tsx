@@ -81,10 +81,24 @@ export default function DeleteAccountSection({
     onError(null);
 
     try {
+      // Server deletion is authoritative and must not be retried.
+      // Once this succeeds, the account is gone server-side.
       await deleteAccount(confirmation);
-      await signOut();
-      window.location.href = LOGIN_PATH;
+
+      // After server deletion succeeds, local cleanup is best-effort only.
+      // Even if sign-out fails, the account is already deleted and we must navigate away.
+      try {
+        await signOut();
+      } catch (signOutError) {
+        console.error("Sign-out after successful deletion failed:", signOutError);
+        // Continue to redirect; account is deleted server-side regardless
+      }
+
+      // Navigate away using replace() so Back button does not return to deleted-account Settings.
+      window.location.replace(LOGIN_PATH);
     } catch (deleteError) {
+      // Only server-side deletion errors should be reported as deletion failures.
+      // Client-side cleanup failures do not undo server deletion and should not block navigation.
       console.error("Failed to delete account:", deleteError);
       const message =
         deleteError instanceof Error ? deleteError.message : ACCOUNT_DELETION_FAILED_MESSAGE;
