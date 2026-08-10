@@ -93,7 +93,7 @@ jobs:
       - name: Verify all 42 assertions passed
         run: |
           if grep -q "Result: PASS" pgTAP-output.log && \
-             grep -q "Tests: 42" pgTAP-output.log; then
+             grep -q "Tests=42" pgTAP-output.log; then
             echo "✅ All 42 pgTAP security assertions passed"
             exit 0
           else
