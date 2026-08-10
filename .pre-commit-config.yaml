@@ -1,0 +1,26 @@
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - --baseline
+          - .secrets.baseline
+        name: detect-secrets
+        description: Detects common secrets using entropy + regex patterns
+        entry: detect-secrets scan
+        language: python
+        types: [text]
+        exclude: ^(\.git|\.next|node_modules|\.env.*|\.secrets.baseline)
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-json
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: mixed-line-ending
+        args: ['--fix=lf']
