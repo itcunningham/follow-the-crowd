@@ -8677,6 +8677,74 @@ function testMessageReadsUnreadHelpersAreInternalOnly() {
   );
 }
 
+function testCancelEventAndLegacyFunctionPrivilegesHardened() {
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+  const eventSql = stripComments(
+    readFileSync(
+      new URL("../scripts/setupEventLifecycle.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  const legacySql = stripComments(
+    readFileSync(
+      new URL("../scripts/secureLegacyMessageReadsFunction.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // cancel_event(uuid) must revoke from PUBLIC, anon, and authenticated before granting to authenticated.
+  // This ensures it is never accessible to unauthenticated callers even in fresh environments.
+  assert.match(
+    eventSql,
+    /revoke all on function public\.cancel_event\(uuid\) from public;/i,
+    "cancel_event must revoke ALL from PUBLIC",
+  );
+  assert.match(
+    eventSql,
+    /revoke all on function public\.cancel_event\(uuid\) from anon;/i,
+    "cancel_event must revoke ALL from anon",
+  );
+  assert.match(
+    eventSql,
+    /revoke all on function public\.cancel_event\(uuid\) from authenticated;/i,
+    "cancel_event must revoke ALL from authenticated before granting",
+  );
+  assert.match(
+    eventSql,
+    /grant execute on function public\.cancel_event\(uuid\) to authenticated;/i,
+    "cancel_event must grant EXECUTE to authenticated",
+  );
+
+  // Legacy mark_conversation_unread_for_cancellation must be explicitly revoked from all public roles.
+  assert.match(
+    legacySql,
+    /revoke all on function public\.mark_conversation_unread_for_cancellation\(text,\s*uuid\) from public;/i,
+    "mark_conversation_unread_for_cancellation must revoke ALL from PUBLIC",
+  );
+  assert.match(
+    legacySql,
+    /revoke all on function public\.mark_conversation_unread_for_cancellation\(text,\s*uuid\) from anon;/i,
+    "mark_conversation_unread_for_cancellation must revoke ALL from anon",
+  );
+  assert.match(
+    legacySql,
+    /revoke all on function public\.mark_conversation_unread_for_cancellation\(text,\s*uuid\) from authenticated;/i,
+    "mark_conversation_unread_for_cancellation must revoke ALL from authenticated",
+  );
+
+  // Legacy function must not be granted to any public role.
+  assert.doesNotMatch(
+    legacySql,
+    /grant\s+execute\s+on\s+function\s+public\.mark_conversation_unread_for_cancellation/i,
+    "mark_conversation_unread_for_cancellation must not grant EXECUTE to any role",
+  );
+}
+
 /**
  * Behavioural counterpart to testDmAttachmentsRenderOnlySignedUrls: the source
  * assertions there prove the components call this, these prove it is correct.
@@ -18270,6 +18338,7 @@ async function main() {
   testDmAttachmentsRenderOnlySignedUrls();
   testDmAttachmentsBucketIsPrivate();
   testMessageReadsUnreadHelpersAreInternalOnly();
+  testCancelEventAndLegacyFunctionPrivilegesHardened();
   testToStorageObjectPathResolvesStoredUrls();
   testPrivateProfileFieldsAreDatabaseEnforced();
   testAccountDeletionClearsEveryProfileColumn();

@@ -129,6 +129,8 @@ revoke all on function public.delete_empty_event(uuid) from public;
 grant execute on function public.delete_empty_event(uuid) to authenticated;
 
 revoke all on function public.cancel_event(uuid) from public;
+revoke all on function public.cancel_event(uuid) from anon;
+revoke all on function public.cancel_event(uuid) from authenticated;
 grant execute on function public.cancel_event(uuid) to authenticated;
 
 notify pgrst, 'reload schema';
