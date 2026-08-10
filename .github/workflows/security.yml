@@ -69,7 +69,16 @@ jobs:
         run: |
           cat > supabase/config.toml << 'EOF'
           [db]
-          port = 54321
+          port = 59432
+
+          [api]
+          port = 59433
+
+          [realtime]
+          port = 59434
+
+          [studio]
+          port = 59435
 
           [db.migrations]
           enabled = false
