@@ -451,11 +451,20 @@ SELECT has_table('public'::name, 'message_reads'::name, 'message_reads table exi
 SELECT has_table('public'::name, 'events'::name, 'events table exists');
 SELECT has_table('public'::name, 'booking_requests'::name, 'booking_requests table exists');
 
--- Column type check
-SELECT col_type_is('public'::name, 'messages'::name, 'event_id'::name, 'text'::name, 'messages.event_id is text (production schema)');
+-- Column type check (pg_attribute catalog)
+SELECT is(
+  (SELECT atttypid::regtype::text FROM pg_attribute
+   WHERE attrelid = 'public.messages'::regclass AND attname = 'event_id'),
+  'text'::text,
+  'messages.event_id is text (production schema)'
+);
 
--- RLS enablement
-SELECT has_rls('public'::name, 'conversations'::name, 'RLS enabled on conversations table');
+-- RLS enablement (pg_class.relrowsecurity catalog)
+SELECT is(
+  (SELECT relrowsecurity FROM pg_class WHERE relname = 'conversations' AND relnamespace = 'public'::regnamespace),
+  true,
+  'RLS enabled on conversations table'
+);
 
 -- Function existence
 SELECT has_function('public'::name, 'auth_user_id'::name, ARRAY[]::name[], 'auth_user_id() function exists');

@@ -463,20 +463,18 @@ SELECT lives_ok(
   'member can insert message as themselves'
 );
 
--- Test 2: member cannot insert with different user_id (RLS WITH CHECK blocks)
+-- Test 2: member cannot insert with different user_id (RLS WITH CHECK blocks — expects 42501)
 SELECT throws_ok(
   'INSERT INTO public.messages (id, conversation_id, user_id, text) VALUES (''66666666-6666-4666-6666-666666666666''::uuid, ''11111111-1111-4111-1111-111111111111''::uuid, ''bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb''::text, ''Spoofed insert'');',
-  '42501',
-  'member cannot insert message with different user_id (RLS WITH CHECK blocks spoofing)'
+  '42501'
 );
 
--- Test 3: non-member cannot insert message (RLS WITH CHECK blocks)
+-- Test 3: non-member cannot insert message (RLS WITH CHECK blocks — expects 42501)
 SET LOCAL "request.jwt.claims" = '{"sub":"cccccccc-cccc-4ccc-cccc-cccccccccccc","role":"authenticated","aud":"authenticated"}';
 
 SELECT throws_ok(
   'INSERT INTO public.messages (id, conversation_id, user_id, text) VALUES (''77777777-7777-4777-7777-777777777777''::uuid, ''11111111-1111-4111-1111-111111111111''::uuid, ''cccccccc-cccc-4ccc-cccc-cccccccccccc''::text, ''Non-member insert'');',
-  '42501',
-  'non-member cannot insert message (RLS WITH CHECK blocks non-member)'
+  '42501'
 );
 
 -- Test 4: Verify first insert succeeded (message visible to inserter)

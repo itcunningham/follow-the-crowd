@@ -457,21 +457,19 @@ INSERT INTO public.messages (id, conversation_id, user_id, text) VALUES
 
 SELECT plan(6);
 
--- Test 1: anon cannot read conversations (REVOKE SELECT)
+-- Test 1: anon cannot read conversations (REVOKE SELECT — expects 42501)
 SET LOCAL ROLE anon;
 SET LOCAL "request.jwt.claims" = '{"role":"anon","aud":"authenticated"}';
 
 SELECT throws_ok(
   'SELECT id FROM public.conversations WHERE id = ''11111111-1111-4111-1111-111111111111''::uuid;',
-  '42501',
-  'anon role denied SELECT on conversations (insufficient privilege)'
+  '42501'
 );
 
--- Test 2: anon cannot read messages (REVOKE SELECT)
+-- Test 2: anon cannot read messages (REVOKE SELECT — expects 42501)
 SELECT throws_ok(
   'SELECT id FROM public.messages WHERE conversation_id = ''11111111-1111-4111-1111-111111111111''::uuid;',
-  '42501',
-  'anon role denied SELECT on messages (insufficient privilege)'
+  '42501'
 );
 
 -- Test 3: non-member cannot read conversation (RLS filters)
