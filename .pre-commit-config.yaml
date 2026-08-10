@@ -11,7 +11,9 @@ repos:
         entry: detect-secrets scan
         language: python
         types: [text]
-        exclude: ^(\.git|\.next|node_modules|\.env.*|\.secrets.baseline)
+        # Exclude build/cache dirs and baseline only; DO NOT exclude .env files
+        # (env credentials that get accidentally staged should be caught)
+        exclude: ^(\.git|\.next|node_modules|\.secrets.baseline)
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
