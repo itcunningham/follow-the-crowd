@@ -71,20 +71,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Supabase CLI
-        run: npm install -g @supabase/cli
-
       - name: Start Supabase local environment
-        run: supabase start --workdir .
+        run: npx @supabase/cli start --workdir .
 
       - name: Run 42 pgTAP security assertions
-        run: supabase test db 2>&1 | tee pgTAP-output.log
+        run: npx @supabase/cli test db 2>&1 | tee pgTAP-output.log
 
       - name: Verify all 42 assertions passed
         run: |
