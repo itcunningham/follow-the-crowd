@@ -52,18 +52,6 @@ jobs:
   pgTAP:
     name: PgTAP Security Tests (42 assertions)
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
 
     steps:
       - uses: actions/checkout@v4
@@ -78,10 +66,10 @@ jobs:
         run: npm ci
 
       - name: Start Supabase local environment
-        run: npx @supabase/cli start --workdir .
+        run: npx supabase start --workdir .
 
       - name: Run 42 pgTAP security assertions
-        run: npx @supabase/cli test db 2>&1 | tee pgTAP-output.log
+        run: npx supabase test db 2>&1 | tee pgTAP-output.log
 
       - name: Verify all 42 assertions passed
         run: |
