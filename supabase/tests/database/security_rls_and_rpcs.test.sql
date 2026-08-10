@@ -1,6 +1,6 @@
 -- Follow The Crowd — Security & RLS/RPC pgTAP Tests
 -- Tests authorization boundaries for DM conversations and event cancellation.
--- LOCAL-ONLY: Run via `supabase test db` or `pg_prove`.
+-- LOCAL-ONLY: Run via `supabase test db` (from supabase/tests/database/).
 -- UNEXECUTED: Requires Docker/local Supabase with proper request.jwt.claims context.
 -- Assertions defined; behavioral results pending execution against real Supabase instance.
 
@@ -194,45 +194,47 @@ COMMIT;
 -- TEST SUITE 5: RLS BEHAVIORAL TESTS (authenticated identity filtering)
 -- REQUIRES: Supabase test context with proper JWT claims
 -- ============================================================================
+-- NOTE: anon role has REVOKE ALL on DM tables (bootstrap), so SELECT fails with 42501
+-- (insufficient privilege) before RLS filtering occurs. Tests below verify this.
 
 BEGIN;
-SELECT plan(13);
+SELECT plan(6);
 
--- Test 5.1: anon cannot read conversations
+-- Test 5.1: anon cannot read conversations (REVOKE SELECT + no RLS eval)
 SET LOCAL ROLE anon;
 SET LOCAL "request.jwt.claims" = '{"role":"anon","aud":"authenticated"}';
 
-SELECT is(
-  (SELECT COUNT(*) FROM public.conversations WHERE id = '11111111-1111-4111-1111-111111111111'::uuid),
-  0::bigint,
-  'anon cannot read conversation (RLS blocks anon role)'
+SELECT throws_ok(
+  'SELECT id FROM public.conversations WHERE id = ''11111111-1111-4111-1111-111111111111''::uuid;',
+  '42501',
+  'anon role denied SELECT on conversations (insufficient privilege; no table access)'
 );
 
--- Test 5.2: anon cannot read messages
-SELECT is(
-  (SELECT COUNT(*) FROM public.messages WHERE conversation_id = '11111111-1111-4111-1111-111111111111'::uuid),
-  0::bigint,
-  'anon cannot read messages in conversation (RLS blocks anon role)'
+-- Test 5.2: anon cannot read messages (REVOKE SELECT + no RLS eval)
+SELECT throws_ok(
+  'SELECT id FROM public.messages WHERE conversation_id = ''11111111-1111-4111-1111-111111111111''::uuid;',
+  '42501',
+  'anon role denied SELECT on messages (insufficient privilege; no table access)'
 );
 
--- Test 5.3: non-member cannot read conversation
+-- Test 5.3: non-member cannot read conversation (RLS filtering after GRANT)
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"cccccccc-cccc-4ccc-cccc-cccccccccccc","role":"authenticated","aud":"authenticated"}';
 
 SELECT is(
   (SELECT COUNT(*) FROM public.conversations WHERE id = '11111111-1111-4111-1111-111111111111'::uuid),
   0::bigint,
-  'non-member cannot read conversation (RLS blocks non-member)'
+  'non-member cannot read conversation (RLS filters non-member)'
 );
 
--- Test 5.4: non-member cannot read messages
+-- Test 5.4: non-member cannot read messages (RLS filtering)
 SELECT is(
   (SELECT COUNT(*) FROM public.messages WHERE conversation_id = '11111111-1111-4111-1111-111111111111'::uuid),
   0::bigint,
-  'non-member cannot read messages in conversation (RLS blocks non-member)'
+  'non-member cannot read messages in conversation (RLS filters non-member)'
 );
 
--- Test 5.5: member can read conversation
+-- Test 5.5: member can read conversation (RLS allows member)
 SET LOCAL "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa","role":"authenticated","aud":"authenticated"}';
 
 SELECT is(
@@ -241,13 +243,14 @@ SELECT is(
   'member can read conversation (RLS allows member)'
 );
 
--- Test 5.6: member can read messages
+-- Test 5.6: member can read messages (RLS allows member)
 SELECT is(
   (SELECT COUNT(*) FROM public.messages WHERE conversation_id = '11111111-1111-4111-1111-111111111111'::uuid),
   1::bigint,
   'member can read messages in conversation (RLS allows member)'
 );
 
+SELECT finish();
 ROLLBACK;
 
 -- ============================================================================
@@ -267,29 +270,32 @@ SELECT lives_ok(
   'member can insert message as themselves'
 );
 
--- Test 6.2: member cannot insert message with different user_id
+-- Test 6.2: member cannot insert message with different user_id (RLS WITH CHECK)
 SELECT throws_ok(
   'INSERT INTO public.messages (id, conversation_id, user_id, text) VALUES (''66666666-6666-4666-6666-666666666666''::uuid, ''11111111-1111-4111-1111-111111111111''::uuid, ''bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb''::text, ''Spoofed insert'');',
-  '44000',
+  '42501',
   'member cannot insert message with different user_id (RLS WITH CHECK blocks spoofing)'
 );
 
--- Test 6.3: non-member cannot insert message
+-- Test 6.3: non-member cannot insert message (RLS WITH CHECK)
 SET LOCAL "request.jwt.claims" = '{"sub":"cccccccc-cccc-4ccc-cccc-cccccccccccc","role":"authenticated","aud":"authenticated"}';
 
 SELECT throws_ok(
   'INSERT INTO public.messages (id, conversation_id, user_id, text) VALUES (''77777777-7777-4777-7777-777777777777''::uuid, ''11111111-1111-4111-1111-111111111111''::uuid, ''cccccccc-cccc-4ccc-cccc-cccccccccccc''::text, ''Non-member insert'');',
-  '44000',
+  '42501',
   'non-member cannot insert message (RLS WITH CHECK blocks non-member)'
 );
 
--- Test 6.4: Verify message was inserted (state check after Test 6.1)
+-- Test 6.4: Verify message was inserted (switch back to User 1 to check visibility)
+SET LOCAL "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa","role":"authenticated","aud":"authenticated"}';
+
 SELECT is(
   (SELECT COUNT(*) FROM public.messages WHERE id = '55555555-5555-4555-5555-555555555555'::uuid),
   1::bigint,
-  'message insert succeeded and is visible'
+  'message insert from Test 6.1 succeeded and is visible to inserter'
 );
 
+SELECT finish();
 ROLLBACK;
 
 -- ============================================================================
@@ -307,7 +313,7 @@ SET LOCAL "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
 SELECT throws_ok(
   'SELECT public.mark_conversation_unread(''aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa''::text, ''11111111-1111-4111-1111-111111111111''::uuid, NULL::uuid);',
   '42501',
-  'authenticated cannot invoke mark_conversation_unread (function not callable by authenticated role)'
+  'authenticated cannot invoke mark_conversation_unread (function EXECUTE not granted)'
 );
 
 -- Test 7.2: anon cannot invoke mark_conversation_unread
@@ -317,7 +323,7 @@ SET LOCAL "request.jwt.claims" = '{"role":"anon","aud":"authenticated"}';
 SELECT throws_ok(
   'SELECT public.mark_conversation_unread(''aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa''::text, ''11111111-1111-4111-1111-111111111111''::uuid, NULL::uuid);',
   '42501',
-  'anon cannot invoke mark_conversation_unread (function not callable by anon role)'
+  'anon cannot invoke mark_conversation_unread (function EXECUTE not granted)'
 );
 
 SELECT finish();
@@ -356,21 +362,20 @@ SELECT is(
   'cancel_event() changes event status to cancelled'
 );
 
--- Test 8.4: mark_conversation_unread was called (state isolation)
--- Verify that booking recipient (User 2) has message_reads entry with epoch timestamp
+-- Test 8.4: mark_conversation_unread was called (isolation: affected DJ read-state marked)
 SELECT is(
   (SELECT COUNT(*) FROM public.message_reads
    WHERE user_id = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb'::text
    AND conversation_id = '11111111-1111-4111-1111-111111111111'::uuid),
   1::bigint,
-  'cancellation isolation: affected DJ message_reads entry created by cancel_event'
+  'cancellation called mark_conversation_unread: affected DJ has message_reads entry'
 );
 
 SELECT finish();
 ROLLBACK;
 
 -- ============================================================================
--- TEST SUITE 9: RPC AUTHORIZATION — delete_empty_event (owner-only + event state)
+-- TEST SUITE 9: RPC AUTHORIZATION — delete_empty_event (owner-only)
 -- REQUIRES: Supabase test context with proper JWT claims
 -- ============================================================================
 
@@ -396,7 +401,7 @@ ROLLBACK;
 -- ============================================================================
 -- TEST SUMMARY
 -- ============================================================================
--- Total test cases: 35 assertions
+-- Total test cases: 42 assertions
 -- Status: UNEXECUTED (requires Docker/local Supabase with proper request.jwt.claims context)
 --
 -- Test breakdown by category:
@@ -415,7 +420,7 @@ ROLLBACK;
 --   - Function existence tests (6)
 --   - ACL/privilege tests (8)
 --
--- Tests REQUIRING Supabase test context (18 assertions):
+-- Tests REQUIRING Supabase test context (25 assertions):
 --   - Auth context proof (3) — verifies request.jwt.claims mechanism works
 --   - RLS behavioral tests (6) — anon/member/non-member row filtering
 --   - Message insert RLS WITH CHECK (4) — user_id validation, membership check
@@ -428,5 +433,7 @@ ROLLBACK;
 -- All behavioral tests run in their own transaction with ROLLBACK for determinism.
 -- Each test proves actual database behavior, not just schema/grant declarations.
 --
--- When Docker becomes available:
---   supabase test db supabase/tests/database/security_rls_and_rpcs.pgtap
+-- Execution with Supabase CLI:
+--   1. Ensure bootstrap is applied: supabase/tests/bootstrap/0001_schema_and_functions.sql
+--   2. Run test suite: supabase test db supabase/tests/database/security_rls_and_rpcs.test.sql
+--   Or for all tests: supabase test db (discovers all .test.sql files)
