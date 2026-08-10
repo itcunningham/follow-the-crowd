@@ -1,0 +1,80 @@
+# Semgrep configuration for Follow The Crowd
+# Detects common security issues, code anti-patterns, and configuration problems.
+# Rules are open-source and executed locally (no SaaS upload).
+
+rules:
+  - id: hardcoded-secrets
+    pattern-either:
+      - pattern: $VAR = "...key..."
+      - pattern: $VAR = "...secret..."
+      - pattern: $VAR = "...password..."
+      - pattern: $VAR = "...token..."
+      - pattern: $VAR = "...auth..."
+      - pattern: $VAR = "...Bearer..."
+    message: Potential hardcoded secret detected
+    languages: [javascript, typescript, python]
+    severity: ERROR
+
+  - id: sql-injection-via-template-string
+    pattern-either:
+      - pattern: |
+          $QUERY = `SELECT ... FROM ... WHERE ... = ${$VAR}`
+      - pattern: |
+          sql`SELECT ... ${$VAR}`
+    message: Potential SQL injection via template string (use parameterized queries)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: unsafe-crypto-random
+    patterns:
+      - pattern-either:
+          - pattern: |
+              Math.random()
+          - pattern: |
+              crypto.randomBytes(...).toString('hex')
+    message: Use cryptographically secure random generators (crypto.getRandomValues)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: missing-auth-check
+    patterns:
+      - pattern-either:
+          - pattern: |
+              async function $FUNC(req, res) {
+                if (!req.user) { ... }
+              }
+    message: Ensure authentication is checked before accessing protected resources
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: insecure-tls-verification
+    pattern-either:
+      - pattern: |
+          rejectUnauthorized: false
+      - pattern: |
+          process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+    message: TLS verification disabled (security risk in production)
+    languages: [javascript, typescript, python]
+    severity: ERROR
+
+config:
+  paths:
+    include:
+      - app
+      - lib
+      - scripts
+    exclude:
+      - node_modules
+      - .next
+      - dist
+      - build
+  policies:
+    - rules:
+        - hardcoded-secrets
+        - sql-injection-via-template-string
+        - insecure-tls-verification
+      severity: ERROR
+    - rules:
+        - unsafe-crypto-random
+        - missing-auth-check
+      severity: WARNING
