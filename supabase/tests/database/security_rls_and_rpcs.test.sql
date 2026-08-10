@@ -1,16 +1,25 @@
 -- Follow The Crowd — Security & RLS/RPC pgTAP Tests
 -- Tests authorization boundaries for DM conversations and event cancellation.
--- LOCAL-ONLY: Run via `supabase test db` (from supabase/tests/database/).
+-- LOCAL-ONLY: Run via `supabase test db` (from supabase/ root).
 -- UNEXECUTED: Requires Docker/local Supabase with proper request.jwt.claims context.
 -- Assertions defined; behavioral results pending execution against real Supabase instance.
 
--- Test user IDs (deterministic UUIDs for reproducibility)
--- User 1 (member): aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa
--- User 2 (member): bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb
--- User 3 (non-member): cccccccc-cccc-4ccc-cccc-cccccccccccc
+-- ============================================================================
+-- INFRASTRUCTURE: Include test-support bootstrap
+-- ============================================================================
+-- Bootstrap schema, functions, and RLS policies are defined outside supabase/tests/
+-- to prevent them from being discovered as independent test files.
+-- They are included here so all schema/policies/functions exist in this test context.
+--
+-- Under `pg_prove` / `supabase test db`, this file runs in a transaction.
+-- The bootstrap is applied at the start, then fixtures are created once.
+-- Each test suite has its own BEGIN/COMMIT (becomes savepoint).
+-- Behavioral suites ROLLBACK to reset mutations; schema/fixtures persist.
+
+\ir ../../test-support/security_bootstrap.sql
 
 -- ============================================================================
--- SETUP: Create test data (runs once before all tests)
+-- SETUP: Create test data (runs once before all tests; persists in outer transaction)
 -- ============================================================================
 
 BEGIN;
@@ -404,6 +413,12 @@ ROLLBACK;
 -- Total test cases: 42 assertions
 -- Status: UNEXECUTED (requires Docker/local Supabase with proper request.jwt.claims context)
 --
+-- Architecture:
+-- - Bootstrap schema/functions included via \ir from supabase/test-support/
+-- - Fixtures created once in outer transaction; persist across all suites
+-- - Each behavioral suite uses BEGIN/ROLLBACK (becomes savepoint)
+-- - Schema and fixtures persist; only mutations are rolled back
+--
 -- Test breakdown by category:
 -- - Schema parity: 8 assertions (executable in any PostgreSQL)
 -- - Function existence: 6 assertions (executable in any PostgreSQL)
@@ -433,7 +448,8 @@ ROLLBACK;
 -- All behavioral tests run in their own transaction with ROLLBACK for determinism.
 -- Each test proves actual database behavior, not just schema/grant declarations.
 --
--- Execution with Supabase CLI:
---   1. Ensure bootstrap is applied: supabase/tests/bootstrap/0001_schema_and_functions.sql
---   2. Run test suite: supabase test db supabase/tests/database/security_rls_and_rpcs.test.sql
---   Or for all tests: supabase test db (discovers all .test.sql files)
+-- Execution with Supabase CLI (standard workflow):
+--   supabase start
+--   supabase test db
+--
+-- This runs all .sql/.pg test files under supabase/tests/ via pg_prove.
