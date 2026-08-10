@@ -1,7 +1,7 @@
 -- Follow The Crowd — Local Test Bootstrap
 -- Minimal schema and RLS/RPC configuration for pgTAP security tests.
 -- LOCAL-ONLY: Do not run in production.
--- Idempotent: safe to re-run within a test transaction.
+-- CLEAN DATABASE ONLY: Not idempotent; requires fresh disposable test DB.
 
 -- ============================================================================
 -- PART 1: PRODUCTION-RECOVERED DM TABLES (EXACT SCHEMA)
@@ -33,45 +33,13 @@ CREATE TABLE IF NOT EXISTS public.messages (
 CREATE INDEX IF NOT EXISTS messages_event_id_idx ON public.messages USING btree (event_id);
 
 -- ============================================================================
--- PART 2: MESSAGE_READS TABLE (EXACT FROM scripts/setupMessageReads.sql)
--- ============================================================================
--- Exact DDL from setupMessageReads.sql including all constraints and indexes.
-
-CREATE TABLE IF NOT EXISTS public.message_reads (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id text NOT NULL,
-  conversation_id uuid REFERENCES public.conversations (id) ON DELETE CASCADE,
-  event_id uuid REFERENCES public.events (id) ON DELETE CASCADE,
-  last_read_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT message_reads_target_check CHECK (
-    (conversation_id IS NOT NULL AND event_id IS NULL)
-    OR (conversation_id IS NULL AND event_id IS NOT NULL)
-  )
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS message_reads_user_conversation_idx
-  ON public.message_reads (user_id, conversation_id)
-  WHERE conversation_id IS NOT NULL;
-
-CREATE UNIQUE INDEX IF NOT EXISTS message_reads_user_event_idx
-  ON public.message_reads (user_id, event_id)
-  WHERE event_id IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS message_reads_user_id_idx
-  ON public.message_reads (user_id);
-
-CREATE INDEX IF NOT EXISTS message_reads_conversation_id_idx
-  ON public.message_reads (conversation_id)
-  WHERE conversation_id IS NOT NULL;
-
--- ============================================================================
--- PART 3: SYNTHETIC TEST-ONLY TABLES
+-- PART 2: SYNTHETIC TEST-ONLY DEPENDENCY TABLES (must exist before message_reads FK)
 -- ============================================================================
 -- These tables are MINIMAL SCHEMA ONLY, created for testing dependencies.
 -- NOT production DDL. Contains only columns required by cancel_event() RPC
 -- and RLS helper functions.
 
--- TEST-ONLY SYNTHETIC: events table
+-- TEST-ONLY SYNTHETIC: events table (MUST come before message_reads which FKs to it)
 CREATE TABLE IF NOT EXISTS public.events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id text NOT NULL,
@@ -108,6 +76,39 @@ CREATE TABLE IF NOT EXISTS public.booking_plans (
 CREATE TABLE IF NOT EXISTS public.users (
   user_id text PRIMARY KEY
 );
+
+-- ============================================================================
+-- PART 3: MESSAGE_READS TABLE (EXACT FROM scripts/setupMessageReads.sql)
+-- ============================================================================
+-- Exact DDL from setupMessageReads.sql including all constraints and indexes.
+-- MOVED AFTER events/conversations creation to satisfy foreign key dependencies.
+
+CREATE TABLE IF NOT EXISTS public.message_reads (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id text NOT NULL,
+  conversation_id uuid REFERENCES public.conversations (id) ON DELETE CASCADE,
+  event_id uuid REFERENCES public.events (id) ON DELETE CASCADE,
+  last_read_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT message_reads_target_check CHECK (
+    (conversation_id IS NOT NULL AND event_id IS NULL)
+    OR (conversation_id IS NULL AND event_id IS NOT NULL)
+  )
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS message_reads_user_conversation_idx
+  ON public.message_reads (user_id, conversation_id)
+  WHERE conversation_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS message_reads_user_event_idx
+  ON public.message_reads (user_id, event_id)
+  WHERE event_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS message_reads_user_id_idx
+  ON public.message_reads (user_id);
+
+CREATE INDEX IF NOT EXISTS message_reads_conversation_id_idx
+  ON public.message_reads (conversation_id)
+  WHERE conversation_id IS NOT NULL;
 
 -- ============================================================================
 -- PART 4: HELPER FUNCTIONS (for RLS policies and authorization checks)
@@ -196,13 +197,25 @@ AS $$
 $$;
 
 -- ============================================================================
--- PART 5: RLS POLICIES ON DM TABLES
+-- PART 5: RLS POLICIES ON DM TABLES (drop existing to support re-run)
 -- ============================================================================
 
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversation_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.message_reads ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if any (to allow bootstrap re-run)
+DROP POLICY IF EXISTS "conversations_select_member" ON public.conversations;
+DROP POLICY IF EXISTS "conversation_members_select_shared" ON public.conversation_members;
+DROP POLICY IF EXISTS "messages_select_conversation_member" ON public.messages;
+DROP POLICY IF EXISTS "messages_insert_conversation_sender" ON public.messages;
+DROP POLICY IF EXISTS "messages_select_event_crew" ON public.messages;
+DROP POLICY IF EXISTS "messages_insert_event_crew" ON public.messages;
+DROP POLICY IF EXISTS "message_reads_select_own" ON public.message_reads;
+DROP POLICY IF EXISTS "message_reads_insert_own" ON public.message_reads;
+DROP POLICY IF EXISTS "message_reads_update_own" ON public.message_reads;
+DROP POLICY IF EXISTS "message_reads_delete_own" ON public.message_reads;
 
 -- Conversations: only authenticated members can read
 CREATE POLICY "conversations_select_member" ON public.conversations
