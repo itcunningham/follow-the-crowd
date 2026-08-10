@@ -65,6 +65,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create Supabase config with migrations disabled for CI
+        run: |
+          cat > supabase/config.toml << 'EOF'
+          [db]
+          port = 54321
+
+          [db.migrations]
+          enabled = false
+          EOF
+
       - name: Start Supabase local environment
         run: npx supabase start --workdir .
 
