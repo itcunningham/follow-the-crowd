@@ -5,10 +5,12 @@
 rules:
   - id: hardcoded-secrets
     pattern-either:
-      - pattern: |
-          $KEY = "...key..." or $KEY = "...secret..." or $KEY = "...password..."
-      - pattern: |
-          $KEY = "...token..." or $KEY = "...auth..." or $KEY = "...Bearer ..."
+      - pattern: $VAR = "...key..."
+      - pattern: $VAR = "...secret..."
+      - pattern: $VAR = "...password..."
+      - pattern: $VAR = "...token..."
+      - pattern: $VAR = "...auth..."
+      - pattern: $VAR = "...Bearer..."
     message: Potential hardcoded secret detected
     languages: [javascript, typescript, python]
     severity: ERROR
