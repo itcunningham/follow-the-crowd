@@ -88,8 +88,16 @@ SELECT
   COALESCE(
     (SELECT CASE
       WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'hide_event_from_history' AND p.pronamespace = 'public'::regnamespace)
-      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.hide_event_from_history(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
-                ELSE 'FAIL: authenticated missing EXECUTE' END
+      THEN CASE WHEN EXISTS(
+        SELECT 1 FROM pg_proc p
+        WHERE p.proname = 'hide_event_from_history' AND p.pronamespace = 'public'::regnamespace
+        AND EXISTS(
+          SELECT 1 FROM aclexplode(p.proacl) AS acl
+          WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
+            AND acl.privilege_type = 'EXECUTE'
+        )
+      ) THEN 'PASS'
+           ELSE 'FAIL: authenticated missing EXECUTE' END
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
@@ -101,8 +109,16 @@ SELECT
   COALESCE(
     (SELECT CASE
       WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'hide_events_from_history' AND p.pronamespace = 'public'::regnamespace)
-      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.hide_events_from_history(uuid[])'::regprocedure, 'EXECUTE') THEN 'PASS'
-                ELSE 'FAIL: authenticated missing EXECUTE' END
+      THEN CASE WHEN EXISTS(
+        SELECT 1 FROM pg_proc p
+        WHERE p.proname = 'hide_events_from_history' AND p.pronamespace = 'public'::regnamespace
+        AND EXISTS(
+          SELECT 1 FROM aclexplode(p.proacl) AS acl
+          WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
+            AND acl.privilege_type = 'EXECUTE'
+        )
+      ) THEN 'PASS'
+           ELSE 'FAIL: authenticated missing EXECUTE' END
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
@@ -187,8 +203,16 @@ SELECT
   COALESCE(
     (SELECT CASE
       WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'archive_booking_request' AND p.pronamespace = 'public'::regnamespace)
-      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.archive_booking_request(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
-                ELSE 'FAIL: authenticated missing EXECUTE' END
+      THEN CASE WHEN EXISTS(
+        SELECT 1 FROM pg_proc p
+        WHERE p.proname = 'archive_booking_request' AND p.pronamespace = 'public'::regnamespace
+        AND EXISTS(
+          SELECT 1 FROM aclexplode(p.proacl) AS acl
+          WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
+            AND acl.privilege_type = 'EXECUTE'
+        )
+      ) THEN 'PASS'
+           ELSE 'FAIL: authenticated missing EXECUTE' END
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
@@ -282,8 +306,16 @@ SELECT
   COALESCE(
     (SELECT CASE
       WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'ensure_event_crew_chat_auto_started' AND p.pronamespace = 'public'::regnamespace)
-      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.ensure_event_crew_chat_auto_started(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
-                ELSE 'FAIL: authenticated missing EXECUTE' END
+      THEN CASE WHEN EXISTS(
+        SELECT 1 FROM pg_proc p
+        WHERE p.proname = 'ensure_event_crew_chat_auto_started' AND p.pronamespace = 'public'::regnamespace
+        AND EXISTS(
+          SELECT 1 FROM aclexplode(p.proacl) AS acl
+          WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
+            AND acl.privilege_type = 'EXECUTE'
+        )
+      ) THEN 'PASS'
+           ELSE 'FAIL: authenticated missing EXECUTE' END
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
@@ -357,8 +389,16 @@ SELECT
   COALESCE(
     (SELECT CASE
       WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'planner_event_can_hide_from_history' AND p.pronamespace = 'public'::regnamespace)
-      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.planner_event_can_hide_from_history(text, text, text)'::regprocedure, 'EXECUTE') THEN 'PASS'
-                ELSE 'FAIL: authenticated missing EXECUTE' END
+      THEN CASE WHEN EXISTS(
+        SELECT 1 FROM pg_proc p
+        WHERE p.proname = 'planner_event_can_hide_from_history' AND p.pronamespace = 'public'::regnamespace
+        AND EXISTS(
+          SELECT 1 FROM aclexplode(p.proacl) AS acl
+          WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
+            AND acl.privilege_type = 'EXECUTE'
+        )
+      ) THEN 'PASS'
+           ELSE 'FAIL: authenticated missing EXECUTE' END
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
@@ -485,8 +525,16 @@ SELECT
   COALESCE(
     (SELECT CASE
       WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'create_notification' AND p.pronamespace = 'public'::regnamespace)
-      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.create_notification(text, text, text, text, text, uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
-                ELSE 'FAIL: authenticated missing EXECUTE on 6-arg version' END
+      THEN CASE WHEN EXISTS(
+        SELECT 1 FROM pg_proc p
+        WHERE p.proname = 'create_notification' AND p.pronamespace = 'public'::regnamespace
+        AND EXISTS(
+          SELECT 1 FROM aclexplode(p.proacl) AS acl
+          WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
+            AND acl.privilege_type = 'EXECUTE'
+        )
+      ) THEN 'PASS'
+           ELSE 'FAIL: authenticated missing EXECUTE on 6-arg version' END
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
@@ -498,8 +546,16 @@ SELECT
   COALESCE(
     (SELECT CASE
       WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'revoke_reaction_notification' AND p.pronamespace = 'public'::regnamespace)
-      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.revoke_reaction_notification(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
-                ELSE 'FAIL: authenticated missing EXECUTE' END
+      THEN CASE WHEN EXISTS(
+        SELECT 1 FROM pg_proc p
+        WHERE p.proname = 'revoke_reaction_notification' AND p.pronamespace = 'public'::regnamespace
+        AND EXISTS(
+          SELECT 1 FROM aclexplode(p.proacl) AS acl
+          WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
+            AND acl.privilege_type = 'EXECUTE'
+        )
+      ) THEN 'PASS'
+           ELSE 'FAIL: authenticated missing EXECUTE' END
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
@@ -590,8 +646,16 @@ SELECT
   COALESCE(
     (SELECT CASE
       WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace)
-      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.can_view_event_run_sheet(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
-                ELSE 'FAIL: authenticated missing EXECUTE grant' END
+      THEN CASE WHEN EXISTS(
+        SELECT 1 FROM pg_proc p
+        WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace
+        AND EXISTS(
+          SELECT 1 FROM aclexplode(p.proacl) AS acl
+          WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
+            AND acl.privilege_type = 'EXECUTE'
+        )
+      ) THEN 'PASS'
+           ELSE 'FAIL: authenticated missing EXECUTE grant' END
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
