@@ -59,33 +59,29 @@ SELECT is(
   'At least one RLS policy exists on conversations table'
 );
 
--- RLS policy existence on messages: Assert required policy NAMES, not exact count
+-- RLS policy existence on messages: Assert required policy NAMES via pg_policies catalog
 -- (Count varies as migrations add policies; we verify the minimum required set exists)
-SELECT has_policy(
-  'public'::name,
-  'messages'::name,
-  'messages_select_conversation_member'::name,
+SELECT is(
+  (SELECT COUNT(*) FROM pg_policies WHERE tablename = 'messages' AND schemaname = 'public' AND policyname = 'messages_select_conversation_member'),
+  1::bigint,
   'Policy messages_select_conversation_member exists (DM select)'
 );
 
-SELECT has_policy(
-  'public'::name,
-  'messages'::name,
-  'messages_insert_conversation_sender'::name,
+SELECT is(
+  (SELECT COUNT(*) FROM pg_policies WHERE tablename = 'messages' AND schemaname = 'public' AND policyname = 'messages_insert_conversation_sender'),
+  1::bigint,
   'Policy messages_insert_conversation_sender exists (DM insert)'
 );
 
-SELECT has_policy(
-  'public'::name,
-  'messages'::name,
-  'messages_select_event_authenticated'::name,
+SELECT is(
+  (SELECT COUNT(*) FROM pg_policies WHERE tablename = 'messages' AND schemaname = 'public' AND policyname = 'messages_select_event_authenticated'),
+  1::bigint,
   'Policy messages_select_event_authenticated exists (event crew select)'
 );
 
-SELECT has_policy(
-  'public'::name,
-  'messages'::name,
-  'messages_insert_event_sender'::name,
+SELECT is(
+  (SELECT COUNT(*) FROM pg_policies WHERE tablename = 'messages' AND schemaname = 'public' AND policyname = 'messages_insert_event_sender'),
+  1::bigint,
   'Policy messages_insert_event_sender exists (event crew insert)'
 );
 

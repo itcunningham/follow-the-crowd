@@ -21,8 +21,8 @@ INSERT INTO public.events (id, owner_id, name, venue, event_date, set_time, stat
   ('33333333-3333-4333-3333-333333333333'::uuid, 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa'::text, 'Test Event', 'Test Venue', '2026-08-20 20:00:00'::timestamptz, '21:00:00'::text, 'draft'),
   ('99999999-9999-4999-9999-999999999999'::uuid, 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa'::text, 'Empty Event', 'Empty Venue', '2026-08-21 20:00:00'::timestamptz, '21:00:00'::text, 'draft');
 
-INSERT INTO public.booking_requests (id, sender_id, event_id, recipient_id, conversation_id, status) VALUES
-  ('44444444-4444-4444-4444-444444444444'::uuid, 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa'::text, '33333333-3333-4333-3333-333333333333'::uuid, 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb'::text, '11111111-1111-4111-1111-111111111111'::uuid, 'pending');
+INSERT INTO public.booking_requests (id, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, status) VALUES
+  ('44444444-4444-4444-4444-444444444444'::uuid, 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa'::text, 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb'::text, '11111111-1111-4111-1111-111111111111'::uuid, '33333333-3333-4333-3333-333333333333'::uuid, 'Test Event', 'Test Venue', '2026-08-20', '21:00:00', '100', 'pending');
 
 -- ============================================================================
 -- TEST SUITE: RPC Authorization (6 assertions)
