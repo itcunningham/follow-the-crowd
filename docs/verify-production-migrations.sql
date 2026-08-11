@@ -51,7 +51,10 @@ SELECT
       THEN 'PASS'
       ELSE 'FAIL: args=' || pg_get_function_identity_arguments(p.oid) || ' return=' || pg_get_function_result(p.oid) || ' secdef=' || p.prosecdef::text
     END
-    FROM pg_proc p WHERE p.proname = 'hide_event_from_history' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'hide_event_from_history'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -65,7 +68,10 @@ SELECT
       THEN 'PASS'
       ELSE 'FAIL: missing expected UPDATE operations'
     END
-    FROM pg_proc p WHERE p.proname = 'hide_event_from_history' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'hide_event_from_history'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -78,7 +84,10 @@ SELECT
       THEN 'PASS'
       ELSE 'FAIL: signature incorrect'
     END
-    FROM pg_proc p WHERE p.proname = 'hide_events_from_history' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'hide_events_from_history'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_ids uuid[]'),
     'FAIL: function not found'
   ) AS status;
 
@@ -193,7 +202,10 @@ SELECT
       WHEN pg_get_function_identity_arguments(p.oid) = 'p_booking_id uuid' AND pg_get_function_result(p.oid) = 'jsonb' AND p.prosecdef = true
       THEN 'PASS' ELSE 'FAIL: signature incorrect'
     END
-    FROM pg_proc p WHERE p.proname = 'hide_booking_request_from_history' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'hide_booking_request_from_history'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_booking_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -272,7 +284,10 @@ SELECT
       WHEN pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid' AND pg_get_function_result(p.oid) = 'public.events' AND p.prosecdef = true
       THEN 'PASS' ELSE 'FAIL: signature or SECURITY DEFINER incorrect'
     END
-    FROM pg_proc p WHERE p.proname = 'ensure_event_crew_chat_auto_started' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'ensure_event_crew_chat_auto_started'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -284,7 +299,10 @@ SELECT
       WHEN pg_get_functiondef(p.oid) LIKE '%is_event_crew_participant%'
       THEN 'PASS' ELSE 'FAIL: missing is_event_crew_participant call'
     END
-    FROM pg_proc p WHERE p.proname = 'ensure_event_crew_chat_auto_started' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'ensure_event_crew_chat_auto_started'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -296,7 +314,10 @@ SELECT
       WHEN pg_get_functiondef(p.oid) LIKE '%count_event_accepted_crew_djs%'
       THEN 'PASS' ELSE 'FAIL: missing count_event_accepted_crew_djs call'
     END
-    FROM pg_proc p WHERE p.proname = 'ensure_event_crew_chat_auto_started' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'ensure_event_crew_chat_auto_started'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -379,7 +400,10 @@ SELECT
         AND pg_get_function_result(p.oid) = 'boolean' AND p.prosecdef = true
       THEN 'PASS' ELSE 'FAIL: signature incorrect'
     END
-    FROM pg_proc p WHERE p.proname = 'planner_event_can_hide_from_history' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'planner_event_can_hide_from_history'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_date text, p_set_time text, p_status text'),
     'FAIL: function not found'
   ) AS status;
 
@@ -388,10 +412,10 @@ SELECT
   'Migration 006-2: planner_event_can_hide_from_history grant' AS check_name,
   COALESCE(
     (SELECT CASE
-      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'planner_event_can_hide_from_history' AND p.pronamespace = 'public'::regnamespace)
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'planner_event_can_hide_from_history' AND p.pronamespace = 'public'::regnamespace AND pg_get_function_identity_arguments(p.oid) = 'p_event_date text, p_set_time text, p_status text')
       THEN CASE WHEN EXISTS(
         SELECT 1 FROM pg_proc p
-        WHERE p.proname = 'planner_event_can_hide_from_history' AND p.pronamespace = 'public'::regnamespace
+        WHERE p.proname = 'planner_event_can_hide_from_history' AND p.pronamespace = 'public'::regnamespace AND pg_get_function_identity_arguments(p.oid) = 'p_event_date text, p_set_time text, p_status text'
         AND EXISTS(
           SELECT 1 FROM aclexplode(p.proacl) AS acl
           WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
@@ -412,7 +436,10 @@ SELECT
       WHEN pg_get_functiondef(p.oid) LIKE '%planner_event_can_hide_from_history%'
       THEN 'PASS' ELSE 'FAIL: missing call to planner_event_can_hide_from_history'
     END
-    FROM pg_proc p WHERE p.proname = 'hide_event_from_history' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'hide_event_from_history'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -424,7 +451,10 @@ SELECT
       WHEN pg_get_functiondef(p.oid) LIKE '%planner_event_can_hide_from_history%'
       THEN 'PASS' ELSE 'FAIL: missing call to planner_event_can_hide_from_history'
     END
-    FROM pg_proc p WHERE p.proname = 'hide_events_from_history' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'hide_events_from_history'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_ids uuid[]'),
     'FAIL: function not found'
   ) AS status;
 
@@ -479,7 +509,10 @@ SELECT
       WHEN pg_get_function_identity_arguments(p.oid) LIKE '%p_reaction_id uuid DEFAULT%'
       THEN 'PASS' ELSE 'FAIL: missing p_reaction_id parameter or wrong default'
     END
-    FROM pg_proc p WHERE p.proname = 'create_notification' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'create_notification'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) LIKE '%p_reaction_id uuid%'),
     'FAIL: function not found'
   ) AS status;
 
@@ -491,7 +524,10 @@ SELECT
       WHEN pg_get_functiondef(p.oid) LIKE '%if p_reaction_id is not null%' AND pg_get_functiondef(p.oid) LIKE '%reaction_id = p_reaction_id%'
       THEN 'PASS' ELSE 'FAIL: missing reaction_id handling logic'
     END
-    FROM pg_proc p WHERE p.proname = 'create_notification' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'create_notification'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) LIKE '%p_reaction_id uuid%'),
     'FAIL: function not found'
   ) AS status;
 
@@ -503,7 +539,10 @@ SELECT
       WHEN pg_get_function_identity_arguments(p.oid) = 'p_reaction_id uuid' AND pg_get_function_result(p.oid) = 'integer' AND p.prosecdef = true
       THEN 'PASS' ELSE 'FAIL: signature incorrect'
     END
-    FROM pg_proc p WHERE p.proname = 'revoke_reaction_notification' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'revoke_reaction_notification'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_reaction_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -515,7 +554,10 @@ SELECT
       WHEN pg_get_functiondef(p.oid) LIKE '%delete from public.notifications%' AND pg_get_functiondef(p.oid) LIKE '%reaction_id = p_reaction_id%'
       THEN 'PASS' ELSE 'FAIL: missing DELETE logic for reaction_id'
     END
-    FROM pg_proc p WHERE p.proname = 'revoke_reaction_notification' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'revoke_reaction_notification'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_reaction_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -524,10 +566,10 @@ SELECT
   'Migration 008-7: create_notification 6-arg grant' AS check_name,
   COALESCE(
     (SELECT CASE
-      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'create_notification' AND p.pronamespace = 'public'::regnamespace)
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'create_notification' AND p.pronamespace = 'public'::regnamespace AND pg_get_function_identity_arguments(p.oid) LIKE '%p_reaction_id uuid%')
       THEN CASE WHEN EXISTS(
         SELECT 1 FROM pg_proc p
-        WHERE p.proname = 'create_notification' AND p.pronamespace = 'public'::regnamespace
+        WHERE p.proname = 'create_notification' AND p.pronamespace = 'public'::regnamespace AND pg_get_function_identity_arguments(p.oid) LIKE '%p_reaction_id uuid%'
         AND EXISTS(
           SELECT 1 FROM aclexplode(p.proacl) AS acl
           WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
@@ -545,10 +587,10 @@ SELECT
   'Migration 008-8: revoke_reaction_notification grant' AS check_name,
   COALESCE(
     (SELECT CASE
-      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'revoke_reaction_notification' AND p.pronamespace = 'public'::regnamespace)
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'revoke_reaction_notification' AND p.pronamespace = 'public'::regnamespace AND pg_get_function_identity_arguments(p.oid) = 'p_reaction_id uuid')
       THEN CASE WHEN EXISTS(
         SELECT 1 FROM pg_proc p
-        WHERE p.proname = 'revoke_reaction_notification' AND p.pronamespace = 'public'::regnamespace
+        WHERE p.proname = 'revoke_reaction_notification' AND p.pronamespace = 'public'::regnamespace AND pg_get_function_identity_arguments(p.oid) = 'p_reaction_id uuid'
         AND EXISTS(
           SELECT 1 FROM aclexplode(p.proacl) AS acl
           WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
@@ -600,7 +642,10 @@ SELECT
       WHEN pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid' AND pg_get_function_result(p.oid) = 'boolean' AND p.prosecdef = true
       THEN 'PASS' ELSE 'FAIL: signature or SECURITY DEFINER incorrect'
     END
-    FROM pg_proc p WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'can_view_event_run_sheet'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -612,7 +657,10 @@ SELECT
       WHEN pg_get_functiondef(p.oid) LIKE '%is_event_run_sheet_owner%'
       THEN 'PASS' ELSE 'FAIL: missing is_event_run_sheet_owner call'
     END
-    FROM pg_proc p WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'can_view_event_run_sheet'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -624,7 +672,10 @@ SELECT
       WHEN pg_get_functiondef(p.oid) LIKE '%is_event_crew_participant%'
       THEN 'PASS' ELSE 'FAIL: missing is_event_crew_participant call'
     END
-    FROM pg_proc p WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'can_view_event_run_sheet'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -636,7 +687,10 @@ SELECT
       WHEN pg_get_functiondef(p.oid) LIKE '%booking_requests%' AND pg_get_functiondef(p.oid) LIKE '%pending%' AND pg_get_functiondef(p.oid) LIKE '%accepted%'
       THEN 'PASS' ELSE 'FAIL: missing booking_requests check'
     END
-    FROM pg_proc p WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace),
+    FROM pg_proc p
+    WHERE p.proname = 'can_view_event_run_sheet'
+      AND p.pronamespace = 'public'::regnamespace
+      AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
   ) AS status;
 
@@ -645,10 +699,10 @@ SELECT
   'Migration 010-5: grant execute to authenticated' AS check_name,
   COALESCE(
     (SELECT CASE
-      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace)
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid')
       THEN CASE WHEN EXISTS(
         SELECT 1 FROM pg_proc p
-        WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace
+        WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'
         AND EXISTS(
           SELECT 1 FROM aclexplode(p.proacl) AS acl
           WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
