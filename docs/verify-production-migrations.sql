@@ -4,16 +4,12 @@
 -- Safe for production: no CREATE/ALTER/DROP/INSERT/UPDATE/DELETE/GRANT/REVOKE
 -- Use: psql postgresql://[user]:[password]@[host]:5432/postgres -f verify-production-migrations.sql
 
-\echo '=== MIGRATION VERIFICATION ==='
-\echo 'Checking 10 migrations applied correctly...'
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 001: 20250710120000_event_history_hide
 -- Adds history_hidden_at column, index, and two SECURITY DEFINER functions
 -- ============================================================================
 
-\echo '--- Migration 001: event_history_hide ---'
 
 -- Check 001-1: history_hidden_at column exists with correct type/nullability
 SELECT
@@ -98,14 +94,12 @@ SELECT
   CASE WHEN has_function_privilege('authenticated', 'public.hide_events_from_history(uuid[])', 'EXECUTE') THEN 'PASS'
        ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
 
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 002: 20250710130000_booking_request_history_hides
 -- New table with RLS, indexes, three SECURITY DEFINER functions
 -- ============================================================================
 
-\echo '--- Migration 002: booking_request_history_hides ---'
 
 -- Check 002-1: Table exists
 SELECT
@@ -179,14 +173,12 @@ SELECT
   CASE WHEN has_function_privilege('authenticated', 'public.archive_booking_request(uuid)', 'EXECUTE') THEN 'PASS'
        ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
 
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 003: 20250710140000_booking_request_history_hides_grants
 -- Grants select, insert, delete on booking_request_history_hides to authenticated
 -- ============================================================================
 
-\echo '--- Migration 003: booking_request_history_hides_grants ---'
 
 -- Check 003-1: Authenticated SELECT grant on table
 SELECT
@@ -212,14 +204,12 @@ SELECT
   CASE WHEN NOT has_table_privilege('anon', 'public.booking_request_history_hides', 'SELECT') THEN 'PASS'
        ELSE 'FAIL: anon still has SELECT' END AS status;
 
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 004: 20250715180000_harden_crew_chat_auto_start_auth
 -- Replaces ensure_event_crew_chat_auto_started function with hardened authorization
 -- ============================================================================
 
-\echo '--- Migration 004: harden_crew_chat_auto_start_auth ---'
 
 -- Check 004-1: Function signature and SECURITY DEFINER
 SELECT
@@ -263,14 +253,12 @@ SELECT
   CASE WHEN has_function_privilege('authenticated', 'public.ensure_event_crew_chat_auto_started(uuid)', 'EXECUTE') THEN 'PASS'
        ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
 
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 005: 20250715213000_remove_legacy_public_message_insert
 -- Drops legacy policy, revokes INSERT from anon and public on messages
 -- ============================================================================
 
-\echo '--- Migration 005: remove_legacy_public_message_insert ---'
 
 -- Check 005-1: Legacy policy dropped
 SELECT
@@ -290,14 +278,12 @@ SELECT
   CASE WHEN NOT has_table_privilege('public', 'public.messages', 'INSERT') THEN 'PASS'
        ELSE 'FAIL: public still has INSERT' END AS status;
 
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 006: 20250720120000_event_history_hide_past
 -- New function planner_event_can_hide_from_history, replaces hide_event functions
 -- ============================================================================
 
-\echo '--- Migration 006: event_history_hide_past ---'
 
 -- Check 006-1: planner_event_can_hide_from_history function exists with correct signature
 SELECT
@@ -342,14 +328,12 @@ SELECT
     'FAIL: function not found'
   ) AS status;
 
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 007: 20250729100000_message_reactions_realtime
 -- Sets replica identity FULL on message_reactions, adds to realtime publication
 -- ============================================================================
 
-\echo '--- Migration 007: message_reactions_realtime ---'
 
 -- Check 007-1: message_reactions replica identity set to FULL
 SELECT
@@ -368,14 +352,12 @@ SELECT
   CASE WHEN EXISTS(SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'message_reactions')
        THEN 'PASS' ELSE 'FAIL: table not in publication' END AS status;
 
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 008: 20250730120000_reaction_notification_lifecycle
 -- Adds reaction_id column, updates create_notification to 6 args, adds revoke_reaction_notification
 -- ============================================================================
 
-\echo '--- Migration 008: reaction_notification_lifecycle ---'
 
 -- Check 008-1: reaction_id column exists
 SELECT
@@ -449,14 +431,12 @@ SELECT
   CASE WHEN has_function_privilege('authenticated', 'public.revoke_reaction_notification(uuid)', 'EXECUTE') THEN 'PASS'
        ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
 
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 009: 20250805000000_event_run_sheet_realtime
 -- Sets replica identity FULL on event_run_sheet_rows, adds to realtime publication
 -- ============================================================================
 
-\echo '--- Migration 009: event_run_sheet_realtime ---'
 
 -- Check 009-1: event_run_sheet_rows replica identity set to FULL
 SELECT
@@ -475,14 +455,12 @@ SELECT
   CASE WHEN EXISTS(SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'event_run_sheet_rows')
        THEN 'PASS' ELSE 'FAIL: table not in publication' END AS status;
 
-\echo ''
 
 -- ============================================================================
 -- MIGRATION 010: 20250805000001_allow_pending_djs_to_view_run_sheet
 -- CREATE OR REPLACE can_view_event_run_sheet with new authorization checks
 -- ============================================================================
 
-\echo '--- Migration 010: allow_pending_djs_to_view_run_sheet ---'
 
 -- Check 010-1: can_view_event_run_sheet function exists with correct signature
 SELECT
@@ -538,5 +516,3 @@ SELECT
   CASE WHEN has_function_privilege('authenticated', 'public.can_view_event_run_sheet(uuid)', 'EXECUTE') THEN 'PASS'
        ELSE 'FAIL: authenticated missing EXECUTE grant' END AS status;
 
-\echo ''
-\echo '=== VERIFICATION COMPLETE ==='
