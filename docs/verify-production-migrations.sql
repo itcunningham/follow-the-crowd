@@ -440,7 +440,7 @@ SELECT
   'Migration 007-1: message_reactions replica identity FULL' AS check_name,
   COALESCE(
     (SELECT CASE
-      WHEN relreplident = 'f' THEN 'PASS' ELSE 'FAIL: replica identity=' || relreplident
+      WHEN relreplident = 'f' THEN 'PASS' ELSE 'FAIL: replica identity=' || relreplident::text
     END
     FROM pg_class WHERE relname = 'message_reactions' AND relnamespace = 'public'::regnamespace::oid),
     'FAIL: table not found'
@@ -573,7 +573,7 @@ SELECT
   'Migration 009-1: event_run_sheet_rows replica identity FULL' AS check_name,
   COALESCE(
     (SELECT CASE
-      WHEN relreplident = 'f' THEN 'PASS' ELSE 'FAIL: replica identity=' || relreplident
+      WHEN relreplident = 'f' THEN 'PASS' ELSE 'FAIL: replica identity=' || relreplident::text
     END
     FROM pg_class WHERE relname = 'event_run_sheet_rows' AND relnamespace = 'public'::regnamespace::oid),
     'FAIL: table not found'
