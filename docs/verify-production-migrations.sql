@@ -3,15 +3,8 @@
 -- Queries PostgreSQL catalogs to verify exact final state
 -- Safe for production: no CREATE/ALTER/DROP/INSERT/UPDATE/DELETE/GRANT/REVOKE
 -- Use: supabase db query --linked --file docs/verify-production-migrations.sql
+-- Returns: one result set with all 50 checks (check_name, status)
 
-
--- ============================================================================
--- MIGRATION 001: 20250710120000_event_history_hide
--- Adds history_hidden_at column, index, and two SECURITY DEFINER functions
--- ============================================================================
-
-
--- Check 001-1: history_hidden_at column exists with correct type/nullability
 SELECT
   'Migration 001-1: events.history_hidden_at column' AS check_name,
   COALESCE(
@@ -22,9 +15,9 @@ SELECT
     FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'events' AND column_name = 'history_hidden_at'),
     'FAIL: column not found'
-  ) AS status;
+  ) AS status
 
--- Check 001-2: Index events_owner_cancelled_visible_history_idx exists with correct definition
+UNION ALL
 SELECT
   'Migration 001-2: events_owner_cancelled_visible_history_idx' AS check_name,
   COALESCE(
@@ -37,9 +30,9 @@ SELECT
     FROM pg_indexes
     WHERE indexname = 'events_owner_cancelled_visible_history_idx'),
     'FAIL: index not found'
-  ) AS status;
+  ) AS status
 
--- Check 001-3: Function hide_event_from_history signature
+UNION ALL
 SELECT
   'Migration 001-3: hide_event_from_history(uuid) signature' AS check_name,
   COALESCE(
@@ -56,9 +49,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 001-4: hide_event_from_history function body contains UPDATE ... history_hidden_at = now()
+UNION ALL
 SELECT
   'Migration 001-4: hide_event_from_history function body' AS check_name,
   COALESCE(
@@ -73,9 +66,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 001-5: Function hide_events_from_history signature
+UNION ALL
 SELECT
   'Migration 001-5: hide_events_from_history(uuid[]) signature' AS check_name,
   COALESCE(
@@ -89,9 +82,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_ids uuid[]'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 001-6: hide_event_from_history grant to authenticated
+UNION ALL
 SELECT
   'Migration 001-6: hide_event_from_history execute grant' AS check_name,
   COALESCE(
@@ -110,9 +103,9 @@ SELECT
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 001-7: hide_events_from_history grant to authenticated
+UNION ALL
 SELECT
   'Migration 001-7: hide_events_from_history execute grant' AS check_name,
   COALESCE(
@@ -131,70 +124,63 @@ SELECT
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
-
--- ============================================================================
--- MIGRATION 002: 20250710130000_booking_request_history_hides
--- New table with RLS, indexes, three SECURITY DEFINER functions
--- ============================================================================
-
-
--- Check 002-1: Table exists
+UNION ALL
 SELECT
   'Migration 002-1: booking_request_history_hides table exists' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'booking_request_history_hides')
-       THEN 'PASS' ELSE 'FAIL: table not found' END AS status;
+       THEN 'PASS' ELSE 'FAIL: table not found' END AS status
 
--- Check 002-2: booking_request_id FK to booking_requests
+UNION ALL
 SELECT
   'Migration 002-2: booking_request_id FK to booking_requests' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM information_schema.referential_constraints WHERE constraint_name LIKE '%booking_request_history_hides%')
-       THEN 'PASS' ELSE 'FAIL: FK not found' END AS status;
+       THEN 'PASS' ELSE 'FAIL: FK not found' END AS status
 
--- Check 002-3: Unique constraint (booking_request_id, user_id)
+UNION ALL
 SELECT
   'Migration 002-3: unique (booking_request_id, user_id)' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'booking_request_history_hides' AND constraint_type = 'UNIQUE' AND constraint_name LIKE '%booking_user_key%')
-       THEN 'PASS' ELSE 'FAIL: unique constraint not found' END AS status;
+       THEN 'PASS' ELSE 'FAIL: unique constraint not found' END AS status
 
--- Check 002-4: Index on user_id
+UNION ALL
 SELECT
   'Migration 002-4: user_id index' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM pg_indexes WHERE indexname = 'booking_request_history_hides_user_id_idx')
-       THEN 'PASS' ELSE 'FAIL: index not found' END AS status;
+       THEN 'PASS' ELSE 'FAIL: index not found' END AS status
 
--- Check 002-5: Index on booking_request_id
+UNION ALL
 SELECT
   'Migration 002-5: booking_request_id index' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM pg_indexes WHERE indexname = 'booking_request_history_hides_booking_request_id_idx')
-       THEN 'PASS' ELSE 'FAIL: index not found' END AS status;
+       THEN 'PASS' ELSE 'FAIL: index not found' END AS status
 
--- Check 002-6: RLS enabled on table
+UNION ALL
 SELECT
   'Migration 002-6: RLS enabled' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM pg_class WHERE relname = 'booking_request_history_hides' AND relrowsecurity = true)
-       THEN 'PASS' ELSE 'FAIL: RLS not enabled' END AS status;
+       THEN 'PASS' ELSE 'FAIL: RLS not enabled' END AS status
 
--- Check 002-7: SELECT policy exists
+UNION ALL
 SELECT
   'Migration 002-7: SELECT policy' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM pg_policies WHERE tablename = 'booking_request_history_hides' AND policyname LIKE '%select_own%' AND cmd = 'SELECT')
-       THEN 'PASS' ELSE 'FAIL: SELECT policy not found' END AS status;
+       THEN 'PASS' ELSE 'FAIL: SELECT policy not found' END AS status
 
--- Check 002-8: INSERT policy exists
+UNION ALL
 SELECT
   'Migration 002-8: INSERT policy' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM pg_policies WHERE tablename = 'booking_request_history_hides' AND policyname LIKE '%insert_own%' AND cmd = 'INSERT')
-       THEN 'PASS' ELSE 'FAIL: INSERT policy not found' END AS status;
+       THEN 'PASS' ELSE 'FAIL: INSERT policy not found' END AS status
 
--- Check 002-9: DELETE policy exists
+UNION ALL
 SELECT
   'Migration 002-9: DELETE policy' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM pg_policies WHERE tablename = 'booking_request_history_hides' AND policyname LIKE '%delete_own%' AND cmd = 'DELETE')
-       THEN 'PASS' ELSE 'FAIL: DELETE policy not found' END AS status;
+       THEN 'PASS' ELSE 'FAIL: DELETE policy not found' END AS status
 
--- Check 002-10: hide_booking_request_from_history function
+UNION ALL
 SELECT
   'Migration 002-10: hide_booking_request_from_history(uuid) signature' AS check_name,
   COALESCE(
@@ -207,9 +193,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_booking_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 002-11: archive_booking_request grant to authenticated
+UNION ALL
 SELECT
   'Migration 002-11: archive_booking_request execute grant' AS check_name,
   COALESCE(
@@ -228,55 +214,41 @@ SELECT
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
-
--- ============================================================================
--- MIGRATION 003: 20250710140000_booking_request_history_hides_grants
--- Grants select, insert, delete on booking_request_history_hides to authenticated
--- ============================================================================
-
-
--- Check 003-1: Authenticated SELECT grant on table
+UNION ALL
 SELECT
   'Migration 003-1: authenticated SELECT on table' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'booking_request_history_hides')
        THEN CASE WHEN has_table_privilege('authenticated'::regrole, 'public.booking_request_history_hides'::regclass, 'SELECT') THEN 'PASS'
                  ELSE 'FAIL: authenticated missing SELECT' END
-       ELSE 'FAIL: table not found' END AS status;
+       ELSE 'FAIL: table not found' END AS status
 
--- Check 003-2: Authenticated INSERT grant on table
+UNION ALL
 SELECT
   'Migration 003-2: authenticated INSERT on table' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'booking_request_history_hides')
        THEN CASE WHEN has_table_privilege('authenticated'::regrole, 'public.booking_request_history_hides'::regclass, 'INSERT') THEN 'PASS'
                  ELSE 'FAIL: authenticated missing INSERT' END
-       ELSE 'FAIL: table not found' END AS status;
+       ELSE 'FAIL: table not found' END AS status
 
--- Check 003-3: Authenticated DELETE grant on table
+UNION ALL
 SELECT
   'Migration 003-3: authenticated DELETE on table' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'booking_request_history_hides')
        THEN CASE WHEN has_table_privilege('authenticated'::regrole, 'public.booking_request_history_hides'::regclass, 'DELETE') THEN 'PASS'
                  ELSE 'FAIL: authenticated missing DELETE' END
-       ELSE 'FAIL: table not found' END AS status;
+       ELSE 'FAIL: table not found' END AS status
 
--- Check 003-4: Anon has no SELECT on table (revoked)
+UNION ALL
 SELECT
   'Migration 003-4: anon revoked SELECT' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'booking_request_history_hides')
        THEN CASE WHEN NOT has_table_privilege('anon'::regrole, 'public.booking_request_history_hides'::regclass, 'SELECT') THEN 'PASS'
                  ELSE 'FAIL: anon still has SELECT' END
-       ELSE 'FAIL: table not found' END AS status;
+       ELSE 'FAIL: table not found' END AS status
 
-
--- ============================================================================
--- MIGRATION 004: 20250715180000_harden_crew_chat_auto_start_auth
--- Replaces ensure_event_crew_chat_auto_started function with hardened authorization
--- ============================================================================
-
-
--- Check 004-1: Function signature and SECURITY DEFINER
+UNION ALL
 SELECT
   'Migration 004-1: ensure_event_crew_chat_auto_started(uuid) signature' AS check_name,
   COALESCE(
@@ -289,9 +261,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 004-2: Function body calls is_event_crew_participant
+UNION ALL
 SELECT
   'Migration 004-2: calls is_event_crew_participant' AS check_name,
   COALESCE(
@@ -304,9 +276,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 004-3: Function body calls count_event_accepted_crew_djs
+UNION ALL
 SELECT
   'Migration 004-3: calls count_event_accepted_crew_djs' AS check_name,
   COALESCE(
@@ -319,9 +291,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 004-4: Grant to authenticated
+UNION ALL
 SELECT
   'Migration 004-4: grant execute to authenticated' AS check_name,
   COALESCE(
@@ -340,40 +312,30 @@ SELECT
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
-
--- ============================================================================
--- MIGRATION 005: 20250715213000_remove_legacy_public_message_insert
--- Drops legacy policy, revokes INSERT from anon and public on messages
--- ============================================================================
-
-
--- Check 005-1: Legacy policy dropped
+UNION ALL
 SELECT
   'Migration 005-1: legacy policy removed' AS check_name,
   CASE WHEN NOT EXISTS(SELECT 1 FROM pg_policies WHERE tablename = 'messages' AND policyname = 'allow public insert messages')
-       THEN 'PASS' ELSE 'FAIL: legacy policy still exists' END AS status;
+       THEN 'PASS' ELSE 'FAIL: legacy policy still exists' END AS status
 
--- Check 005-2: Anon revoked INSERT on messages
+UNION ALL
 SELECT
   'Migration 005-2: anon revoked INSERT on messages' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'messages')
        THEN CASE WHEN NOT has_table_privilege('anon'::regrole, 'public.messages'::regclass, 'INSERT') THEN 'PASS'
                  ELSE 'FAIL: anon still has INSERT' END
-       ELSE 'FAIL: table not found' END AS status;
+       ELSE 'FAIL: table not found' END AS status
 
--- Check 005-3: PUBLIC revoked INSERT on messages
+UNION ALL
 SELECT
   'Migration 005-3: public revoked INSERT on messages' AS check_name,
   COALESCE(
     (SELECT CASE
-      -- PUBLIC (grantee=0) should not have INSERT privilege on messages
-      -- relacl=NULL means default privileges (no PUBLIC INSERT on regular tables)
-      -- If relacl is set, aclexplode shows all grants; check none give INSERT to PUBLIC
       WHEN c.relacl IS NULL OR NOT EXISTS(
         SELECT 1 FROM aclexplode(c.relacl) AS acl
-        WHERE acl.grantee = 0  -- 0 = PUBLIC pseudo-role
+        WHERE acl.grantee = 0
           AND acl.privilege_type = 'INSERT'
       )
       THEN 'PASS'
@@ -382,16 +344,9 @@ SELECT
     FROM pg_class c
     WHERE c.relname = 'messages' AND c.relnamespace = 'public'::regnamespace::oid),
     'FAIL: table not found'
-  ) AS status;
+  ) AS status
 
-
--- ============================================================================
--- MIGRATION 006: 20250720120000_event_history_hide_past
--- New function planner_event_can_hide_from_history, replaces hide_event functions
--- ============================================================================
-
-
--- Check 006-1: planner_event_can_hide_from_history function exists with correct signature
+UNION ALL
 SELECT
   'Migration 006-1: planner_event_can_hide_from_history(text,text,text) signature' AS check_name,
   COALESCE(
@@ -405,9 +360,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_date text, p_set_time text, p_status text'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 006-2: planner_event_can_hide_from_history grant to authenticated
+UNION ALL
 SELECT
   'Migration 006-2: planner_event_can_hide_from_history grant' AS check_name,
   COALESCE(
@@ -426,9 +381,9 @@ SELECT
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 006-3: hide_event_from_history body now calls planner function
+UNION ALL
 SELECT
   'Migration 006-3: hide_event_from_history calls planner function' AS check_name,
   COALESCE(
@@ -441,9 +396,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 006-4: hide_events_from_history body calls planner function
+UNION ALL
 SELECT
   'Migration 006-4: hide_events_from_history calls planner function' AS check_name,
   COALESCE(
@@ -456,16 +411,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_ids uuid[]'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
-
--- ============================================================================
--- MIGRATION 007: 20250729100000_message_reactions_realtime
--- Sets replica identity FULL on message_reactions, adds to realtime publication
--- ============================================================================
-
-
--- Check 007-1: message_reactions replica identity set to FULL
+UNION ALL
 SELECT
   'Migration 007-1: message_reactions replica identity FULL' AS check_name,
   COALESCE(
@@ -474,34 +422,27 @@ SELECT
     END
     FROM pg_class WHERE relname = 'message_reactions' AND relnamespace = 'public'::regnamespace::oid),
     'FAIL: table not found'
-  ) AS status;
+  ) AS status
 
--- Check 007-2: message_reactions in supabase_realtime publication
+UNION ALL
 SELECT
   'Migration 007-2: message_reactions in supabase_realtime' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'message_reactions')
-       THEN 'PASS' ELSE 'FAIL: table not in publication' END AS status;
+       THEN 'PASS' ELSE 'FAIL: table not in publication' END AS status
 
-
--- ============================================================================
--- MIGRATION 008: 20250730120000_reaction_notification_lifecycle
--- Adds reaction_id column, updates create_notification to 6 args, adds revoke_reaction_notification
--- ============================================================================
-
-
--- Check 008-1: reaction_id column exists
+UNION ALL
 SELECT
   'Migration 008-1: notifications.reaction_id column' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'notifications' AND column_name = 'reaction_id' AND data_type = 'uuid' AND is_nullable = 'YES')
-       THEN 'PASS' ELSE 'FAIL: column missing or wrong type/nullability' END AS status;
+       THEN 'PASS' ELSE 'FAIL: column missing or wrong type/nullability' END AS status
 
--- Check 008-2: Index on reaction_id
+UNION ALL
 SELECT
   'Migration 008-2: notifications_reaction_id_idx' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM pg_indexes WHERE indexname = 'notifications_reaction_id_idx')
-       THEN 'PASS' ELSE 'FAIL: index not found' END AS status;
+       THEN 'PASS' ELSE 'FAIL: index not found' END AS status
 
--- Check 008-3: create_notification signature now has 6 parameters with p_reaction_id
+UNION ALL
 SELECT
   'Migration 008-3: create_notification 6-arg signature' AS check_name,
   COALESCE(
@@ -514,9 +455,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) LIKE '%p_reaction_id uuid%'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 008-4: create_notification body handles reaction_id
+UNION ALL
 SELECT
   'Migration 008-4: create_notification handles reaction_id' AS check_name,
   COALESCE(
@@ -529,9 +470,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) LIKE '%p_reaction_id uuid%'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 008-5: revoke_reaction_notification function exists
+UNION ALL
 SELECT
   'Migration 008-5: revoke_reaction_notification(uuid) signature' AS check_name,
   COALESCE(
@@ -544,9 +485,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_reaction_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 008-6: revoke_reaction_notification body deletes notifications by reaction_id
+UNION ALL
 SELECT
   'Migration 008-6: revoke_reaction_notification deletes by reaction_id' AS check_name,
   COALESCE(
@@ -559,9 +500,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_reaction_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 008-7: create_notification 6-arg grant to authenticated
+UNION ALL
 SELECT
   'Migration 008-7: create_notification 6-arg grant' AS check_name,
   COALESCE(
@@ -580,9 +521,9 @@ SELECT
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 008-8: revoke_reaction_notification grant to authenticated
+UNION ALL
 SELECT
   'Migration 008-8: revoke_reaction_notification grant' AS check_name,
   COALESCE(
@@ -601,16 +542,9 @@ SELECT
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
-
--- ============================================================================
--- MIGRATION 009: 20250805000000_event_run_sheet_realtime
--- Sets replica identity FULL on event_run_sheet_rows, adds to realtime publication
--- ============================================================================
-
-
--- Check 009-1: event_run_sheet_rows replica identity set to FULL
+UNION ALL
 SELECT
   'Migration 009-1: event_run_sheet_rows replica identity FULL' AS check_name,
   COALESCE(
@@ -619,22 +553,15 @@ SELECT
     END
     FROM pg_class WHERE relname = 'event_run_sheet_rows' AND relnamespace = 'public'::regnamespace::oid),
     'FAIL: table not found'
-  ) AS status;
+  ) AS status
 
--- Check 009-2: event_run_sheet_rows in supabase_realtime publication
+UNION ALL
 SELECT
   'Migration 009-2: event_run_sheet_rows in supabase_realtime' AS check_name,
   CASE WHEN EXISTS(SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'event_run_sheet_rows')
-       THEN 'PASS' ELSE 'FAIL: table not in publication' END AS status;
+       THEN 'PASS' ELSE 'FAIL: table not in publication' END AS status
 
-
--- ============================================================================
--- MIGRATION 010: 20250805000001_allow_pending_djs_to_view_run_sheet
--- CREATE OR REPLACE can_view_event_run_sheet with new authorization checks
--- ============================================================================
-
-
--- Check 010-1: can_view_event_run_sheet function exists with correct signature
+UNION ALL
 SELECT
   'Migration 010-1: can_view_event_run_sheet(uuid) signature' AS check_name,
   COALESCE(
@@ -647,9 +574,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 010-2: Function calls is_event_run_sheet_owner
+UNION ALL
 SELECT
   'Migration 010-2: calls is_event_run_sheet_owner' AS check_name,
   COALESCE(
@@ -662,9 +589,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 010-3: Function calls is_event_crew_participant
+UNION ALL
 SELECT
   'Migration 010-3: calls is_event_crew_participant' AS check_name,
   COALESCE(
@@ -677,9 +604,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 010-4: Function checks for pending/accepted booking_requests
+UNION ALL
 SELECT
   'Migration 010-4: checks pending/accepted booking_requests' AS check_name,
   COALESCE(
@@ -692,9 +619,9 @@ SELECT
       AND p.pronamespace = 'public'::regnamespace
       AND pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid'),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
--- Check 010-5: can_view_event_run_sheet grant to authenticated (from setupEventRunSheet.sql)
+UNION ALL
 SELECT
   'Migration 010-5: grant execute to authenticated' AS check_name,
   COALESCE(
@@ -713,5 +640,6 @@ SELECT
       ELSE 'FAIL: function not found'
     END),
     'FAIL: function not found'
-  ) AS status;
+  ) AS status
 
+ORDER BY check_name;
