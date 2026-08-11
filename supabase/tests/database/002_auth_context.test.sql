@@ -11,13 +11,13 @@ BEGIN;
 
 SELECT plan(3);
 
--- Proof 1: anon role cannot execute auth_user_id() (permission denied)
+-- Proof 1: anon role cannot execute auth_user_id() (permission denied — SQLSTATE 42501)
 SET LOCAL ROLE anon;
 SET LOCAL "request.jwt.claims" = '{"role":"anon","aud":"authenticated"}';
 
 SELECT throws_ok(
   'SELECT public.auth_user_id();',
-  '42501',
+  'permission denied',
   'anon role gets permission denied calling auth_user_id() (REVOKE EXECUTE)'
 );
 
