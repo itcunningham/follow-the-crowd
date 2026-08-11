@@ -37,12 +37,30 @@
 
 
 -- ============================================================================
--- CORRECTION 3: Add three missing constraints on booking_requests
+-- CORRECTION 3: Fix rate_mode defaults and constraints
+-- ============================================================================
+-- CURRENT (INCORRECT - line 110):
+--   rate_mode text,
+--
+-- REQUIRED (CORRECT):
+--   rate_mode text not null default 'fixed',
+--
+-- SOURCE: setupBookingRateProposal.sql line 5
+--
+-- RATIONALE: The RPC function propose_booking_rate() checks `rate_mode = 'open'`
+--   to allow proposals. Without a default, existing bookings have NULL rate_mode,
+--   breaking this logic. Default 'fixed' means "sender specifies fee" (standard case).
+
+-- APPLY IN BASELINE DIRECTLY: Replace line 110 in booking_requests table definition
+
+
+-- ============================================================================
+-- CORRECTION 4: Add three missing constraints on booking_requests
 -- ============================================================================
 -- These constraints should be added AFTER the booking_requests table definition
 -- and AFTER the status_check constraint (line 121)
 
--- CONSTRAINT 3A: rate_mode values
+-- CONSTRAINT 4A: rate_mode values
 -- SOURCE: setupBookingRateProposal.sql lines 14-16
 alter table public.booking_requests
   drop constraint if exists booking_requests_rate_mode_check;
@@ -51,7 +69,7 @@ alter table public.booking_requests
   add constraint booking_requests_rate_mode_check
   check (rate_mode in ('fixed', 'open'));
 
--- CONSTRAINT 3B: proposed_rate_status values
+-- CONSTRAINT 4B: proposed_rate_status values
 -- SOURCE: setupBookingRateProposal.sql lines 21-23
 alter table public.booking_requests
   drop constraint if exists booking_requests_proposed_rate_status_check;
@@ -60,7 +78,7 @@ alter table public.booking_requests
   add constraint booking_requests_proposed_rate_status_check
   check (proposed_rate_status is null or proposed_rate_status in ('pending', 'accepted', 'declined'));
 
--- CONSTRAINT 3C: proposed_rate_note length
+-- CONSTRAINT 4C: proposed_rate_note length
 -- SOURCE: setupBookingRateProposal.sql lines 28-30
 alter table public.booking_requests
   drop constraint if exists booking_requests_proposed_rate_note_length_check;
@@ -110,10 +128,11 @@ alter table public.booking_requests
 -- COMMENT ON TABLE public.messages IS
 --   'DM and crew chat messages. Defined in baseline only; not in any setup script.';
 
--- Document the unknown-source function:
+-- Document the source-verified function:
 -- COMMENT ON FUNCTION public.count_event_accepted_crew_djs(uuid) IS
---   'Count accepted crew DJs for an event. Source: inferred from event_run_sheet RLS. '
---   'Verify migrations 001-010 to confirm usage.';
+--   'Count accepted crew DJs for an event. '
+--   'Source: setupEventCrewChatUnlock.sql lines 14-25. '
+--   'Used by event_run_sheet RLS policies and crew chat unlock logic.';
 
 -- Add column comments for proposed_rate fields:
 -- COMMENT ON COLUMN public.booking_requests.rate_mode IS
@@ -130,19 +149,24 @@ alter table public.booking_requests
 
 
 -- ============================================================================
--- TESTING CHECKLIST AFTER CORRECTIONS
+-- TESTING CHECKLIST AFTER FOUR CORRECTIONS APPLIED
 -- ============================================================================
--- 1. Verify proposed_rate is integer:
+-- 1. Verify rate_mode has default and not null:
+--    SELECT column_name, is_nullable, column_default FROM information_schema.columns
+--    WHERE table_name='booking_requests' AND column_name='rate_mode';
+--    EXPECTED: is_nullable='NO', column_default='fixed'::text
+--
+-- 2. Verify proposed_rate is integer:
 --    SELECT column_name, data_type FROM information_schema.columns
 --    WHERE table_name='booking_requests' AND column_name='proposed_rate';
 --    EXPECTED: data_type = 'integer'
 --
--- 2. Verify proposed_rate_note exists:
+-- 3. Verify proposed_rate_note exists:
 --    SELECT column_name FROM information_schema.columns
 --    WHERE table_name='booking_requests' AND column_name='proposed_rate_note';
 --    EXPECTED: 1 row returned
 --
--- 3. Verify constraints exist:
+-- 5. Verify constraints exist:
 --    SELECT constraint_name FROM information_schema.table_constraints
 --    WHERE table_name='booking_requests' AND constraint_type='CHECK'
 --    AND constraint_name IN ('booking_requests_rate_mode_check',
@@ -150,13 +174,13 @@ alter table public.booking_requests
 --                             'booking_requests_proposed_rate_note_length_check');
 --    EXPECTED: 3 rows returned
 --
--- 4. Verify RPC functions can execute:
+-- 6. Verify RPC functions can execute:
 --    SELECT pg_get_functiondef('public.propose_booking_rate'::regprocedure);
 --    SELECT pg_get_functiondef('public.accept_proposed_booking_rate'::regprocedure);
 --    SELECT pg_get_functiondef('public.decline_proposed_booking_rate'::regprocedure);
 --    EXPECTED: All return function bodies without error
 --
--- 5. Test constraint enforcement:
+-- 7. Test constraint enforcement:
 --    -- This should FAIL (invalid rate_mode):
 --    INSERT INTO public.booking_requests (..., rate_mode, ...)
 --    VALUES (..., 'invalid', ...);
@@ -169,13 +193,18 @@ alter table public.booking_requests
 
 
 -- ============================================================================
--- MIGRATION COMPATIBILITY
+-- MIGRATION COMPATIBILITY: FOUR CORRECTIONS REQUIRED
 -- ============================================================================
--- After corrections, migrations 001-010 should execute without:
---   - Column not found errors for proposed_rate_note
---   - Type mismatch errors on proposed_rate
---   - Constraint violation errors from proposed_rate values
+-- After applying all FOUR corrections, migrations 001-010 should execute without:
+--   - rate_mode NULL constraint violation errors (CORRECTION 3)
+--   - Column not found errors for proposed_rate_note (CORRECTION 2)
+--   - Type mismatch errors on proposed_rate (CORRECTION 1)
+--   - Constraint violation errors from proposed_rate values (CORRECTION 4)
 --
 -- Key migrations that depend on these corrections:
+--   - CORRECTION 1 (proposed_rate type): setupBookingRateProposal.sql RPC
+--   - CORRECTION 2 (proposed_rate_note): setupBookingRateProposal.sql functions
+--   - CORRECTION 3 (rate_mode default): All booking_requests operations
+--   - CORRECTION 4 (rate constraints): Data integrity checks in migrations 001-010
 --   - 008 (reaction_notification_lifecycle.sql) - uses create_notification with proposed_rate fields
 --   - All DM migrations - depend on message, conversation, conversation_members tables

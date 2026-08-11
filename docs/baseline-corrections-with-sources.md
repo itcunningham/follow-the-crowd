@@ -1,7 +1,7 @@
 # Baseline Corrections: Exact Source Verification
 
 **Date:** 2026-08-11  
-**Purpose:** Document the exact source locations for the three critical baseline corrections before applying them to the SQL
+**Purpose:** Document the exact source locations for the four critical baseline corrections before applying them to the SQL
 
 ---
 
@@ -100,7 +100,54 @@ Expected result: 1 row returned
 
 ---
 
-## CORRECTION 3: Missing Three Constraints
+## CORRECTION 3: rate_mode Default and NOT NULL Constraint
+
+### Issue
+Baseline defines: `rate_mode text` (no default, nullable)  
+Expected from source: `rate_mode text not null default 'fixed'`
+
+### Source Location
+**File:** `setupBookingRateProposal.sql`  
+**Line:** 5
+
+```sql
+alter table public.booking_requests
+  add column if not exists rate_mode text not null default 'fixed',
+```
+
+**Specific Detail:** Line 5 requires `not null default 'fixed'`
+
+### Why This Matters
+- The RPC `propose_booking_rate()` (line 72) checks `rate_mode = 'open'` to allow proposals
+- Without a default, existing bookings have NULL rate_mode, breaking this logic
+- Default 'fixed' means "sender specifies fee" (the standard case)
+- NOT NULL constraint is required to enforce valid state
+
+### Proposed Fix
+Change baseline line 110 from:
+```sql
+rate_mode text,
+```
+
+To:
+```sql
+rate_mode text not null default 'fixed',
+```
+
+### Verification
+After applying, run:
+```sql
+SELECT column_name, is_nullable, column_default 
+FROM information_schema.columns 
+WHERE table_name='booking_requests' AND column_name='rate_mode';
+```
+Expected result:
+- is_nullable = NO
+- column_default = 'fixed'::text
+
+---
+
+## CORRECTION 4: Missing Three Constraints
 
 ### Issue
 Baseline has NO constraints on rate_mode, proposed_rate_status, or proposed_rate_note  
@@ -192,60 +239,14 @@ Expected result: 3 rows returned
 
 ---
 
-## BONUS CORRECTION 4: rate_mode Default Value
-
-### Issue
-Baseline defines: `rate_mode text` (no default)  
-Expected from source: `rate_mode text not null default 'fixed'`
-
-### Source Location
-**File:** `setupBookingRateProposal.sql`  
-**Line:** 5
-
-```sql
-alter table public.booking_requests
-  add column if not exists rate_mode text not null default 'fixed',
-```
-
-**Specific Detail:** Line 5 requires `not null default 'fixed'`
-
-### Why This Matters
-- The RPC `propose_booking_rate()` (line 72) checks `rate_mode = 'open'` to allow proposals
-- Without a default, existing bookings have NULL rate_mode, breaking this logic
-- Default 'fixed' means "sender specifies fee" (the standard case)
-
-### Proposed Fix
-Change baseline line 110 from:
-```sql
-rate_mode text,
-```
-
-To:
-```sql
-rate_mode text not null default 'fixed',
-```
-
-### Verification
-After applying, run:
-```sql
-SELECT column_name, is_nullable, column_default 
-FROM information_schema.columns 
-WHERE table_name='booking_requests' AND column_name='rate_mode';
-```
-Expected result:
-- is_nullable = NO
-- column_default = 'fixed'::text
-
----
-
 ## SUMMARY: All Four Corrections
 
-| Correction | Type | Location | Fix |
-|-----------|------|----------|-----|
-| 1. proposed_rate type | Type mismatch | Line 111 | Change `numeric` to `integer null` |
-| 2. proposed_rate_note column | Missing column | Line 113 (insert) | Add `proposed_rate_note text null` |
-| 3. Three rate constraints | Missing constraints | After line 121 | Add 3 ALTER TABLE constraint blocks |
-| 4. rate_mode default | Missing default | Line 110 | Change `text` to `text not null default 'fixed'` |
+| Correction | Type | Location | Fix | Source |
+|-----------|------|----------|-----|--------|
+| 1. proposed_rate type | Type mismatch | Line 111 | Change `numeric` to `integer null` | setupBookingRateProposal.sql line 6 |
+| 2. proposed_rate_note column | Missing column | Line 113 (insert) | Add `proposed_rate_note text null` | setupBookingRateProposal.sql line 7 |
+| 3. rate_mode default | Missing default/constraint | Line 110 | Change `text` to `text not null default 'fixed'` | setupBookingRateProposal.sql line 5 |
+| 4. Three rate constraints | Missing constraints | After line 121 | Add 3 ALTER TABLE constraint blocks | setupBookingRateProposal.sql lines 14-30 |
 
 **Source:** All four corrections are source-verified from setupBookingRateProposal.sql lines 4-30
 
