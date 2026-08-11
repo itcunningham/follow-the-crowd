@@ -313,10 +313,23 @@ SELECT
 -- Check 005-3: PUBLIC revoked INSERT on messages
 SELECT
   'Migration 005-3: public revoked INSERT on messages' AS check_name,
-  CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'messages')
-       THEN CASE WHEN NOT has_table_privilege('public'::regrole, 'public.messages'::regclass, 'INSERT') THEN 'PASS'
-                 ELSE 'FAIL: public still has INSERT' END
-       ELSE 'FAIL: table not found' END AS status;
+  COALESCE(
+    (SELECT CASE
+      -- PUBLIC (grantee=0) should not have INSERT privilege on messages
+      -- relacl=NULL means default privileges (no PUBLIC INSERT on regular tables)
+      -- If relacl is set, aclexplode shows all grants; check none give INSERT to PUBLIC
+      WHEN c.relacl IS NULL OR NOT EXISTS(
+        SELECT 1 FROM aclexplode(c.relacl) AS acl
+        WHERE acl.grantee = 0  -- 0 = PUBLIC pseudo-role
+          AND acl.privilege_type = 'INSERT'
+      )
+      THEN 'PASS'
+      ELSE 'FAIL: PUBLIC still has INSERT'
+    END
+    FROM pg_class c
+    WHERE c.relname = 'messages' AND c.relnamespace = 'public'::regnamespace::oid),
+    'FAIL: table not found'
+  ) AS status;
 
 
 -- ============================================================================
