@@ -2,7 +2,7 @@
 -- SELECT-only audit of all 10 migrations (20250710120000 through 20250805000001)
 -- Queries PostgreSQL catalogs to verify exact final state
 -- Safe for production: no CREATE/ALTER/DROP/INSERT/UPDATE/DELETE/GRANT/REVOKE
--- Use: psql postgresql://[user]:[password]@[host]:5432/postgres -f verify-production-migrations.sql
+-- Use: supabase db query --linked --file docs/verify-production-migrations.sql
 
 
 -- ============================================================================
@@ -85,14 +85,28 @@ SELECT
 -- Check 001-6: hide_event_from_history grant to authenticated
 SELECT
   'Migration 001-6: hide_event_from_history execute grant' AS check_name,
-  CASE WHEN has_function_privilege('authenticated', 'public.hide_event_from_history(uuid)', 'EXECUTE') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
+  COALESCE(
+    (SELECT CASE
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'hide_event_from_history' AND p.pronamespace = 'public'::regnamespace)
+      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.hide_event_from_history(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
+                ELSE 'FAIL: authenticated missing EXECUTE' END
+      ELSE 'FAIL: function not found'
+    END),
+    'FAIL: function not found'
+  ) AS status;
 
 -- Check 001-7: hide_events_from_history grant to authenticated
 SELECT
   'Migration 001-7: hide_events_from_history execute grant' AS check_name,
-  CASE WHEN has_function_privilege('authenticated', 'public.hide_events_from_history(uuid[])', 'EXECUTE') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
+  COALESCE(
+    (SELECT CASE
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'hide_events_from_history' AND p.pronamespace = 'public'::regnamespace)
+      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.hide_events_from_history(uuid[])'::regprocedure, 'EXECUTE') THEN 'PASS'
+                ELSE 'FAIL: authenticated missing EXECUTE' END
+      ELSE 'FAIL: function not found'
+    END),
+    'FAIL: function not found'
+  ) AS status;
 
 
 -- ============================================================================
@@ -170,8 +184,15 @@ SELECT
 -- Check 002-11: archive_booking_request grant to authenticated
 SELECT
   'Migration 002-11: archive_booking_request execute grant' AS check_name,
-  CASE WHEN has_function_privilege('authenticated', 'public.archive_booking_request(uuid)', 'EXECUTE') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
+  COALESCE(
+    (SELECT CASE
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'archive_booking_request' AND p.pronamespace = 'public'::regnamespace)
+      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.archive_booking_request(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
+                ELSE 'FAIL: authenticated missing EXECUTE' END
+      ELSE 'FAIL: function not found'
+    END),
+    'FAIL: function not found'
+  ) AS status;
 
 
 -- ============================================================================
@@ -183,26 +204,34 @@ SELECT
 -- Check 003-1: Authenticated SELECT grant on table
 SELECT
   'Migration 003-1: authenticated SELECT on table' AS check_name,
-  CASE WHEN has_table_privilege('authenticated', 'public.booking_request_history_hides', 'SELECT') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing SELECT' END AS status;
+  CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'booking_request_history_hides')
+       THEN CASE WHEN has_table_privilege('authenticated'::regrole, 'public.booking_request_history_hides'::regclass, 'SELECT') THEN 'PASS'
+                 ELSE 'FAIL: authenticated missing SELECT' END
+       ELSE 'FAIL: table not found' END AS status;
 
 -- Check 003-2: Authenticated INSERT grant on table
 SELECT
   'Migration 003-2: authenticated INSERT on table' AS check_name,
-  CASE WHEN has_table_privilege('authenticated', 'public.booking_request_history_hides', 'INSERT') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing INSERT' END AS status;
+  CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'booking_request_history_hides')
+       THEN CASE WHEN has_table_privilege('authenticated'::regrole, 'public.booking_request_history_hides'::regclass, 'INSERT') THEN 'PASS'
+                 ELSE 'FAIL: authenticated missing INSERT' END
+       ELSE 'FAIL: table not found' END AS status;
 
 -- Check 003-3: Authenticated DELETE grant on table
 SELECT
   'Migration 003-3: authenticated DELETE on table' AS check_name,
-  CASE WHEN has_table_privilege('authenticated', 'public.booking_request_history_hides', 'DELETE') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing DELETE' END AS status;
+  CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'booking_request_history_hides')
+       THEN CASE WHEN has_table_privilege('authenticated'::regrole, 'public.booking_request_history_hides'::regclass, 'DELETE') THEN 'PASS'
+                 ELSE 'FAIL: authenticated missing DELETE' END
+       ELSE 'FAIL: table not found' END AS status;
 
 -- Check 003-4: Anon has no SELECT on table (revoked)
 SELECT
   'Migration 003-4: anon revoked SELECT' AS check_name,
-  CASE WHEN NOT has_table_privilege('anon', 'public.booking_request_history_hides', 'SELECT') THEN 'PASS'
-       ELSE 'FAIL: anon still has SELECT' END AS status;
+  CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'booking_request_history_hides')
+       THEN CASE WHEN NOT has_table_privilege('anon'::regrole, 'public.booking_request_history_hides'::regclass, 'SELECT') THEN 'PASS'
+                 ELSE 'FAIL: anon still has SELECT' END
+       ELSE 'FAIL: table not found' END AS status;
 
 
 -- ============================================================================
@@ -250,8 +279,15 @@ SELECT
 -- Check 004-4: Grant to authenticated
 SELECT
   'Migration 004-4: grant execute to authenticated' AS check_name,
-  CASE WHEN has_function_privilege('authenticated', 'public.ensure_event_crew_chat_auto_started(uuid)', 'EXECUTE') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
+  COALESCE(
+    (SELECT CASE
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'ensure_event_crew_chat_auto_started' AND p.pronamespace = 'public'::regnamespace)
+      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.ensure_event_crew_chat_auto_started(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
+                ELSE 'FAIL: authenticated missing EXECUTE' END
+      ELSE 'FAIL: function not found'
+    END),
+    'FAIL: function not found'
+  ) AS status;
 
 
 -- ============================================================================
@@ -269,14 +305,18 @@ SELECT
 -- Check 005-2: Anon revoked INSERT on messages
 SELECT
   'Migration 005-2: anon revoked INSERT on messages' AS check_name,
-  CASE WHEN NOT has_table_privilege('anon', 'public.messages', 'INSERT') THEN 'PASS'
-       ELSE 'FAIL: anon still has INSERT' END AS status;
+  CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'messages')
+       THEN CASE WHEN NOT has_table_privilege('anon'::regrole, 'public.messages'::regclass, 'INSERT') THEN 'PASS'
+                 ELSE 'FAIL: anon still has INSERT' END
+       ELSE 'FAIL: table not found' END AS status;
 
 -- Check 005-3: PUBLIC revoked INSERT on messages
 SELECT
   'Migration 005-3: public revoked INSERT on messages' AS check_name,
-  CASE WHEN NOT has_table_privilege('public', 'public.messages', 'INSERT') THEN 'PASS'
-       ELSE 'FAIL: public still has INSERT' END AS status;
+  CASE WHEN EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'messages')
+       THEN CASE WHEN NOT has_table_privilege('public'::regrole, 'public.messages'::regclass, 'INSERT') THEN 'PASS'
+                 ELSE 'FAIL: public still has INSERT' END
+       ELSE 'FAIL: table not found' END AS status;
 
 
 -- ============================================================================
@@ -301,8 +341,15 @@ SELECT
 -- Check 006-2: planner_event_can_hide_from_history grant to authenticated
 SELECT
   'Migration 006-2: planner_event_can_hide_from_history grant' AS check_name,
-  CASE WHEN has_function_privilege('authenticated', 'public.planner_event_can_hide_from_history(text, text, text)', 'EXECUTE') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
+  COALESCE(
+    (SELECT CASE
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'planner_event_can_hide_from_history' AND p.pronamespace = 'public'::regnamespace)
+      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.planner_event_can_hide_from_history(text, text, text)'::regprocedure, 'EXECUTE') THEN 'PASS'
+                ELSE 'FAIL: authenticated missing EXECUTE' END
+      ELSE 'FAIL: function not found'
+    END),
+    'FAIL: function not found'
+  ) AS status;
 
 -- Check 006-3: hide_event_from_history body now calls planner function
 SELECT
@@ -422,14 +469,28 @@ SELECT
 -- Check 008-7: create_notification 6-arg grant to authenticated
 SELECT
   'Migration 008-7: create_notification 6-arg grant' AS check_name,
-  CASE WHEN has_function_privilege('authenticated', 'public.create_notification(text, text, text, text, text, uuid)', 'EXECUTE') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing EXECUTE on 6-arg version' END AS status;
+  COALESCE(
+    (SELECT CASE
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'create_notification' AND p.pronamespace = 'public'::regnamespace)
+      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.create_notification(text, text, text, text, text, uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
+                ELSE 'FAIL: authenticated missing EXECUTE on 6-arg version' END
+      ELSE 'FAIL: function not found'
+    END),
+    'FAIL: function not found'
+  ) AS status;
 
 -- Check 008-8: revoke_reaction_notification grant to authenticated
 SELECT
   'Migration 008-8: revoke_reaction_notification grant' AS check_name,
-  CASE WHEN has_function_privilege('authenticated', 'public.revoke_reaction_notification(uuid)', 'EXECUTE') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing EXECUTE' END AS status;
+  COALESCE(
+    (SELECT CASE
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'revoke_reaction_notification' AND p.pronamespace = 'public'::regnamespace)
+      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.revoke_reaction_notification(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
+                ELSE 'FAIL: authenticated missing EXECUTE' END
+      ELSE 'FAIL: function not found'
+    END),
+    'FAIL: function not found'
+  ) AS status;
 
 
 -- ============================================================================
@@ -513,6 +574,13 @@ SELECT
 -- Check 010-5: can_view_event_run_sheet grant to authenticated (from setupEventRunSheet.sql)
 SELECT
   'Migration 010-5: grant execute to authenticated' AS check_name,
-  CASE WHEN has_function_privilege('authenticated', 'public.can_view_event_run_sheet(uuid)', 'EXECUTE') THEN 'PASS'
-       ELSE 'FAIL: authenticated missing EXECUTE grant' END AS status;
+  COALESCE(
+    (SELECT CASE
+      WHEN EXISTS(SELECT 1 FROM pg_proc p WHERE p.proname = 'can_view_event_run_sheet' AND p.pronamespace = 'public'::regnamespace)
+      THEN CASE WHEN has_function_privilege('authenticated'::regrole, 'public.can_view_event_run_sheet(uuid)'::regprocedure, 'EXECUTE') THEN 'PASS'
+                ELSE 'FAIL: authenticated missing EXECUTE grant' END
+      ELSE 'FAIL: function not found'
+    END),
+    'FAIL: function not found'
+  ) AS status;
 
