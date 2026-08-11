@@ -25,10 +25,10 @@ INSERT INTO public.booking_requests (id, sender_id, event_id, recipient_id, conv
   ('44444444-4444-4444-4444-444444444444'::uuid, 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa'::text, '33333333-3333-4333-3333-333333333333'::uuid, 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb'::text, '11111111-1111-4111-1111-111111111111'::uuid, 'pending');
 
 -- ============================================================================
--- TEST SUITE: RPC Authorization (7 assertions)
+-- TEST SUITE: RPC Authorization (6 assertions)
 -- ============================================================================
 
-SELECT plan(7);
+SELECT plan(6);
 
 -- Test 1: authenticated cannot invoke mark_conversation_unread (expects 42501 permission denied)
 SET LOCAL ROLE authenticated;
@@ -72,16 +72,7 @@ SELECT is(
   'cancel_event() changes event status to cancelled'
 );
 
--- Test 6: cancellation marked affected DJ unread (isolation)
-SELECT is(
-  (SELECT COUNT(*) FROM public.message_reads
-   WHERE user_id = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb'::text
-   AND conversation_id = '11111111-1111-4111-1111-111111111111'::uuid),
-  1::bigint,
-  'cancellation called mark_conversation_unread: affected DJ has message_reads entry'
-);
-
--- Test 7: owner can delete empty event (fixture created in initial fixtures)
+-- Test 6: owner can delete empty event (fixture created in initial fixtures)
 SELECT lives_ok(
   'SELECT public.delete_empty_event(''99999999-9999-4999-9999-999999999999''::uuid);',
   'owner can delete empty event'

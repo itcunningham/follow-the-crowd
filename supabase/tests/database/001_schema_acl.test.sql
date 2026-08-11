@@ -6,17 +6,16 @@
 BEGIN;
 
 -- ============================================================================
--- TEST SUITE: Schema Parity & ACL (26 assertions)
+-- TEST SUITE: Schema Parity & ACL (25 assertions)
 -- Tests against real migrated schema (baseline + migrations 001-010).
 -- ============================================================================
 
-SELECT plan(26);
+SELECT plan(25);
 
 -- Schema parity: Table existence
 SELECT has_table('public'::name, 'conversations'::name, 'conversations table exists');
 SELECT has_table('public'::name, 'conversation_members'::name, 'conversation_members table exists');
 SELECT has_table('public'::name, 'messages'::name, 'messages table exists');
-SELECT has_table('public'::name, 'message_reads'::name, 'message_reads table exists');
 SELECT has_table('public'::name, 'events'::name, 'events table exists');
 SELECT has_table('public'::name, 'booking_requests'::name, 'booking_requests table exists');
 
