@@ -42,14 +42,15 @@ SELECT is(
   'RLS enabled on conversations table'
 );
 
--- Function existence (baseline schema only; RPC functions created by migrations 001–010)
+-- Function existence (baseline schema only)
+-- Note: mark_conversation_unread, cancel_event, delete_empty_event are outside the baseline + 001–010 contract
 SELECT has_function('public'::name, 'auth_user_id'::name, ARRAY[]::name[], 'auth_user_id() function exists');
 SELECT has_function('public'::name, 'is_conversation_member'::name, ARRAY['uuid'::name], 'is_conversation_member(uuid) function exists');
 SELECT has_function('public'::name, 'is_event_crew_member'::name, ARRAY['uuid'::name], 'is_event_crew_member(uuid) function exists');
 
 -- ACL: Core baseline functions
--- Note: mark_conversation_unread, cancel_event, delete_empty_event are created by migrations 001–010
--- RPC privilege checks are deferred to integration tests after those migrations apply.
+-- Note: mark_conversation_unread, cancel_event, delete_empty_event are outside the baseline + 001–010 contract
+-- RPC privilege checks deferred to separate integration test suite.
 
 -- RLS policy existence on conversations
 SELECT is(
