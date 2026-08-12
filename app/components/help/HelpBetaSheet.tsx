@@ -25,6 +25,12 @@ export default function HelpBetaSheet({
     setBookingsStep(1);
   }
 
+  function handleClose() {
+    setView("menu");
+    setBookingsStep(1);
+    onClose();
+  }
+
   function handleNextBookingStep() {
     if (bookingsStep < 4) {
       setBookingsStep(bookingsStep + 1);
@@ -50,8 +56,8 @@ export default function HelpBetaSheet({
         open={true}
         title="Help"
         titleId="help-menu-title"
-        onBackdropClick={onClose}
-        footer={<BookingSheetSecondaryButton onClick={onClose}>Close</BookingSheetSecondaryButton>}
+        onBackdropClick={handleClose}
+        footer={<BookingSheetSecondaryButton onClick={handleClose}>Close</BookingSheetSecondaryButton>}
       >
         <div className="space-y-2">
           <button
@@ -112,7 +118,7 @@ export default function HelpBetaSheet({
       },
       {
         title: "Coordinate once accepted",
-        copy: "When a DJ accepts, you can message them or use the event crew chat to coordinate with everyone.",
+        copy: "When a DJ accepts, you can message them or use the event crew chat to coordinate with the event crew.",
       },
     ];
 
@@ -124,7 +130,7 @@ export default function HelpBetaSheet({
         title="How bookings work"
         titleId="help-bookings-title"
         description={`Step ${bookingsStep} of 4`}
-        onBackdropClick={onClose}
+        onBackdropClick={handleClose}
         footer={
           <div className="flex w-full items-center justify-between gap-2 sm:justify-end">
             <BookingSheetSecondaryButton onClick={handleBackFromTopic}>
@@ -166,7 +172,7 @@ export default function HelpBetaSheet({
         open={true}
         title="Direct messages"
         titleId="help-dm-title"
-        onBackdropClick={onClose}
+        onBackdropClick={handleClose}
         footer={<BookingSheetSecondaryButton onClick={handleBackFromTopic}>← Back</BookingSheetSecondaryButton>}
       >
         <div className="space-y-3">
@@ -201,7 +207,7 @@ export default function HelpBetaSheet({
         open={true}
         title="Event crew chat"
         titleId="help-crew-chat-title"
-        onBackdropClick={onClose}
+        onBackdropClick={handleClose}
         footer={<BookingSheetSecondaryButton onClick={handleBackFromTopic}>← Back</BookingSheetSecondaryButton>}
       >
         <div className="space-y-3">
@@ -219,7 +225,7 @@ export default function HelpBetaSheet({
               Coordinate together
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text">
-              Message all event crew members in one place to share updates and confirm details.
+              Message the event crew in one place to share updates and confirm details.
             </p>
           </div>
         </div>
@@ -236,7 +242,7 @@ export default function HelpBetaSheet({
         open={true}
         title="Need help?"
         titleId="help-contact-title"
-        onBackdropClick={onClose}
+        onBackdropClick={handleClose}
         footer={<BookingSheetSecondaryButton onClick={handleBackFromTopic}>← Back</BookingSheetSecondaryButton>}
       >
         <div className="space-y-4">
