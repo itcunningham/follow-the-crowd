@@ -97,30 +97,60 @@ export async function enableNotifications(): Promise<boolean> {
 
 /**
  * Disable notifications on current device
+ * SECURITY: Must delete from database FIRST while auth session is active.
+ * Browser unsubscribe is best-effort and happens after.
+ *
+ * Shared device protection:
+ * - Database row deleted while session active (RLS prevents cross-user access)
+ * - Then browser unsubscribe attempted (may fail but doesn't block logout)
+ * - Logout proceeds regardless of success/failure
+ * - Failed database delete = subscription persists but RLS still prevents cross-user access
+ * - Failed browser unsubscribe = browser still has subscription but server row deleted,
+ *   so push service will reject attempts to this endpoint for this user_id
  */
 export async function disableNotifications(): Promise<void> {
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.getSubscription();
+
+  if (!subscription) {
+    return;
+  }
+
+  let dbDeleteError: Error | null = null;
+  let browserUnsubscribeError: Error | null = null;
+
+  // Step 1: Delete from database FIRST while session is still active
+  // This is the critical step for shared devices
   try {
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-
-    if (subscription) {
-      // Unsubscribe from browser
-      await subscription.unsubscribe();
-
-      // Remove from database
-      await supabase
-        .from("push_subscriptions")
-        .delete()
-        .eq("endpoint", subscription.endpoint);
-    }
+    await supabase
+      .from("push_subscriptions")
+      .delete()
+      .eq("endpoint", subscription.endpoint);
   } catch (error) {
-    console.error("[push] Failed to disable notifications:", error);
-    // Best-effort: don't fail logout if push cleanup fails
+    dbDeleteError = error instanceof Error ? error : new Error(String(error));
+    console.error("[push] Failed to delete subscription from database:", dbDeleteError);
+  }
+
+  // Step 2: Unsubscribe from browser (best-effort, doesn't block cleanup)
+  try {
+    await subscription.unsubscribe();
+  } catch (error) {
+    browserUnsubscribeError = error instanceof Error ? error : new Error(String(error));
+    console.error("[push] Failed to unsubscribe from browser:", browserUnsubscribeError);
+  }
+
+  // Log what happened for debugging (don't throw)
+  if (dbDeleteError || browserUnsubscribeError) {
+    console.warn("[push] Cleanup completed with warnings:", {
+      databaseDelete: dbDeleteError ? dbDeleteError.message : "success",
+      browserUnsubscribe: browserUnsubscribeError ? browserUnsubscribeError.message : "success",
+    });
   }
 }
 
 /**
  * Save push subscription to Supabase
+ * SECURITY: Never transfer endpoints between users. Ownership must be explicit.
  */
 async function savePushSubscription(subscription: PushSubscription): Promise<void> {
   const key = subscription.getKey("p256dh");
@@ -130,32 +160,69 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     throw new Error("Failed to extract push keys");
   }
 
-  // SECURITY: Always explicitly set user_id to prevent endpoint transfer attacks
-  // Even though RLS prevents cross-user updates, explicit ownership is clearer and safer
   const userId = await getCurrentUserId();
   if (!userId) {
     throw new Error("User not authenticated");
   }
 
   const deviceName = detectDeviceName();
+  const p256dhEncoded = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(key))));
+  const authEncoded = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(auth))));
 
-  const { error } = await supabase.from("push_subscriptions").upsert(
-    {
-      endpoint: subscription.endpoint,
-      user_id: userId,
-      p256dh: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(key)))),
-      auth: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(auth)))),
-      device_name: deviceName,
-      is_active: true,
-      last_used_at: new Date().toISOString(),
-    },
-    {
-      onConflict: "endpoint",
+  // SECURITY: Check if this endpoint already exists before inserting/updating
+  // If it belongs to another user, reject the operation (don't transfer ownership)
+  const { data: existing, error: checkError } = await supabase
+    .from("push_subscriptions")
+    .select("user_id")
+    .eq("endpoint", subscription.endpoint)
+    .maybeSingle();
+
+  if (checkError && checkError.code !== "PGRST116") {
+    // PGRST116 is "no rows returned" — that's fine
+    throw new Error(`Failed to check endpoint ownership: ${checkError.message}`);
+  }
+
+  // If endpoint exists and belongs to a different user, reject
+  if (existing && existing.user_id !== userId) {
+    throw new Error(
+      "This push endpoint is already registered to another account. Cannot reuse endpoint across users."
+    );
+  }
+
+  // If endpoint exists for this user, update it
+  if (existing && existing.user_id === userId) {
+    const { error: updateError } = await supabase
+      .from("push_subscriptions")
+      .update({
+        p256dh: p256dhEncoded,
+        auth: authEncoded,
+        device_name: deviceName,
+        is_active: true,
+        last_used_at: new Date().toISOString(),
+      })
+      .eq("endpoint", subscription.endpoint)
+      .eq("user_id", userId);
+
+    if (updateError) {
+      throw new Error(`Failed to update subscription: ${updateError.message}`);
     }
-  );
 
-  if (error) {
-    throw new Error(`Failed to save subscription: ${error.message}`);
+    return;
+  }
+
+  // Endpoint doesn't exist, insert new
+  const { error: insertError } = await supabase.from("push_subscriptions").insert({
+    endpoint: subscription.endpoint,
+    user_id: userId,
+    p256dh: p256dhEncoded,
+    auth: authEncoded,
+    device_name: deviceName,
+    is_active: true,
+    last_used_at: new Date().toISOString(),
+  });
+
+  if (insertError) {
+    throw new Error(`Failed to save subscription: ${insertError.message}`);
   }
 }
 
