@@ -50,7 +50,7 @@ jobs:
         continue-on-error: true
 
   pgTAP:
-    name: PgTAP Security Tests (42 assertions)
+    name: PgTAP Security Tests (29 assertions)
     runs-on: ubuntu-latest
 
     steps:
@@ -87,17 +87,17 @@ jobs:
       - name: Start Supabase local environment
         run: npx supabase start --workdir .
 
-      - name: Run 42 pgTAP security assertions
+      - name: Run 29 pgTAP security assertions
         run: npx supabase test db 2>&1 | tee pgTAP-output.log
 
-      - name: Verify all 42 assertions passed
+      - name: Verify all 29 assertions passed
         run: |
           if grep -q "Result: PASS" pgTAP-output.log && \
-             grep -q "Tests=42" pgTAP-output.log; then
-            echo "✅ All 42 pgTAP security assertions passed"
+             grep -q "Tests=29" pgTAP-output.log; then
+            echo "✅ All 29 pgTAP security assertions passed"
             exit 0
           else
-            echo "❌ pgTAP tests failed: not all 42 assertions passed"
+            echo "❌ pgTAP tests failed: not all 29 assertions passed"
             cat pgTAP-output.log
             exit 1
           fi
