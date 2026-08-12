@@ -122,10 +122,16 @@ export async function disableNotifications(): Promise<void> {
   // Step 1: Delete from database FIRST while session is still active
   // This is the critical step for shared devices
   try {
-    await supabase
+    const { error } = await supabase
       .from("push_subscriptions")
       .delete()
       .eq("endpoint", subscription.endpoint);
+
+    if (error) {
+      const message = (error as any).message || String(error);
+      dbDeleteError = new Error(message);
+      console.error("[push] Failed to delete subscription from database:", dbDeleteError);
+    }
   } catch (error) {
     dbDeleteError = error instanceof Error ? error : new Error(String(error));
     console.error("[push] Failed to delete subscription from database:", dbDeleteError);
@@ -169,28 +175,22 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
   const p256dhEncoded = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(key))));
   const authEncoded = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(auth))));
 
-  // SECURITY: Check if this endpoint already exists before inserting/updating
-  // If it belongs to another user, reject the operation (don't transfer ownership)
+  // SECURITY: Query for existing endpoint (RLS will only show this user's rows).
+  // If found, update it. If not found, insert. If insert fails with unique constraint,
+  // the endpoint belongs to another session/account (RLS hides other users' rows).
   const { data: existing, error: checkError } = await supabase
     .from("push_subscriptions")
-    .select("user_id")
+    .select("id")
     .eq("endpoint", subscription.endpoint)
     .maybeSingle();
 
   if (checkError && checkError.code !== "PGRST116") {
     // PGRST116 is "no rows returned" — that's fine
-    throw new Error(`Failed to check endpoint ownership: ${checkError.message}`);
-  }
-
-  // If endpoint exists and belongs to a different user, reject
-  if (existing && existing.user_id !== userId) {
-    throw new Error(
-      "This push endpoint is already registered to another account. Cannot reuse endpoint across users."
-    );
+    throw new Error(`Failed to check endpoint: ${checkError.message}`);
   }
 
   // If endpoint exists for this user, update it
-  if (existing && existing.user_id === userId) {
+  if (existing) {
     const { error: updateError } = await supabase
       .from("push_subscriptions")
       .update({
@@ -210,7 +210,7 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     return;
   }
 
-  // Endpoint doesn't exist, insert new
+  // Endpoint doesn't exist for this user, attempt insert
   const { error: insertError } = await supabase.from("push_subscriptions").insert({
     endpoint: subscription.endpoint,
     user_id: userId,
@@ -222,6 +222,12 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
   });
 
   if (insertError) {
+    // If unique constraint violated, endpoint belongs to another session/account
+    if (insertError.code === "23505" || insertError.message.includes("duplicate key")) {
+      throw new Error(
+        "This push endpoint is already registered to another session or account. Please try again or use a different device."
+      );
+    }
     throw new Error(`Failed to save subscription: ${insertError.message}`);
   }
 }

@@ -265,10 +265,14 @@ async function sendWebPush(
         "[push-send] Subscription expired, deactivating:",
         subscription.endpoint.substring(0, 50)
       );
-      await supabase
+      const { error: deactivateError } = await supabase
         .from("push_subscriptions")
         .update({ is_active: false })
         .eq("id", subscription.id);
+
+      if (deactivateError) {
+        console.error("[push-send] Failed to deactivate expired subscription:", deactivateError);
+      }
 
       return {
         endpoint: subscription.endpoint,
@@ -288,10 +292,14 @@ async function sendWebPush(
     }
 
     // Update last_used_at
-    await supabase
+    const { error: updateError } = await supabase
       .from("push_subscriptions")
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", subscription.id);
+
+    if (updateError) {
+      console.error("[push-send] Failed to update last_used_at:", updateError);
+    }
 
     return {
       endpoint: subscription.endpoint,
@@ -307,10 +315,14 @@ async function sendWebPush(
         "[push-send] Subscription expired (from error), deactivating:",
         subscription.endpoint.substring(0, 50)
       );
-      await supabase
+      const { error: deactivateError } = await supabase
         .from("push_subscriptions")
         .update({ is_active: false })
         .eq("id", subscription.id);
+
+      if (deactivateError) {
+        console.error("[push-send] Failed to deactivate expired subscription:", deactivateError);
+      }
     }
 
     return {
