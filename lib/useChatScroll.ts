@@ -396,9 +396,10 @@ export function useChatScroll({
       pendingIncomingAppendPinnedRef.current = null;
       pinnedToBottomRef.current = true;
       clearPendingScrollPreserve();
-      hideNewMessagesPill();
+      setShowNewMessagesPill(false);
+      setNewMessagesPillCount(0);
     }
-  }, [clearPendingScrollPreserve, hideNewMessagesPill, loading]);
+  }, [clearPendingScrollPreserve, loading]);
 
   useEffect(() => {
     if (loading || messageIds.length === 0) {
