@@ -1,12 +1,15 @@
 // Push notification delivery Edge Function
 // Triggered by database webhook on notifications INSERT
-// SECURITY: Loads notification by ID, validates recipient, delivers only to that user's subscriptions
+// SECURITY: Validates webhook secret, loads notification by ID, validates recipient,
+// delivers only to that user's subscriptions using encrypted Web Push
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as webpush from "npm:web-push@3.6.7";
 
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") || "";
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || "";
 const PUSH_CONTACT = Deno.env.get("PUSH_CONTACT") || "mailto:noreply@follow-the-crowd.app";
+const PUSH_WEBHOOK_SECRET = Deno.env.get("PUSH_WEBHOOK_SECRET") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
@@ -42,43 +45,70 @@ interface PushSubscription {
 }
 
 Deno.serve(async (req) => {
+  // SECURITY: Webhook authentication must happen BEFORE any privileged operations
+
   // Only accept POST
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  // Validate webhook secret header
+  const providedSecret = req.headers.get("x-push-webhook-secret");
+  if (!PUSH_WEBHOOK_SECRET || !providedSecret) {
+    console.error("[push-send] Webhook authentication failed: missing secret");
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Constant-time comparison to prevent timing attacks
+  if (!constantTimeEqual(providedSecret, PUSH_WEBHOOK_SECRET)) {
+    console.error("[push-send] Webhook authentication failed: invalid secret");
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   try {
     const payload: WebhookPayload = await req.json();
 
-    // Only process INSERT events
+    // Validate webhook structure BEFORE trusting any data
+    if (!payload || typeof payload !== "object") {
+      console.error("[push-send] Invalid webhook payload: not an object");
+      return new Response(JSON.stringify({ error: "Invalid payload" }), { status: 400 });
+    }
+
+    // Only process INSERT events from the notifications table
     if (payload.type !== "INSERT") {
       return new Response(JSON.stringify({ message: "Skipping non-INSERT event" }), {
         status: 200,
       });
     }
 
-    // Validate webhook source (check Authorization header if needed)
-    // For now, accept any POST to this function (Supabase webhook is authenticated)
-    // In production, verify webhook signature if Supabase supports it
+    if (payload.schema !== "public" || payload.table !== "notifications") {
+      console.error(
+        "[push-send] Webhook from unexpected table",
+        payload.schema,
+        payload.table
+      );
+      return new Response(JSON.stringify({ error: "Invalid table" }), { status: 400 });
+    }
 
-    const notificationId = payload.record.id;
-    const recipientUserId = payload.record.user_id;
+    // Extract notification ID from webhook (only use the ID from the hook)
+    const notificationId = payload.record?.id;
 
-    if (!notificationId || !recipientUserId) {
-      console.error("[push-send] Invalid webhook payload: missing id or user_id");
-      return new Response(JSON.stringify({ error: "Invalid webhook payload" }), {
+    if (!notificationId || typeof notificationId !== "string" || !notificationId.trim()) {
+      console.error("[push-send] Invalid webhook payload: missing or invalid id");
+      return new Response(JSON.stringify({ error: "Invalid notification id" }), {
         status: 400,
       });
     }
 
-    // Fetch the notification using service role (to load full record)
+    // SECURITY: Fetch the FULL notification from database using service role
+    // Never trust caller-supplied user_id, title, body, or link
+    // The webhook payload may contain this data, but we load fresh from DB to verify
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: notification, error: fetchError } = await supabase
       .from("notifications")
       .select("*")
       .eq("id", notificationId)
-      .eq("user_id", recipientUserId)
       .single();
 
     if (fetchError || !notification) {
@@ -91,6 +121,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Notification not found" }), {
         status: 200,
       });
+    }
+
+    const recipientUserId = notification.user_id;
+    if (!recipientUserId || typeof recipientUserId !== "string") {
+      console.error("[push-send] Notification has invalid user_id:", notificationId);
+      return new Response(
+        JSON.stringify({ error: "Invalid notification user_id" }),
+        { status: 400 }
+      );
     }
 
     // Fetch active subscriptions for this user
@@ -178,7 +217,7 @@ Deno.serve(async (req) => {
 });
 
 /**
- * Send a single Web Push notification
+ * Send a single Web Push notification using RFC 8188 encryption
  */
 async function sendWebPush(
   subscription: PushSubscription,
@@ -189,29 +228,39 @@ async function sendWebPush(
     throw new Error("VAPID keys not configured");
   }
 
-  // Encode payload
+  // Decode subscription keys from base64
+  const p256dhBytes = new Uint8Array(atob(subscription.p256dh).split("").map((c) => c.charCodeAt(0)));
+  const authBytes = new Uint8Array(atob(subscription.auth).split("").map((c) => c.charCodeAt(0)));
+
   const payloadString = JSON.stringify(payload);
-  const encoder = new TextEncoder();
-  const payloadBytes = encoder.encode(payloadString);
 
-  // Create Web Push message (simplified: no encryption for now, just send plain payload)
-  // In production, implement full Web Push encryption (RFC 8188)
-  // For beta, we'll send encrypted pushes via a Web Push library
-
+  // Use web-push library for RFC 8188 encryption and VAPID signing
   try {
-    const response = await fetch(subscription.endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Encoding": "aes128gcm",
-        Authorization: `vapid t=${createVAPIDToken()}, k=${VAPID_PUBLIC_KEY}`,
+    // web-push.sendNotification handles:
+    // - VAPID JWT signing with private key
+    // - RFC 8188 payload encryption (AES-128-GCM)
+    // - Correct Authorization header format
+    // - Dynamic aud based on endpoint origin
+    const result = await webpush.sendNotification(
+      {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
+        },
       },
-      body: payloadBytes,
-    });
+      payloadString,
+      {
+        vapidDetails: {
+          subject: PUSH_CONTACT,
+          publicKey: VAPID_PUBLIC_KEY,
+          privateKey: VAPID_PRIVATE_KEY,
+        },
+      }
+    );
 
     // Handle endpoint errors
-    if (response.status === 404 || response.status === 410) {
-      // Endpoint gone: deactivate subscription
+    if (result.statusCode === 404 || result.statusCode === 410) {
       console.log(
         "[push-send] Subscription expired, deactivating:",
         subscription.endpoint.substring(0, 50)
@@ -224,17 +273,17 @@ async function sendWebPush(
       return {
         endpoint: subscription.endpoint,
         success: false,
-        status: response.status,
+        status: result.statusCode,
         error: "Endpoint expired",
       };
     }
 
-    if (!response.ok) {
+    if (result.statusCode >= 400) {
       return {
         endpoint: subscription.endpoint,
         success: false,
-        status: response.status,
-        error: `HTTP ${response.status}`,
+        status: result.statusCode,
+        error: `Push service error ${result.statusCode}`,
       };
     }
 
@@ -247,32 +296,41 @@ async function sendWebPush(
     return {
       endpoint: subscription.endpoint,
       success: true,
-      status: response.status,
+      status: result.statusCode,
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Log detailed error for debugging
+    if (errorMessage.includes("404") || errorMessage.includes("410")) {
+      console.log(
+        "[push-send] Subscription expired (from error), deactivating:",
+        subscription.endpoint.substring(0, 50)
+      );
+      await supabase
+        .from("push_subscriptions")
+        .update({ is_active: false })
+        .eq("id", subscription.id);
+    }
+
     return {
       endpoint: subscription.endpoint,
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     };
   }
 }
 
 /**
- * Create VAPID JWT token for authorization header
- * (Simplified: real implementation needs crypto.subtle)
+ * Constant-time string comparison to prevent timing attacks
  */
-function createVAPIDToken(): string {
-  // For beta, return a placeholder
-  // In production, implement proper JWT signing with VAPID private key
-  const header = { typ: "JWT", alg: "ES256" };
-  const claims = {
-    aud: "https://fcm.googleapis.com",
-    exp: Math.floor(Date.now() / 1000) + 86400,
-    sub: PUSH_CONTACT,
-  };
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
 
-  // This is a simplified version; real VAPID requires proper JWT signing
-  // For now, return base64-encoded claims
-  return btoa(JSON.stringify(claims));
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+
+  return result === 0;
 }

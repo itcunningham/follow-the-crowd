@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUserId } from "@/lib/user/currentUser";
 
 /**
  * Detect actual notification support from browser APIs
@@ -129,11 +130,19 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     throw new Error("Failed to extract push keys");
   }
 
+  // SECURITY: Always explicitly set user_id to prevent endpoint transfer attacks
+  // Even though RLS prevents cross-user updates, explicit ownership is clearer and safer
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
   const deviceName = detectDeviceName();
 
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
       endpoint: subscription.endpoint,
+      user_id: userId,
       p256dh: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(key)))),
       auth: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(auth)))),
       device_name: deviceName,

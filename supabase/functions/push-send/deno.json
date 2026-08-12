@@ -1,5 +1,6 @@
 {
   "imports": {
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
-  }
+  },
+  "nodeModules": ["npm:web-push@3.6.7"]
 }

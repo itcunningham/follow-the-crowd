@@ -265,6 +265,18 @@ export async function getCurrentUserId(): Promise<string> {
 }
 
 export async function signOut(): Promise<void> {
+  // Clean up push notification subscriptions on this device BEFORE signing out
+  // This ensures the subscription is deleted while the user is still authenticated (RLS allows it)
+  // Best-effort: don't fail logout if push cleanup fails
+  if (typeof window !== "undefined") {
+    try {
+      const { disableNotifications } = await import("@/lib/push/client");
+      await disableNotifications();
+    } catch (pushCleanupError) {
+      console.error("[auth] Push notification cleanup failed on logout (non-fatal):", pushCleanupError);
+    }
+  }
+
   const { error } = await supabase.auth.signOut();
 
   invalidateCurrentUserProfileCache();

@@ -34,45 +34,5 @@
       "purpose": "maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshot-540.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "/screenshot-1280.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
-  ],
-  "categories": ["business", "productivity"],
-  "shortcuts": [
-    {
-      "name": "Messages",
-      "short_name": "DMs",
-      "description": "View your direct messages",
-      "url": "/dm",
-      "icons": [
-        {
-          "src": "/shortcut-messages-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Events",
-      "short_name": "Events",
-      "description": "View your events",
-      "url": "/events",
-      "icons": [
-        {
-          "src": "/shortcut-events-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    }
-  ]
+  "categories": ["business", "productivity"]
 }

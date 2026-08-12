@@ -107,18 +107,51 @@ async function handleNotificationClick(link) {
 
 /**
  * Security: only allow internal app routes
+ * Must reject: //evil.com, http://, javascript:, data:, vbscript:, encoded attacks
  */
 function isInternalLink(link) {
-  if (!link) return false;
+  // Null/undefined is safe—defaults to home
+  if (!link) return true;
 
-  // Allow absolute paths
-  if (link.startsWith('/')) {
-    // Reject if it contains :// (external URL)
-    return !link.includes('://');
+  // Must be a string
+  if (typeof link !== 'string') return false;
+
+  const trimmed = link.trim();
+
+  // Empty string is safe—defaults to home
+  if (trimmed === '') return true;
+
+  // Reject protocol-relative URLs (//evil.com)
+  if (trimmed.startsWith('//')) return false;
+
+  // Reject absolute URLs with protocol (http://, https://, ftp://, etc.)
+  if (trimmed.includes('://')) return false;
+
+  // Reject javascript: and other pseudo-protocol attacks
+  if (trimmed.toLowerCase().startsWith('javascript:')) return false;
+  if (trimmed.toLowerCase().startsWith('data:')) return false;
+  if (trimmed.toLowerCase().startsWith('vbscript:')) return false;
+
+  // Only allow absolute paths starting with /
+  if (!trimmed.startsWith('/')) return false;
+
+  // Reject encoded/escaped protocol attempts (%2F%2F, etc.)
+  try {
+    const decoded = decodeURIComponent(trimmed);
+    if (decoded !== trimmed) {
+      if (decoded.startsWith('//') || decoded.includes('://')) {
+        return false;
+      }
+      if (decoded.toLowerCase().startsWith('javascript:')) {
+        return false;
+      }
+    }
+  } catch (e) {
+    // Malformed URI encoding—reject it
+    return false;
   }
 
-  // Reject everything else (protocols, external hosts)
-  return false;
+  return true;
 }
 
 /**
