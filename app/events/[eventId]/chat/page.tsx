@@ -144,7 +144,7 @@ function wrapWithTrailingTimeSeparator(
   );
 }
 
-const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 15_000;
+const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 30_000;
 
 /**
  * How long to keep compensating the scroller for the event card's height
