@@ -149,11 +149,9 @@ export default function HelpBetaSheet({
         onBackdropClick={handleClose}
         footer={
           <div className="flex w-full items-center justify-between gap-2 sm:justify-end">
-            {bookingsStep === 1 ? (
-              <BookingSheetSecondaryButton onClick={handleBackFromTopic}>
-                Help
-              </BookingSheetSecondaryButton>
-            ) : null}
+            <BookingSheetSecondaryButton onClick={handleBackFromTopic}>
+              Help
+            </BookingSheetSecondaryButton>
 
             <div className="flex gap-2">
               {bookingsStep > 1 && (
@@ -199,7 +197,7 @@ export default function HelpBetaSheet({
               Start a conversation
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text">
-              Find a profile and tap to send a direct message.
+              Find a profile and tap to send a direct message
             </p>
           </div>
 
@@ -208,7 +206,7 @@ export default function HelpBetaSheet({
               Your messages
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text">
-              All conversations appear in the Messages tab. Each person has their own message thread.
+              All conversations appear in the Messages tab. Each person has their own message thread
             </p>
           </div>
         </div>
@@ -234,7 +232,7 @@ export default function HelpBetaSheet({
               Appears after booking accepted
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text">
-              Once bookings are accepted, the event crew can use crew chat to coordinate.
+              Once bookings are accepted, the event crew can use crew chat to coordinate
             </p>
           </div>
 
@@ -243,7 +241,7 @@ export default function HelpBetaSheet({
               Coordinate together
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text">
-              Message the event crew in one place to share updates and confirm details.
+              Message the event crew in one place to share updates and confirm details
             </p>
           </div>
         </div>
@@ -265,7 +263,7 @@ export default function HelpBetaSheet({
       >
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-ftc-text">
-            Something not working or stuck? We're here to help.
+            Something not working or stuck? We&apos;re here to help
           </p>
 
           {isRealEmail ? (
@@ -277,7 +275,7 @@ export default function HelpBetaSheet({
             </a>
           ) : (
             <p className="text-xs text-ftc-text-secondary">
-              Support contact is not configured yet. Check back soon.
+              Support contact is not configured yet. Check back soon
             </p>
           )}
         </div>

@@ -144,7 +144,7 @@ export default function MessagesInboxLayout({
         </div>
       </div>
 
-      <HelpBetaSheet open={helpOpen} onClose={() => setHelpOpen(false)} context="messages" />
+      <HelpBetaSheet open={helpOpen} onClose={() => setHelpOpen(false)} context={activeTab === "dm" ? "messages" : "crew-chat"} />
     </>
   );
 }
