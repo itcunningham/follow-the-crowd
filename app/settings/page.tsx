@@ -6,12 +6,15 @@ import { useEffect, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import FtcAppVersionFooter from "@/app/components/settings/FtcAppVersionFooter";
-import RequestAccountDeletionSection from "@/app/components/settings/RequestAccountDeletionSection";
+import DeleteAccountSection from "@/app/components/settings/DeleteAccountSection";
+import PushNotificationsSection from "@/app/components/settings/PushNotificationsSection";
 import {
   getCurrentAuthUser,
   getCurrentUserId,
+  canManageEvents,
   getCurrentUserProfile,
   LOGIN_PATH,
+  type UserRole,
   requestPasswordResetEmail,
   signOut,
 } from "@/lib/user/currentUser";
@@ -22,11 +25,11 @@ export default function SettingsPage() {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [passwordResetCooldown, setPasswordResetCooldown] = useState(false);
   const [passwordResetMessage, setPasswordResetMessage] = useState<string | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +40,7 @@ export default function SettingsPage() {
       .then(([authUser, userId, profile]) => {
         setCurrentUserId(userId);
         setAccountEmail(authUser?.email?.trim() || null);
-        setUsername(profile?.username?.trim() || null);
+        setRole(profile?.role ?? null);
       })
       .catch((loadError) => {
         console.error("Failed to load settings:", loadError);
@@ -100,7 +103,7 @@ export default function SettingsPage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text md:min-h-[100dvh] ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
 
@@ -112,7 +115,7 @@ export default function SettingsPage() {
             ← My Profile
           </Link>
           <h1 className="mt-3 text-xl font-semibold text-ftc-text">Settings</h1>
-          <p className="mt-1 text-sm text-ftc-text-muted">Account and support for private beta</p>
+          <p className="mt-1 text-sm text-ftc-text-muted">Workspace, account and support for private beta</p>
         </header>
 
         <div className="space-y-4 px-4 py-6 sm:px-6">
@@ -120,6 +123,40 @@ export default function SettingsPage() {
             <p className="text-sm text-ftc-text-muted">Loading settings...</p>
           ) : (
             <>
+              {/* Workspace features sit above account admin: roster management is
+                  a routine planner task, and it should not be buried beneath
+                  password reset and the delete-account section. */}
+              {canManageEvents(role) ? (
+                <section className="ftc-card overflow-hidden p-0">
+                  <div className="border-b border-ftc-border-subtle px-4 py-3 sm:px-5">
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+                      DJ Management
+                    </h2>
+                  </div>
+
+                  <Link
+                    href="/my-djs"
+                    className="flex items-center justify-between gap-3 px-4 py-4 transition hover:bg-ftc-bg-elevated/60 sm:px-5"
+                  >
+                    <span className="block text-sm text-ftc-text-muted">
+                      Manage the DJs you work with
+                    </span>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4 shrink-0 text-ftc-text-muted"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </Link>
+                </section>
+              ) : null}
+
               <section className="ftc-card overflow-hidden p-0">
                 <div className="border-b border-ftc-border-subtle px-4 py-3 sm:px-5">
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
@@ -166,7 +203,46 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              <RequestAccountDeletionSection accountEmail={accountEmail} username={username} />
+              {/* Above the deletion section so the documents describing what
+                  deletion does sit before the control that performs it. */}
+              <section className="ftc-card overflow-hidden p-0">
+                <div className="border-b border-ftc-border-subtle px-4 py-3 sm:px-5">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+                    Legal
+                  </h2>
+                </div>
+
+                {[
+                  { href: "/terms", label: "Terms & Conditions" },
+                  { href: "/privacy", label: "Privacy Policy" },
+                ].map((row, index) => (
+                  <Link
+                    key={row.href}
+                    href={row.href}
+                    className={`flex items-center justify-between gap-3 px-4 py-4 transition hover:bg-ftc-bg-elevated/60 sm:px-5 ${
+                      index === 0 ? "border-b border-ftc-border-subtle" : ""
+                    }`}
+                  >
+                    <span className="text-sm font-semibold text-ftc-text">{row.label}</span>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4 shrink-0 text-ftc-text-muted"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </Link>
+                ))}
+              </section>
+
+              <PushNotificationsSection />
+
+              <DeleteAccountSection onError={setError} />
 
               {error ? <p className="text-sm text-red-400">{error}</p> : null}
             </>
