@@ -65,7 +65,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create Supabase config with migrations disabled for CI
+      - name: Create Supabase config with custom ports for CI
         run: |
           cat > supabase/config.toml << 'EOF'
           [db]
@@ -79,13 +79,13 @@ jobs:
 
           [studio]
           port = 59435
-
-          [db.migrations]
-          enabled = false
           EOF
 
       - name: Start Supabase local environment
         run: npx supabase start --workdir .
+
+      - name: Apply database migrations (baseline + Phase 2c 001-010)
+        run: npx supabase db reset --local --workdir . || (echo "❌ Database reset failed"; exit 1)
 
       - name: Run 29 pgTAP security assertions
         run: npx supabase test db 2>&1 | tee pgTAP-output.log
