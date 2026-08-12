@@ -1,9 +1,11 @@
 "use client";
 
 import type { MouseEvent } from "react";
+import { useState } from "react";
 import CrewChatAvatarStack from "@/app/components/group-chat/CrewChatAvatarStack";
 import ChatBackButton from "@/app/components/chat/ChatBackButton";
 import { FtcPeopleIcon } from "@/app/components/ftc/FtcCompactMeta";
+import HelpBetaSheet from "@/app/components/help/HelpBetaSheet";
 import type { UserAvatarProfile } from "@/lib/user/currentUser";
 
 /**
@@ -34,10 +36,15 @@ export default function GroupChatHeader({
   participantProfiles: Map<string, UserAvatarProfile>;
   onOpenMemberSheet: () => void;
 }) {
+  const [helpOpen, setHelpOpen] = useState(false);
   const memberLabel = memberCount === 1 ? "1 Crew Member" : `${memberCount} Crew Members`;
 
+  const iconButtonClass =
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
+
   return (
-    <div className="flex items-start gap-2">
+    <>
+      <div className="flex items-start gap-2">
       <div className="pt-0.5">
         <ChatBackButton
           href={backHref}
@@ -48,7 +55,20 @@ export default function GroupChatHeader({
       </div>
 
       <div className="min-w-0 flex-1 overflow-visible">
-        <h1 className="truncate text-base font-semibold text-ftc-text">{eventName}</h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="truncate text-base font-semibold text-ftc-text">{eventName}</h1>
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            aria-label="Help"
+            title="Help"
+            className={iconButtonClass}
+          >
+            <span className="flex h-4 w-4 items-center justify-center text-xs font-bold">
+              ?
+            </span>
+          </button>
+        </div>
         <button
           type="button"
           onClick={onOpenMemberSheet}
@@ -72,6 +92,9 @@ export default function GroupChatHeader({
           ) : null}
         </button>
       </div>
-    </div>
+      </div>
+
+      <HelpBetaSheet open={helpOpen} onClose={() => setHelpOpen(false)} context="crew-chat" />
+    </>
   );
 }
