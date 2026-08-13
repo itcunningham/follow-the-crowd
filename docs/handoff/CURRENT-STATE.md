@@ -1,4 +1,33 @@
-# Current state (last updated: 2026-08-09)
+# Current state (last updated: 2026-08-13)
+
+## Web Push Notifications (2026-08-13)
+
+**Status:** Code complete and committed to main. Ready for production configuration.
+
+**What's shipped:**
+- Push subscription lifecycle with endpoint ownership enforcement
+- Service Worker for background push reception and deep-linking
+- Notification permission UI in Settings
+- PWA manifest with home screen installation support
+- Database schema with RLS policies for push_subscriptions
+- Supabase Edge Function for Web Push delivery (RFC 8188 encryption + VAPID ES256 signing)
+- Logout cleanup wired into signOut() with proper ordering (DB delete first, then browser unsubscribe)
+- Security hardening: constant-time webhook secret comparison, shared device safety, safe deep-link validation
+
+**Build status:** ✅ No errors, ready to deploy
+
+**What you need to do:**
+- Supabase: Set 4 Edge Function secrets (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, PUSH_CONTACT, PUSH_WEBHOOK_SECRET)
+- Supabase: Deploy push-send Edge Function from supabase/functions/push-send/
+- Supabase: Create webhook on public.notifications INSERT → push-send
+- Vercel: Add NEXT_PUBLIC_VAPID_PUBLIC_KEY to Production environment, trigger redeploy
+- iPhone: Install FTC as PWA, enable notifications, verify push arrives and opens correct conversation
+
+**Documentation:** See docs in /tmp/.../scratchpad/ (DEPLOYMENT_CHECKLIST.md for step-by-step setup)
+
+**Commit:** 7c6cf928 — "Integrate PushNotificationsSection into Settings"
+
+---
 
 ## Edit Profile avatar Save hung on “Saving”
 
@@ -980,6 +1009,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 | Feature | Script / migration |
 |---------|-------------------|
+| **Web Push notifications** | `supabase/migrations/20260812000000_push_subscriptions.sql` — push_subscriptions table with RLS. **Also requires:** Edge Function deployment, webhook creation, VAPID secrets (see Web Push section above) |
 | Event history hide | `supabase/migrations/20250710120000_event_history_hide.sql` |
 | Gig history hide (per-user) | `supabase/migrations/20250710130000_booking_request_history_hides.sql` |
 | Planner Archived tab | `scripts/setupBookingRequestArchiving.sql` (sender `archived_at`) |
@@ -994,6 +1024,11 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `7c6cf928` — Integrate PushNotificationsSection into Settings
+- `4923a9b1` — Merge Web Push feature branch to main
+- `6a4f24db` — Remove local-only allowedDevOrigins config
+- `8b3ebd05` — Allow local network dev access for iPhone testing on same Wi-Fi
+- `0454f7b0` — Fix three critical blockers for production deployment
 - `6cf8160e` — fix(profile): stop avatar Save hanging on mobile uploads
 - `83d62519` — fix(booking): hide Accept/Decline for DJ after rate proposal
 - `72475554` — fix(cancel): clear Crew Chats badge — no crew cancel msg, mark event read
