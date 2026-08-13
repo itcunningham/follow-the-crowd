@@ -58,21 +58,27 @@ export async function enableNotifications(): Promise<boolean> {
   // Register service worker
   let registration: ServiceWorkerRegistration;
   try {
+    console.log("[push] Registering service worker...");
     registration = await navigator.serviceWorker.register("/sw.js", {
       scope: "/",
     });
+    console.log("[push] Service worker registered successfully");
   } catch (swError) {
-    console.error("[push] Failed to register service worker:", swError);
-    throw new Error("Failed to enable notifications");
+    const msg = swError instanceof Error ? swError.message : String(swError);
+    console.error("[push] Service worker registration failed:", msg);
+    throw new Error(`Service worker registration failed: ${msg}`);
   }
 
   // Request permission
   let permission: NotificationPermission;
   try {
+    console.log("[push] Requesting notification permission...");
     permission = await Notification.requestPermission();
+    console.log("[push] Permission result:", permission);
   } catch (permissionError) {
-    console.error("[push] Failed to request permission:", permissionError);
-    throw new Error("Failed to request notification permission");
+    const msg = permissionError instanceof Error ? permissionError.message : String(permissionError);
+    console.error("[push] Permission request failed:", msg);
+    throw new Error(`Permission request failed: ${msg}`);
   }
 
   if (permission !== "granted") {
@@ -81,40 +87,50 @@ export async function enableNotifications(): Promise<boolean> {
 
   // Subscribe to push
   try {
+    console.log("[push] Checking VAPID key...");
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidKey) {
-      throw new Error("VAPID public key not configured");
+      throw new Error("VAPID public key not configured in environment");
     }
 
-    // Convert PEM format to ArrayBuffer
-    // Extract base64 content between BEGIN/END markers
-    const pemMatch = vapidKey.match(/-----BEGIN[^-]*-----\n?([\s\S]*?)\n?-----END[^-]*-----/);
-    if (!pemMatch || !pemMatch[1]) {
-      throw new Error("Invalid VAPID public key format");
+    console.log("[push] Converting VAPID key format...");
+    // VAPID key should be raw base64, not PEM format
+    const base64 = vapidKey.trim();
+    if (base64.includes("BEGIN") || base64.includes("END")) {
+      throw new Error("VAPID key appears to be in PEM format, expected base64");
     }
 
-    const base64 = pemMatch[1].replace(/\s/g, "");
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
+    console.log("[push] VAPID key converted, bytes length:", bytes.length);
 
+    console.log("[push] Checking pushManager availability...");
+    if (!registration.pushManager) {
+      throw new Error("pushManager not available on service worker");
+    }
+
+    console.log("[push] Calling pushManager.subscribe()...");
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: bytes,
     });
+    console.log("[push] pushManager.subscribe() succeeded");
 
     // Save to Supabase
+    console.log("[push] Saving subscription to Supabase...");
     await savePushSubscription(subscription);
+    console.log("[push] Subscription saved successfully");
     return true;
   } catch (subscribeError) {
     const errorMessage = subscribeError instanceof Error ? subscribeError.message : String(subscribeError);
-    console.error("[push] Failed to enable notifications:", {
+    console.error("[push] Failed during subscription flow:", {
       error: errorMessage,
       stack: subscribeError instanceof Error ? subscribeError.stack : undefined,
     });
-    throw new Error(`Failed to enable push notifications: ${errorMessage}`);
+    throw new Error(errorMessage);
   }
 }
 
