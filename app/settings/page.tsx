@@ -7,6 +7,7 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import FtcAppVersionFooter from "@/app/components/settings/FtcAppVersionFooter";
 import DeleteAccountSection from "@/app/components/settings/DeleteAccountSection";
+import PushNotificationsSection from "@/app/components/settings/PushNotificationsSection";
 import {
   getCurrentAuthUser,
   getCurrentUserId,
@@ -201,6 +202,8 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </section>
+
+              <PushNotificationsSection />
 
               {/* Above the deletion section so the documents describing what
                   deletion does sit before the control that performs it. */}
