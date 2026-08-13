@@ -109,8 +109,12 @@ export async function enableNotifications(): Promise<boolean> {
     await savePushSubscription(subscription);
     return true;
   } catch (subscribeError) {
-    console.error("[push] Failed to subscribe to push:", subscribeError);
-    throw new Error("Failed to enable push notifications");
+    const errorMessage = subscribeError instanceof Error ? subscribeError.message : String(subscribeError);
+    console.error("[push] Failed to enable notifications:", {
+      error: errorMessage,
+      stack: subscribeError instanceof Error ? subscribeError.stack : undefined,
+    });
+    throw new Error(`Failed to enable push notifications: ${errorMessage}`);
   }
 }
 
@@ -191,8 +195,18 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
   }
 
   const deviceName = detectDeviceName();
-  const p256dhEncoded = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(key))));
-  const authEncoded = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(auth))));
+
+  // Safely convert Uint8Array to base64
+  const encodeBytes = (bytes: Uint8Array): string => {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  };
+
+  const p256dhEncoded = encodeBytes(new Uint8Array(key));
+  const authEncoded = encodeBytes(new Uint8Array(auth));
 
   // SECURITY: Query for existing endpoint (RLS will only show this user's rows).
   // If found, update it. If not found, insert. If insert fails with unique constraint,
