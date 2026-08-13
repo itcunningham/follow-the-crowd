@@ -81,9 +81,28 @@ export async function enableNotifications(): Promise<boolean> {
 
   // Subscribe to push
   try {
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidKey) {
+      throw new Error("VAPID public key not configured");
+    }
+
+    // Convert PEM format to ArrayBuffer
+    // Extract base64 content between BEGIN/END markers
+    const pemMatch = vapidKey.match(/-----BEGIN[^-]*-----\n?([\s\S]*?)\n?-----END[^-]*-----/);
+    if (!pemMatch || !pemMatch[1]) {
+      throw new Error("Invalid VAPID public key format");
+    }
+
+    const base64 = pemMatch[1].replace(/\s/g, "");
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      applicationServerKey: bytes,
     });
 
     // Save to Supabase
