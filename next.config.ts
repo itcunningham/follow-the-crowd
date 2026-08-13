@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_FTC_APP_VERSION: packageJson.version,
     NEXT_PUBLIC_FTC_BUILD_ID: resolveFtcBuildId(),
   },
+  /** Allow local network dev access from iPhone on same Wi-Fi (dev only, not production) */
+  allowedDevOrigins: [
+    "localhost",
+    "127.0.0.1",
+    "192.168.20.3", // Local Wi-Fi iPhone access
+  ],
 };
 
 export default nextConfig;
