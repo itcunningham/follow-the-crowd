@@ -182,6 +182,8 @@ export async function disableNotifications(): Promise<void> {
  * SECURITY: Never transfer endpoints between users. Ownership must be explicit.
  */
 async function savePushSubscription(subscription: PushSubscription): Promise<void> {
+  console.log("[push] savePushSubscription: starting");
+
   const key = subscription.getKey("p256dh");
   const auth = subscription.getKey("auth");
 
@@ -189,7 +191,11 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     throw new Error("Failed to extract push keys");
   }
 
+  console.log("[push] savePushSubscription: keys extracted");
+
   const userId = await getCurrentUserId();
+  console.log("[push] savePushSubscription: userId =", userId ? "present" : "missing");
+
   if (!userId) {
     throw new Error("User not authenticated");
   }
@@ -207,10 +213,12 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
 
   const p256dhEncoded = encodeBytes(new Uint8Array(key));
   const authEncoded = encodeBytes(new Uint8Array(auth));
+  console.log("[push] savePushSubscription: keys encoded");
 
   // SECURITY: Query for existing endpoint (RLS will only show this user's rows).
   // If found, update it. If not found, insert. If insert fails with unique constraint,
   // the endpoint belongs to another session/account (RLS hides other users' rows).
+  console.log("[push] savePushSubscription: checking for existing endpoint");
   const { data: existing, error: checkError } = await supabase
     .from("push_subscriptions")
     .select("id")
@@ -219,11 +227,18 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
 
   if (checkError && checkError.code !== "PGRST116") {
     // PGRST116 is "no rows returned" — that's fine
+    console.error("[push] savePushSubscription: endpoint check failed", {
+      code: checkError.code,
+      message: checkError.message,
+    });
     throw new Error(`Failed to check endpoint: ${checkError.message}`);
   }
 
+  console.log("[push] savePushSubscription: existing endpoint =", existing ? "yes" : "no");
+
   // If endpoint exists for this user, update it
   if (existing) {
+    console.log("[push] savePushSubscription: updating existing subscription");
     const { error: updateError } = await supabase
       .from("push_subscriptions")
       .update({
@@ -237,13 +252,19 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
       .eq("user_id", userId);
 
     if (updateError) {
+      console.error("[push] savePushSubscription: update failed", {
+        code: updateError.code,
+        message: updateError.message,
+      });
       throw new Error(`Failed to update subscription: ${updateError.message}`);
     }
 
+    console.log("[push] savePushSubscription: update succeeded");
     return;
   }
 
   // Endpoint doesn't exist for this user, attempt insert
+  console.log("[push] savePushSubscription: inserting new subscription");
   const { error: insertError } = await supabase.from("push_subscriptions").insert({
     endpoint: subscription.endpoint,
     user_id: userId,
@@ -255,6 +276,10 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
   });
 
   if (insertError) {
+    console.error("[push] savePushSubscription: insert failed", {
+      code: insertError.code,
+      message: insertError.message,
+    });
     // If unique constraint violated, endpoint belongs to another session/account
     if (insertError.code === "23505" || insertError.message.includes("duplicate key")) {
       throw new Error(
@@ -263,6 +288,8 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     }
     throw new Error(`Failed to save subscription: ${insertError.message}`);
   }
+
+  console.log("[push] savePushSubscription: insert succeeded");
 }
 
 /**
