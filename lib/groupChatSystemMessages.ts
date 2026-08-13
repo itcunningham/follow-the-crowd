@@ -1,11 +1,36 @@
 export const GROUP_CHAT_BOOKING_UPDATE_PREFIX = "Booking update:";
 
+/** Fixed notice when crew chat unlocks (manual Start or auto-start). */
+export const CREW_CHAT_STARTED_NOTICE = "Crew chat started";
+
 function isGroupChatCrewOpenedNotice(text: string): boolean {
   return /^.+ joined the event crew\. Crew chat is now open\.$/.test(text.trim());
 }
 
 function isGroupChatCrewStartedNotice(text: string): boolean {
-  return /^.+ started the crew$/.test(text.trim());
+  const trimmed = text.trim();
+
+  return (
+    trimmed === CREW_CHAT_STARTED_NOTICE ||
+    // Brief Claude ship used "{name} started the crew" — still recognize it.
+    /^.+ started the crew$/.test(trimmed)
+  );
+}
+
+/** Instagram-style join line shown to other DJs (not the planner). */
+export function isCrewMemberJoinedNotice(text: string | null | undefined): boolean {
+  const trimmed = text?.trim() ?? "";
+
+  if (!trimmed || isGroupChatCrewOpenedNotice(trimmed)) {
+    return false;
+  }
+
+  return /^.+ joined the crew$/.test(trimmed);
+}
+
+export function formatCrewMemberJoinedNotice(displayName: string): string {
+  const name = displayName.trim() || "Someone";
+  return `${name} joined the crew`;
 }
 
 export function isGroupChatSystemUpdateMessage(text: string): boolean {
@@ -14,27 +39,24 @@ export function isGroupChatSystemUpdateMessage(text: string): boolean {
   return (
     trimmed.startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX) ||
     isGroupChatCrewOpenedNotice(trimmed) ||
-    isGroupChatCrewStartedNotice(trimmed)
+    isGroupChatCrewStartedNotice(trimmed) ||
+    isCrewMemberJoinedNotice(trimmed)
   );
 }
 
 /**
- * Crew-roster notices that are no longer written and are hidden wherever they
- * still exist: someone joining, accepting, or leaving.
+ * Notices that stay in `messages` (unread / inbox preview) but are hidden in
+ * the open crew-chat thread for everyone:
+ * - legacy roster lines (join / accept / leave) — emitters are gone
+ * - "Crew chat started" — needed so Crew Chats can show unread; pill is redundant in-thread
  *
- * The emitters are gone, but rows written before that are ordinary `messages`
- * rows and deleting them would be a data change. Hiding them at read time is
- * what makes an existing chat open on its first human message rather than on a
- * list of arrivals, and it costs nothing on a chat that never had them.
- *
- * Deliberately narrow: it matches only these three shapes, so the system-notice
- * lane stays available for the kind of update everyone genuinely needs — a run
- * sheet change, a new venue, a cancelled event.
+ * New "{name} joined the crew" lines are NOT here — DJs see them; planner hides via
+ * `shouldOmitCrewMessageForViewer`.
  */
 export function isHiddenCrewRosterNotice(text: string): boolean {
   const trimmed = text.trim();
 
-  if (isGroupChatCrewOpenedNotice(trimmed)) {
+  if (isGroupChatCrewOpenedNotice(trimmed) || isGroupChatCrewStartedNotice(trimmed)) {
     return true;
   }
 
@@ -50,14 +72,48 @@ export function isHiddenCrewRosterNotice(text: string): boolean {
   );
 }
 
+/**
+ * Thread visibility: global hides + planner-only hide for join pills
+ * (planner already knows from the booking accept).
+ */
+export function shouldOmitCrewMessageForViewer(
+  text: string,
+  options?: { viewerUserId?: string | null; ownerId?: string | null },
+): boolean {
+  if (isHiddenCrewRosterNotice(text)) {
+    return true;
+  }
+
+  const viewerUserId = options?.viewerUserId?.trim();
+  const ownerId = options?.ownerId?.trim();
+
+  if (
+    viewerUserId &&
+    ownerId &&
+    viewerUserId === ownerId &&
+    isCrewMemberJoinedNotice(text)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export function formatGroupChatSystemNoticeText(text: string): string {
   const trimmed = text.trim();
+
+  if (trimmed === CREW_CHAT_STARTED_NOTICE) {
+    return CREW_CHAT_STARTED_NOTICE;
+  }
 
   const crewStartedMatch = trimmed.match(/^(.+?) started the crew$/);
 
   if (crewStartedMatch) {
-    const name = crewStartedMatch[1]?.trim() || "Planner";
-    return `${name} started the crew`;
+    return CREW_CHAT_STARTED_NOTICE;
+  }
+
+  if (isCrewMemberJoinedNotice(trimmed)) {
+    return trimmed;
   }
 
   const crewOpenedMatch = trimmed.match(/^(.+?) joined the event crew\. Crew chat is now open\.$/);

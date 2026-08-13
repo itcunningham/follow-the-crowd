@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { createNotification } from "@/lib/notifications";
 import { looksLikeUserId, resolveUserDisplayName } from "@/lib/user/displayName";
 import { parseCalendarOriginFromEventDetail, resolveSentBookingsLinkedToPlannerEvent } from "@/lib/calendar";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
@@ -36,6 +38,7 @@ import {
 import EventLineupBookingCard from "@/app/components/event-detail/EventLineupBookingCard";
 import { EventDetailBookingCancellationDetails } from "@/app/components/event-detail/EventDetailBookingCancellationDetails";
 import DeclineConfirmButton from "@/app/components/booking/DeclineConfirmButton";
+import { BookingRateProposalNotice } from "@/app/components/booking/BookingRateProposalPanel";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { EventDetailLoadingShell, EventDetailPlannerLowerSectionsSkeleton } from "@/app/components/skeleton/Skeleton";
@@ -87,7 +90,9 @@ import CancelAcceptedBookingButton from "@/app/components/booking/CancelAccepted
 import {
   cancelBookingRequest,
   cancelAcceptedBookingRequest,
+  canRecipientRespondToPendingBooking,
   getAcceptedBookingCancellationRole,
+  hasPendingRateProposal,
   resolveBookingCancellationReasonLabel,
   resolveBookingCancelledByLabel,
   acceptProposedBookingRate,
@@ -1220,7 +1225,19 @@ function EventDetailPageView() {
         relatedBookingIds,
         cancelResult.event,
       );
-      router.replace(eventsBackHref);
+
+      // Do NOT insert a crew-chat "was cancelled" message here. That thread is
+      // removed from Crew Chats once the event is cancelled; a late INSERT after
+      // mark_conversation_unread clears event reads recreates the Crew Chats
+      // badge. DJ cancel signal lives on the DM activity row + notifications.
+
+      // Broadcast event cancellation to all connected DJs
+      await supabase.channel("event-cancellations").send({
+        type: "broadcast",
+        event: "event_cancelled",
+        payload: { eventId: event.id },
+      });
+      router.replace("/");
     } catch (cancelError) {
       console.error("Failed to cancel event:", cancelError);
       setError(getEventsLoadErrorMessage(cancelError));
@@ -1658,7 +1675,9 @@ function EventDetailPageView() {
                           {viewerBooking.status !== "pending" ? (
                             <BookingStatusBadge status={viewerBooking.status} variant="compact" />
                           ) : null}
-                          {viewerBooking.fee && viewerBooking.status !== "cancelled" ? (
+                          {viewerBooking.fee &&
+                          viewerBooking.status !== "cancelled" &&
+                          !hasPendingRateProposal(viewerBooking) ? (
                             <p className={`${viewerBooking.status !== "pending" ? "mt-2" : ""} text-sm text-ftc-text-secondary`}>
                               {formatRateDisplay(viewerBooking.fee)}
                             </p>
@@ -1673,7 +1692,7 @@ function EventDetailPageView() {
                           ) : null}
                         </div>
                         <div className="flex gap-2">
-                          {viewerBooking.status === "pending" ? (
+                          {canRecipientRespondToPendingBooking(viewerBooking, currentUserId) ? (
                             <>
                               <DeclineConfirmButton
                                 onConfirm={() => handleRespondToPendingBooking(viewerBooking, "declined")}
@@ -1702,6 +1721,12 @@ function EventDetailPageView() {
                           ) : null}
                         </div>
                       </div>
+                      {hasPendingRateProposal(viewerBooking) ? (
+                        <BookingRateProposalNotice
+                          booking={viewerBooking}
+                          currentUserId={currentUserId}
+                        />
+                      ) : null}
                     </section>
                   ) : null}
 

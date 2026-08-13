@@ -36,12 +36,25 @@ export const AVATAR_RENDER_WIDTHS = {
 
 export type AvatarRenderSize = keyof typeof AVATAR_RENDER_WIDTHS;
 
-function isHttpUrl(value: string): boolean {
-  return /^https?:\/\//i.test(value);
+/**
+ * `blob:` is admissible alongside http(s) because Edit Profile previews the
+ * chosen photo with `URL.createObjectURL(file)` before anything is uploaded -
+ * the upload only runs inside the save handler. Rejecting it meant the guard
+ * below returned null for a perfectly renderable source, ProfileAvatar fell
+ * through to initials, and picking a new photo appeared to do nothing until
+ * the form was saved.
+ *
+ * Widened by exactly one scheme on purpose. The point of this predicate is to
+ * reject values that cannot be an `<img src>` at all - `"null"`, `"undefined"`,
+ * bare storage paths - and those stay rejected. No stored avatar_url can be a
+ * blob URL: uploadProfileImage always returns an https Supabase URL.
+ */
+function isImageSourceUrl(value: string): boolean {
+  return /^(https?|blob):/i.test(value);
 }
 
 /**
- * Absolute http(s) avatar URL, or null when the stored value cannot be an
+ * Absolute http(s) or blob avatar URL, or null when the value cannot be an
  * `<img src>`. Non-URLs (paths, `"null"`, junk) used to paint an empty circle
  * forever because ProfileAvatar preferred a broken img over initials.
  */
@@ -50,7 +63,7 @@ export function coerceAvatarSourceUrl(
 ): string | null {
   const trimmed = avatarUrl?.trim();
 
-  if (!trimmed || !isHttpUrl(trimmed)) {
+  if (!trimmed || !isImageSourceUrl(trimmed)) {
     return null;
   }
 

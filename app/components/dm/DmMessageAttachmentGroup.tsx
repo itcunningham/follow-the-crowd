@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
 import DmImageLightbox from "@/app/components/dm/DmImageLightbox";
 import DmImageGalleryOverview from "@/app/components/dm/DmImageGalleryOverview";
-import { isDmImageAttachment, type DmMessageAttachment } from "@/lib/dmAttachments";
+import {
+  DM_ATTACHMENTS_BUCKET,
+  isDmImageAttachment,
+  type DmMessageAttachment,
+} from "@/lib/dmAttachments";
+import { signAttachmentPaths, toStorageObjectPath } from "@/lib/attachmentUrls";
 import {
   DM_GALLERY_OVERVIEW_MIN_IMAGES,
   DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS,
@@ -38,13 +43,123 @@ function handleImageContextMenu(
   onContextMenu?.(event);
 }
 
+/**
+ * Signed URLs for a message's attachments, keyed by attachment id.
+ *
+ * This component is the single place DM and Crew Chat attachments are rendered
+ * (`DmTextMessageBubble` and `GroupChatMessageBubble` both come through here),
+ * so signing here covers both surfaces, realtime inserts and paged history
+ * without touching any of the four load paths.
+ *
+ * `resign` exists for one case only: an image whose URL outlived
+ * SIGNED_URL_TTL_SECONDS while the view stayed open. It fires at most once per
+ * attachment - `retriedRef` is the guard - because a 403 that is not about
+ * expiry (revoked membership, deleted object) would otherwise retry forever
+ * against a wall. There is deliberately no fallback to `file_url`: that string
+ * is a dead public URL once the bucket is private, and reinstating it is the
+ * defect this change removes.
+ */
+function useSignedAttachmentUrls(attachments: DmMessageAttachment[]) {
+  const [urls, setUrls] = useState<Map<string, string>>(new Map());
+  const retriedRef = useRef<Set<string>>(new Set());
+
+  // Identity of the attachment set, so re-renders with an equal-but-new array
+  // do not re-sign on every paint.
+  const attachmentKey = attachments
+    .map((attachment) => `${attachment.id}:${attachment.file_url}`)
+    .join("|");
+
+  useEffect(() => {
+    let active = true;
+    retriedRef.current = new Set();
+
+    const idByPath = new Map<string, string>();
+
+    for (const attachment of attachments) {
+      const path = toStorageObjectPath(attachment.file_url, DM_ATTACHMENTS_BUCKET);
+
+      if (path) {
+        idByPath.set(path, attachment.id);
+      }
+    }
+
+    if (idByPath.size === 0) {
+      // Nothing signable. No reset needed: `urls` is keyed by attachment id, so
+      // a leftover entry could only be read if that same attachment rendered
+      // again - which would mean it did have a valid path. Unreachable, and
+      // resetting here synchronously would cascade a render.
+      return;
+    }
+
+    void signAttachmentPaths([...idByPath.keys()], DM_ATTACHMENTS_BUCKET).then((signed) => {
+      if (!active) {
+        return;
+      }
+
+      const next = new Map<string, string>();
+
+      for (const [path, id] of idByPath) {
+        const url = signed.get(path);
+
+        if (url) {
+          next.set(id, url);
+        }
+      }
+
+      setUrls(next);
+    });
+
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachmentKey]);
+
+  const resign = useCallback(
+    (attachmentId: string) => {
+      if (retriedRef.current.has(attachmentId)) {
+        return;
+      }
+
+      retriedRef.current.add(attachmentId);
+
+      const attachment = attachments.find((candidate) => candidate.id === attachmentId);
+
+      if (!attachment) {
+        return;
+      }
+
+      const path = toStorageObjectPath(attachment.file_url, DM_ATTACHMENTS_BUCKET);
+
+      if (!path) {
+        return;
+      }
+
+      void signAttachmentPaths([path], DM_ATTACHMENTS_BUCKET).then((signed) => {
+        const url = signed.get(path);
+
+        if (url) {
+          setUrls((previous) => new Map(previous).set(attachmentId, url));
+        }
+      });
+    },
+    [attachments],
+  );
+
+  return { urls, resign };
+}
+
 function ImageGridCell({
   attachment,
+  src,
+  onExpired,
   overlayCount,
   onOpen,
   onContextMenu,
 }: {
   attachment: DmMessageAttachment;
+  src: string | undefined;
+  onExpired: () => void;
   overlayCount?: number;
   onOpen: () => void;
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
@@ -81,28 +196,39 @@ function ImageGridCell({
       onContextMenu={(event) => handleImageContextMenu(event, onContextMenu)}
       onDragStart={(event) => event.preventDefault()}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={attachment.file_url}
-        alt={attachment.file_name}
-        draggable={false}
-        width={reserved.width}
-        height={reserved.height}
-        className={`pointer-events-none h-auto ${DM_IMAGE_GRID_CELL_MAX_HEIGHT_CLASS} ${DM_IMAGE_GRID_CELL_MAX_WIDTH_CLASS}`}
-        style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
-        loading="lazy"
-        onLoad={(event) => {
-          const image = event.currentTarget;
-          recordDmImageAspectRatio(attachment.id, image.naturalWidth, image.naturalHeight);
+      {src ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={src}
+          alt={attachment.file_name}
+          draggable={false}
+          width={reserved.width}
+          height={reserved.height}
+          className={`pointer-events-none h-auto ${DM_IMAGE_GRID_CELL_MAX_HEIGHT_CLASS} ${DM_IMAGE_GRID_CELL_MAX_WIDTH_CLASS}`}
+          style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
+          loading="lazy"
+          onError={onExpired}
+          onLoad={(event) => {
+            const image = event.currentTarget;
+            recordDmImageAspectRatio(attachment.id, image.naturalWidth, image.naturalHeight);
 
-          if (image.naturalWidth > 0 && image.naturalHeight > 0) {
-            setRatioState({
-              id: attachment.id,
-              ratio: image.naturalWidth / image.naturalHeight,
-            });
-          }
-        }}
-      />
+            if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+              setRatioState({
+                id: attachment.id,
+                ratio: image.naturalWidth / image.naturalHeight,
+              });
+            }
+          }}
+        />
+      ) : (
+        // Holds the tile's footprint while the URL is being signed, so the
+        // message does not reflow when the image arrives.
+        <span
+          aria-hidden="true"
+          className="block bg-ftc-bg-elevated/40"
+          style={{ width: reserved.width, height: reserved.height }}
+        />
+      )}
       {overlayCount ? (
         <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60 text-xl font-semibold text-white">
           +{overlayCount}
@@ -137,6 +263,7 @@ export default function DmMessageAttachmentGroup({
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
   const [view, setView] = useState<DmImageGroupView>({ mode: "closed" });
+  const { urls, resign } = useSignedAttachmentUrls(attachments);
 
   if (attachments.length <= 1) {
     return (
@@ -145,6 +272,8 @@ export default function DmMessageAttachmentGroup({
           <DmMessageAttachmentView
             key={attachment.id}
             attachment={attachment}
+            src={urls.get(attachment.id)}
+            onExpired={() => resign(attachment.id)}
             isOwnMessage={isOwnMessage}
             onContextMenu={onContextMenu}
           />
@@ -162,8 +291,12 @@ export default function DmMessageAttachmentGroup({
   const { visible: visibleImages, hiddenCount: hiddenImageCount } =
     resolveVisibleGridImages(imageAttachments);
   const hasGalleryOverview = imageAttachments.length >= DM_GALLERY_OVERVIEW_MIN_IMAGES;
+  // Kept index-aligned with imageAttachments so lightbox/overview indices stay
+  // correct. An image still being signed contributes an empty url rather than
+  // the stored one - a missing image is recoverable, a dead public URL in the
+  // DOM is the bug being fixed.
   const lightboxImages = imageAttachments.map((attachment) => ({
-    url: attachment.file_url,
+    url: urls.get(attachment.id) ?? "",
     name: attachment.file_name,
   }));
 
@@ -188,6 +321,8 @@ export default function DmMessageAttachmentGroup({
               <ImageGridCell
                 key={attachment.id}
                 attachment={attachment}
+                src={urls.get(attachment.id)}
+                onExpired={() => resign(attachment.id)}
                 overlayCount={isOverlayTile ? hiddenImageCount : undefined}
                 onOpen={() => openFromGrid(isOverlayTile ? visibleImages.length : index)}
                 onContextMenu={onContextMenu}
@@ -200,6 +335,8 @@ export default function DmMessageAttachmentGroup({
         <DmMessageAttachmentView
           key={attachment.id}
           attachment={attachment}
+          src={urls.get(attachment.id)}
+          onExpired={() => resign(attachment.id)}
           isOwnMessage={isOwnMessage}
           onContextMenu={onContextMenu}
         />

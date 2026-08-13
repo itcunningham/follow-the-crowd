@@ -34,7 +34,7 @@ import {
   normalizeInboxId,
   type DmInboxRow,
 } from "@/lib/dmInbox";
-import { formatGroupChatInboxPreview, isGroupChatSystemUpdateMessage } from "@/lib/groupChatSystemMessages";
+import { formatGroupChatInboxPreview, isCrewMemberJoinedNotice, isGroupChatSystemUpdateMessage } from "@/lib/groupChatSystemMessages";
 import {
   buildDmInboxReactionActivity,
   dmInboxReactionActivityToRowFields,
@@ -97,15 +97,15 @@ function removeUnreadEventChatId(previous: Set<string>, eventId: string): Set<st
 function GroupChatsEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
-      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No group chats</h2>
+      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No crew chats</h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
-        Event group chats will appear here
+        Event crew chats will appear here
       </p>
     </div>
   );
 }
 
-const GROUP_CHATS_LOAD_TIMEOUT_MS = 15_000;
+const GROUP_CHATS_LOAD_TIMEOUT_MS = 30_000;
 const GROUP_CHATS_REFRESH_INTERVAL_MS = 30_000;
 
 async function withGroupChatsLoadTimeout<T>(promise: Promise<T>): Promise<T> {
@@ -666,12 +666,20 @@ function DmInboxPageContent() {
     const latestEventMessages = new Map<string, LatestChatMessage>();
 
     for (const chat of groupChats) {
-      if (chat.latestActivityAt && chat.latestMessageUserId) {
-        latestEventMessages.set(chat.eventId, {
-          user_id: chat.latestMessageUserId,
-          created_at: chat.latestActivityAt,
-        });
+      if (!chat.latestActivityAt || !chat.latestMessageUserId) {
+        continue;
       }
+
+      // Planner already knows from the booking accept — join lines must not
+      // light Crew Chats unread for the event owner.
+      if (chat.isOwnedByViewer && isCrewMemberJoinedNotice(chat.latestPreview)) {
+        continue;
+      }
+
+      latestEventMessages.set(chat.eventId, {
+        user_id: chat.latestMessageUserId,
+        created_at: chat.latestActivityAt,
+      });
     }
 
     try {
@@ -759,14 +767,14 @@ function DmInboxPageContent() {
     }
 
     function softReloadGroupChatsFromBadgeBus() {
-      // Badge bus fires often (including mark-read). Soft avoids skeleton spam;
-      // crew unlock INSERTs use reloadGroupChatsForCrewUnlock instead.
-      void loadGroupChats({ soft: true });
+      // Always refetch (no 30s soft skip): cancel must drop the event from Crew
+      // Chats or the tab badge stays at 1. Loading spinner stays off unless empty.
+      void loadGroupChats();
     }
 
     window.addEventListener("ftc-notifications-updated", softReloadGroupChatsFromBadgeBus);
 
-    const channel = supabase
+    const notificationChannel = supabase
       .channel(`dm-inbox:crew-chat-unlock:${currentUserId}`)
       .on(
         "postgres_changes",
@@ -790,9 +798,38 @@ function DmInboxPageContent() {
       )
       .subscribe();
 
+    const cancellationChannel = supabase
+      .channel("event-cancellations")
+      .on("broadcast", { event: "event_cancelled" }, (broadcast) => {
+        const eventId =
+          broadcast?.payload &&
+          typeof broadcast.payload === "object" &&
+          "eventId" in broadcast.payload
+            ? String((broadcast.payload as { eventId?: string }).eventId ?? "")
+            : "";
+
+        if (eventId) {
+          setGroupChats((previous) => {
+            const next = previous.filter(
+              (chat) => normalizeInboxId(chat.eventId) !== normalizeInboxId(eventId),
+            );
+
+            if (next.length !== previous.length) {
+              writeGroupChatsInboxCache(next);
+            }
+
+            return next;
+          });
+        }
+
+        void loadGroupChats({ forceLoading: true });
+      })
+      .subscribe();
+
     return () => {
       window.removeEventListener("ftc-notifications-updated", softReloadGroupChatsFromBadgeBus);
-      supabase.removeChannel(channel);
+      supabase.removeChannel(notificationChannel);
+      supabase.removeChannel(cancellationChannel);
     };
   }, [currentUserId, loadGroupChats]);
 
@@ -807,7 +844,8 @@ function DmInboxPageContent() {
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.visibilityState === "visible" && activeTab === "group") {
-        void loadGroupChats({ soft: true });
+        // Hard reload on visibility change to catch event cancellations and other changes
+        void loadGroupChats({ forceLoading: false });
       }
     }
 
@@ -1331,7 +1369,7 @@ function DmInboxPageContent() {
                   ) : null}
                   {filteredGroupChats.length === 0 ? (
                     <p className="py-8 text-center text-sm text-ftc-text-muted">
-                      No group chats match your search
+                      No crew chats match your search
                     </p>
                   ) : (
                     <ul className="flex flex-col gap-2 pt-3.5">

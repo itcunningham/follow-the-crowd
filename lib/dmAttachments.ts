@@ -271,6 +271,12 @@ export async function uploadDmAttachmentFile(
     throw uploadError;
   }
 
+  // Kept deliberately. getPublicUrl is a pure string builder - it contacts
+  // nothing and does not care that this bucket is private - so writing the same
+  // shape every existing row already holds keeps exactly one format in
+  // `message_attachments.file_url` and needs no migration. The value is a
+  // stable identifier, NOT something to render: readers must run it through
+  // toStorageObjectPath and sign it. See lib/attachmentUrls.ts.
   const { data } = supabase.storage.from(DM_ATTACHMENTS_BUCKET).getPublicUrl(path);
 
   return {

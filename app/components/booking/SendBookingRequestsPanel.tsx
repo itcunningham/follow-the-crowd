@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
@@ -10,6 +11,11 @@ import EventDjSendOfferControls, {
 import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner/PlannerUi";
 import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
+import BookingSheetDialog, {
+  BookingSheetSecondaryButton,
+} from "@/app/components/booking/BookingSheetDialog";
+import PlannerDjRosterManager from "@/app/components/roster/PlannerDjRosterManager";
+import { ROSTER_SCOPING_ENABLED } from "@/lib/plannerDjRoster";
 import type { EventBookingDuplicateStatus } from "@/lib/bookingRequests";
 import type { DjPlannerAvailabilityHint } from "@/lib/djAvailability";
 
@@ -48,7 +54,7 @@ function InviteDjSearchField({
 }) {
   return (
     <label className="relative block">
-      <span className="sr-only">Search name or genre</span>
+      <span className="sr-only">Search DJs</span>
       <svg
         aria-hidden="true"
         viewBox="0 0 24 24"
@@ -66,7 +72,7 @@ function InviteDjSearchField({
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Search name or genre"
+        placeholder="Search DJs"
         maxLength={MAX_BOOKING_DJ_SEARCH_QUERY_LENGTH}
         className="ftc-input h-11 w-full rounded-full py-0 pl-11 pr-4 text-[15px] placeholder:text-ftc-text-muted"
       />
@@ -293,14 +299,24 @@ export default function SendBookingRequestsPanel({
   });
   const trimmedError = errorMessage?.trim() || null;
 
+  // Opening roster management must never navigate: the event draft lives in
+  // component state, and leaving the page would discard a half-typed event.
+  const [rosterSheetOpen, setRosterSheetOpen] = useState(false);
+
+  const closeRosterSheet = useCallback(() => {
+    setRosterSheetOpen(false);
+    // Pick up anything added while the sheet was open.
+    void draft.reloadDjs();
+  }, [draft]);
+
   return (
     <div className={embedded ? "space-y-4 border-t border-ftc-border-subtle pt-4" : "space-y-4"}>
       {embedded ? (
         <div>
-          <PlannerSectionLabel>Invite DJs (optional)</PlannerSectionLabel>
+          <PlannerSectionLabel>Invite DJs · Optional</PlannerSectionLabel>
           <p className="mt-1 text-sm text-ftc-text-muted">
             {introText ??
-              "Select DJs you'd like to invite after this event is created"}
+              "Choose DJs to invite"}
           </p>
         </div>
       ) : introText ? (
@@ -315,6 +331,20 @@ export default function SendBookingRequestsPanel({
 
       {draft.loadingDjs ? (
         <p className="text-sm text-ftc-text-muted">Loading DJs</p>
+      ) : ROSTER_SCOPING_ENABLED && draft.djs.length === 0 ? (
+        // An empty roster and a search that matched nothing are different
+        // problems, and showing "No available DJs" for the first is a dead end.
+        // This branch is the only one that tells the planner what to do next.
+        <div className="space-y-2">
+          <PlannerEmptyPanel message="Your DJ roster is empty. Add DJs to your roster before sending invitations" />
+          <button
+            type="button"
+            onClick={() => setRosterSheetOpen(true)}
+            className="px-1 text-xs font-semibold text-ftc-primary underline-offset-2 hover:underline"
+          >
+            Add DJs
+          </button>
+        </div>
       ) : draft.filteredDjs.length === 0 ? (
         <PlannerEmptyPanel message="No available DJs to invite" />
       ) : (
@@ -377,6 +407,23 @@ export default function SendBookingRequestsPanel({
         >
           {sendButtonLabel}
         </button>
+      ) : null}
+
+      {rosterSheetOpen ? (
+        <BookingSheetDialog
+          open
+          title="My DJs"
+          titleId="manage-my-djs-title"
+          overlayClassName="z-[70]"
+          onBackdropClick={closeRosterSheet}
+          footer={
+            <BookingSheetSecondaryButton onClick={closeRosterSheet}>
+              Done
+            </BookingSheetSecondaryButton>
+          }
+        >
+          <PlannerDjRosterManager listMaxHeightClass="max-h-64 overflow-y-auto overscroll-contain" />
+        </BookingSheetDialog>
       ) : null}
     </div>
   );

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { toStorageObjectPath } from "../lib/attachmentUrls";
 import {
   assertEventFormTextFieldLimits,
   getEventFormFieldErrors,
@@ -59,6 +60,7 @@ import {
 import type { BookingRequest } from "../lib/bookingRequests";
 import {
   buildBookingSendResultMessage,
+  canRecipientRespondToPendingBooking,
   filterActiveBookings,
   filterDjGigsByTab,
   filterHistoryCancelledBookings,
@@ -123,6 +125,11 @@ import {
   resolveAvatarImageUrl,
   resolveAvatarObjectUrl,
 } from "../lib/user/avatarImageUrl";
+import {
+  PROFILE_IMAGE_MAX_EDGE_PX,
+  PROFILE_IMAGE_UPLOAD_TIMEOUT_MS,
+  withProfileImageUploadTimeout,
+} from "../lib/user/uploadProfileImage";
 import {
   buildChatMessageGroupLayout,
   CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS,
@@ -189,6 +196,16 @@ import {
   formatDjBookingMessageLabel,
 } from "../lib/events/eventDetailDjBookingUi";
 import { applyInboxGroupMessage, type GroupChatListItem } from "../lib/groupChats";
+import {
+  CREW_CHAT_STARTED_NOTICE,
+  formatCrewMemberJoinedNotice,
+  formatGroupChatInboxPreview,
+  formatGroupChatSystemNoticeText,
+  isCrewMemberJoinedNotice,
+  isGroupChatSystemUpdateMessage,
+  isHiddenCrewRosterNotice,
+  shouldOmitCrewMessageForViewer,
+} from "../lib/groupChatSystemMessages";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
@@ -472,7 +489,10 @@ function testOneAcceptedDjWithNullStartShowsStartAction() {
 
   assert.equal(actions.showStartCrewChatAction, true);
   assert.equal(actions.showEventGroupChatAction, false);
-  assert.equal(actions.crewChatHelpActionLabel, "Start group chat");
+  // Must match the button it sits beside in the event header, which reads
+  // "Start crew chat". This assertion held the last "group chat" string in the
+  // product, so it is the one that has to move for the rename to be possible.
+  assert.equal(actions.crewChatHelpActionLabel, "Start crew chat");
   assert.equal(actions.showCrewChatHelpUi, true);
 }
 
@@ -897,6 +917,12 @@ function testDmBookingSystemMessages() {
   );
   assert.equal(isDmBookingSystemMessage("BOOKING ACTIVITY · event-cancelled · Party"), false);
   assert.equal(isEventCancellationDmActivityMessage("BOOKING ACTIVITY · event-cancelled · Party"), true);
+  assert.equal(
+    isEventCancellationDmActivityMessage(
+      "BOOKING ACTIVITY · event-cancelled:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee · Party",
+    ),
+    true,
+  );
   assert.equal(isEventCancellationDmActivityMessage("Booking confirmed · Party"), false);
 
   const runSheetNotice = formatRunSheetUpdatedDmMessage(
@@ -1989,7 +2015,7 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
   assert.match(cardSource, /label="Cancel"/);
   assert.match(cardSource, /showCancelRequest && !pendingProposal/);
   assert.match(cardSource, /showCancelRequest && pendingProposal/);
-  assert.match(cardSource, />\s*Proposed\s*</);
+  assert.doesNotMatch(cardSource, />\s*Proposed\s*</);
   assert.doesNotMatch(cardSource, /Rate proposed/);
   assert.match(cardSource, /compact/);
   assert.doesNotMatch(cardSource, /Open DM/);
@@ -2175,6 +2201,50 @@ function testDjYourBookingMessageLabelAndWithdrawPlacement() {
   assert.doesNotMatch(yourBookingBlock, /Open DM/);
   assert.doesNotMatch(yourBookingBlock, /Withdraw from event/);
   assert.doesNotMatch(yourBookingBlock, /Withdraw booking/);
+
+  // After the DJ proposes a rate, Accept/Decline must leave the DJ surface.
+  // Prior bug: Your booking gated on status === "pending" only (ignored proposal).
+  assert.match(yourBookingBlock, /canRecipientRespondToPendingBooking\(viewerBooking, currentUserId\)/);
+  assert.match(yourBookingBlock, /BookingRateProposalNotice/);
+  assert.doesNotMatch(
+    yourBookingBlock,
+    /viewerBooking\.status === "pending" \? \(\s*<>\s*<DeclineConfirmButton/,
+  );
+
+  const dj = "dj-user";
+  const planner = "planner-user";
+  const pendingWithProposal = {
+    id: "booking-1",
+    status: "pending",
+    recipient_id: dj,
+    sender_id: planner,
+    proposed_rate: 250,
+    proposed_rate_status: "pending",
+    rate_mode: "open",
+  } as BookingRequest;
+  const pendingWithoutProposal = {
+    id: "booking-2",
+    status: "pending",
+    recipient_id: dj,
+    sender_id: planner,
+    proposed_rate: null,
+    proposed_rate_status: null,
+    rate_mode: "open",
+  } as BookingRequest;
+
+  assert.equal(canRecipientRespondToPendingBooking(pendingWithProposal, dj), false);
+  assert.equal(canRecipientRespondToPendingBooking(pendingWithoutProposal, dj), true);
+  assert.equal(canRecipientRespondToPendingBooking(pendingWithoutProposal, planner), false);
+
+  const bookingCardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+  // No leftover Decline-only row for the DJ after they proposed.
+  assert.doesNotMatch(
+    bookingCardSource,
+    /pendingProposal &&\s*booking\.recipient_id === currentUserId/,
+  );
 }
 
 function testProfileChatBackNavigation() {
@@ -4557,6 +4627,13 @@ function testCombinedRoleLabelIsConsistentEverywhere() {
   assert.equal(COMBINED_ROLE_LABEL, "DJ & Promoter");
   assert.equal(getRoleLabel("both"), COMBINED_ROLE_LABEL);
 
+  // The same drift had happened again, quieter: both role pickers offered
+  // "Promoter / Event Planner" while getRoleLabel returned "Promoter", so the
+  // words a user picked their role by were not the words shown back to them
+  // anywhere the label rendered.
+  assert.equal(getRoleLabel("promoter"), "Promoter / Event Planner");
+  assert.equal(getRoleLabel("dj"), "DJ / Artist");
+
   // Display copy only -- the stored value, the enum and every role check are
   // untouched, so existing accounts keep working.
   const currentUserSource = readFileSync(
@@ -4860,7 +4937,8 @@ function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
   );
 
   clearWorkspaceGigsDisplaySession();
-  writeRuntimeGigsPendingCount("user-a", "dj", 0);
+  // Authoritative: a completed fetch reported zero.
+  writeRuntimeGigsPendingCount("user-a", "dj", 0, { authoritative: true });
   assert.equal(
     resolveWorkspaceGigsPendingDisplayCount({
       canViewGigs: true,
@@ -4894,6 +4972,66 @@ function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
     }),
     1,
     "stale runtime zero must not clear session display",
+  );
+}
+
+/**
+ * A runtime zero means two different things and the number cannot say which:
+ * "the server confirmed none" and "nothing has loaded yet, so this is the
+ * `?? 0` default". Treating both as authoritative hid real pending counts;
+ * treating neither as authoritative left cleared counts on screen. The runtime
+ * value now carries its provenance, and these three cases pin all of it.
+ */
+function testGigsPendingRuntimeZeroCarriesProvenance() {
+  // 1. An authoritative zero clears a stale cached count.
+  clearNavigationBadgeCache();
+  applyPersistedGigsPendingCount("user-a", "dj", 3);
+  assert.equal(getCachedGigsPendingCount("user-a", "dj"), 3, "persisted count should be visible");
+
+  writeRuntimeGigsPendingCount("user-a", "dj", 0, { authoritative: true });
+  assert.equal(
+    getCachedGigsPendingCount("user-a", "dj"),
+    0,
+    "a fetched zero must clear a stale cached count",
+  );
+
+  // 2. A provisional zero must not hide a valid persisted count.
+  clearNavigationBadgeCache();
+  applyPersistedGigsPendingCount("user-a", "dj", 3);
+  writeRuntimeGigsPendingCount("user-a", "dj", 0);
+  assert.equal(
+    getCachedGigsPendingCount("user-a", "dj"),
+    3,
+    "a provisional zero must not hide a persisted pending count",
+  );
+
+  // 3. Non-zero runtime counts still win, provenance regardless — this is the
+  //    path that lets the badge follow Incoming down from 3 to 1.
+  clearNavigationBadgeCache();
+  applyPersistedGigsPendingCount("user-a", "dj", 3);
+  writeRuntimeGigsPendingCount("user-a", "dj", 1);
+  assert.equal(
+    getCachedGigsPendingCount("user-a", "dj"),
+    1,
+    "a non-zero runtime count must win even when provisional",
+  );
+
+  writeRuntimeGigsPendingCount("user-a", "dj", 2, { authoritative: true });
+  assert.equal(
+    getCachedGigsPendingCount("user-a", "dj"),
+    2,
+    "a non-zero authoritative runtime count must win",
+  );
+
+  // Provenance must not survive a cache clear, or a logout would leave the next
+  // account's provisional zero looking confirmed.
+  clearNavigationBadgeCache();
+  applyPersistedGigsPendingCount("user-b", "dj", 4);
+  writeRuntimeGigsPendingCount("user-b", "dj", 0);
+  assert.equal(
+    getCachedGigsPendingCount("user-b", "dj"),
+    4,
+    "clearing the cache must reset provenance, not leave it authoritative",
   );
 }
 
@@ -7533,9 +7671,26 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(pageSource, /clearPendingAttachments/);
   assert.match(pageSource, /onStagePhotos=\{stagePendingPhotos\}/);
   assert.match(pageSource, /onRemovePendingPhoto=\{removePendingPhotoAt\}/);
+  // The guarantee is that the staged photos survive a failed send, so the clear
+  // must sit in the success path. This asserts that placement directly rather
+  // than the statements that happened to surround it: the previous form pinned
+  // a comment after setInput("") and `if (otherUserId)` after the clear, and
+  // broke on ec781b25 ("always resolve peer before message notification"),
+  // which reordered that tail without changing the behaviour being protected.
   assert.match(
     pageSource,
-    /setInput\(""\);\s*\/\/[\s\S]{0,220}\s*clearPendingAttachments\(\);\s*if \(otherUserId\)/,
+    /await sendDmMessageWithAttachments\([\s\S]*?clearPendingAttachments\(\);/,
+    "the pending photos must only clear after the send resolves",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /catch \(uploadError\)[\s\S]{0,600}clearPendingAttachments\(\)/,
+    "a failed send must leave the photos staged for retry, so the failure path must never clear them",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /setUploading\(true\);[\s\S]*?clearPendingAttachments\(\)[\s\S]*?await sendDmMessageWithAttachments/,
+    "the photos must not clear before the send completes",
   );
   assert.doesNotMatch(
     pageSource,
@@ -7587,8 +7742,14 @@ function testDmComposerRowAlignment() {
   // would leave the buttons floating mid-height once the field grows tall.
   assert.match(composerSource, /className="mb-0\.5"/); // photo button nudge
   assert.match(composerSource, /COMPOSER_ACTION_ROW_CLASS/);
-  assert.match(composerSource, /items-end gap-2/);
-  assert.doesNotMatch(composerSource, /items-center gap-2/);
+  // The row class moved into the shared COMPOSER_ACTION_ROW_CLASS in 4127373a
+  // ("stop iOS composer Message collapse after send"), so assert it where it
+  // now lives. Read against DmComposer.tsx the negative check passed
+  // vacuously — neither string was in that file — and would not have caught a
+  // regression to items-center. It also now covers the crew-chat composer,
+  // which shares the same constant.
+  assert.match(fieldSource, /items-end gap-2/);
+  assert.doesNotMatch(fieldSource, /items-center gap-2/);
 
   // Text field height is untouched.
   assert.match(fieldSource, /min-h-11/);
@@ -7842,7 +8003,10 @@ function testDmImageGroupFullViewerAndOwnershipAlignment() {
     new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(attachmentViewSource, /window\.open\(attachment\.file_url/);
+  // The viewer is still window.open in a new tab. It opens the signed `src`
+  // rather than the stored file_url, which is a dead public URL now that
+  // dm-attachments is private (see testDmAttachmentsRenderOnlySignedUrls).
+  assert.match(attachmentViewSource, /window\.open\(src/);
   assert.doesNotMatch(attachmentViewSource, /DmImageLightbox/);
 
   // Ownership alignment: DmTextMessageBubble still owns left/right alignment
@@ -7851,6 +8015,784 @@ function testDmImageGroupFullViewerAndOwnershipAlignment() {
   // entirely in the grid's own width, not in a new alignment wrapper.
   assert.match(bubbleSource, /DmMessageAttachmentGroup/);
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
+}
+
+/**
+ * Account deletion must clear every profile column it claims to.
+ *
+ * app/privacy/page.tsx tells users their name, images, links and other profile
+ * details are cleared. Seven columns survived anonymisation - including both
+ * fields the app treats as private - so the policy described something the
+ * function did not do. Asserted against the column list rather than a fixed
+ * set, so a new profile column added later fails here until someone decides
+ * whether deletion should clear it.
+ */
+function testAccountDeletionClearsEveryProfileColumn() {
+  const deletionSql = readFileSync(
+    new URL("../scripts/setupAccountDeletion.sql", import.meta.url),
+    "utf8",
+  );
+  const anonymiseBlock = deletionSql.slice(
+    deletionSql.indexOf("update public.users"),
+    deletionSql.indexOf("where user_id = v_user_id;", deletionSql.indexOf("update public.users")),
+  );
+
+  const currentUserSource = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  const profileColumns = currentUserSource
+    .slice(
+      currentUserSource.indexOf('const PROFILE_FIELDS =\n  "') + 26,
+      currentUserSource.indexOf('";', currentUserSource.indexOf("const PROFILE_FIELDS =")),
+    )
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => /^[a-z_]+$/.test(entry));
+
+  // Structural columns, not profile content.
+  const notProfileContent = new Set(["user_id", "role", "onboarding_complete"]);
+
+  for (const column of profileColumns) {
+    if (notProfileContent.has(column)) {
+      continue;
+    }
+
+    assert.match(
+      anonymiseBlock,
+      new RegExp(`\\b${column}\\s*=`),
+      `delete_account_data() must clear ${column} - Privacy says profile details are cleared`,
+    );
+  }
+
+  // The two private fields specifically: must be set to NULL to preserve
+  // the zero-non-null invariant, not empty strings.
+  assert.match(anonymiseBlock, /\bfull_name\s*=\s*NULL/);
+  assert.match(anonymiseBlock, /\bdj_booking_contact_name\s*=\s*NULL/);
+
+  // username must be set to NULL (safe per unique index WHERE clause that excludes NULL)
+  // rather than a tombstone, to avoid exposing the internal user_id as a public identifier.
+  assert.match(
+    anonymiseBlock,
+    /\busername\s*=\s*NULL/,
+    "username must be set to NULL to prevent exposing user_id linkability",
+  );
+}
+
+/**
+ * Account deletion success state: after server deletion succeeds, local cleanup failures
+ * must not mask deletion success or leave user stranded on Settings with stale session.
+ */
+function testAccountDeletionSuccessState() {
+  const deleteAccountSectionSource = readFileSync(
+    new URL("../app/components/settings/DeleteAccountSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // After deleteAccount() succeeds, sign-out is best-effort and must not block navigation.
+  // Pattern: deleteAccount() call followed by nested try-catch for signOut().
+  assert.match(
+    deleteAccountSectionSource,
+    /await deleteAccount\(/,
+    "DeleteAccountSection must call deleteAccount()",
+  );
+  assert.match(
+    deleteAccountSectionSource,
+    /try\s*\{\s+await signOut\(\);\s*\}\s*catch/,
+    "Sign-out after successful deletion must be in its own try-catch block",
+  );
+
+  // Navigation must use replace() to prevent Back button returning to deleted-account Settings.
+  assert.match(
+    deleteAccountSectionSource,
+    /window\.location\.replace\(LOGIN_PATH\)/,
+    "Navigation after deletion must use replace() to prevent Back button returning to deleted Settings",
+  );
+
+  // Comment explaining that only server-side deletion errors should be reported
+  assert.match(
+    deleteAccountSectionSource,
+    /Only server-side deletion errors/,
+    "Code must document that only server-side deletion errors should be reported",
+  );
+}
+
+/**
+ * P1: private profile fields are denied by table privilege, not by projection.
+ *
+ * RLS has no column granularity, so PROFILE_FIELDS only narrows ordinary
+ * traffic. Table privileges are checked per column and before RLS, so the
+ * revoke is what actually denies full_name/dj_booking_contact_name to other
+ * signed-in users.
+ *
+ * The rollout is deliberately two SQL files, and the ORDER IS LOAD-BEARING:
+ *
+ *   Phase A (view)   additive   - safe against the currently deployed code
+ *   deploy code                 - moves traffic to the view
+ *   Phase C (revoke) restrictive- removes the old privilege
+ *
+ * Recombining them into one script reintroduces a guaranteed outage: running
+ * the revoke before the code is live breaks the deployed owner read with
+ * 42501, and deploying the code before the view exists breaks it with
+ * PGRST205 - via OnboardingGuard, across the whole authenticated app. Several
+ * assertions below exist purely to stop that recombination.
+ *
+ * The deny side itself is a database guarantee needing two accounts to prove;
+ * that test is pending credentials. What is enforceable here is that the SQL
+ * and the code cannot drift apart, because every other failure mode of this
+ * change is a mismatch between the grant list, the view's columns and the
+ * projections.
+ */
+function testPrivateProfileFieldsAreDatabaseEnforced() {
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--[^\n]*/g, "");
+
+  const tableSetupSqlRaw = readFileSync(
+    new URL("../scripts/setupPrivateProfileFieldsTable.sql", import.meta.url),
+    "utf8",
+  );
+  const tableSetupSql = stripComments(tableSetupSqlRaw);
+  const deletionSqlRaw = readFileSync(
+    new URL("../scripts/setupAccountDeletion.sql", import.meta.url),
+    "utf8",
+  );
+  const deletionSql = stripComments(deletionSqlRaw);
+  const currentUserSource = stripComments(
+    readFileSync(new URL("../lib/user/currentUser.ts", import.meta.url), "utf8"),
+  );
+
+  const listOf = (block: string) =>
+    block
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => /^[a-z_]+$/.test(entry));
+
+  // --- Private table setup ------------------------------------------------
+  // The new design uses a separate user_private_data table for owner-only fields
+  assert.match(
+    tableSetupSql,
+    /create table.*public\.user_private_data/i,
+    "Private table setup must create user_private_data",
+  );
+  assert.match(
+    tableSetupSql,
+    /alter table public\.user_private_data enable row level security/i,
+    "user_private_data must have RLS enabled",
+  );
+
+  // Explicit permissions: revoke from all roles first, then grant to authenticated
+  assert.match(
+    tableSetupSql,
+    /revoke all on public\.user_private_data from public;/,
+    "Must explicitly revoke from public role",
+  );
+  assert.match(
+    tableSetupSql,
+    /revoke all on public\.user_private_data from anon;/,
+    "Must explicitly revoke from anon role",
+  );
+  assert.match(
+    tableSetupSql,
+    /revoke all on public\.user_private_data from authenticated;/,
+    "Must explicitly revoke from authenticated role before granting",
+  );
+  assert.match(
+    tableSetupSql,
+    /grant select, insert, update on public\.user_private_data to authenticated;/,
+    "Must grant SELECT, INSERT, UPDATE to authenticated (no DELETE)",
+  );
+  assert.doesNotMatch(
+    tableSetupSql,
+    /grant.*delete.*on public\.user_private_data/i,
+    "DELETE must NOT be granted to authenticated on user_private_data",
+  );
+
+  // RLS policies: all with explicit TO authenticated clause
+  assert.match(
+    tableSetupSql,
+    /create policy.*for select.*to authenticated\s*using/i,
+    "SELECT policy must have TO authenticated",
+  );
+  assert.match(
+    tableSetupSql,
+    /create policy.*for insert.*to authenticated\s*with check/i,
+    "INSERT policy must have TO authenticated",
+  );
+  assert.match(
+    tableSetupSql,
+    /create policy.*for update.*to authenticated\s*using.*with check/i,
+    "UPDATE policy must have TO authenticated",
+  );
+  assert.doesNotMatch(
+    tableSetupSql,
+    /create policy.*for delete/i,
+    "No DELETE policy should exist on user_private_data (deletion via RPC only)",
+  );
+
+  // RLS protection: owner-only using auth_user_id()
+  assert.match(
+    tableSetupSql,
+    /using \(user_id = public\.auth_user_id\(\)::text\)/,
+    "RLS must check user_id = auth_user_id()::text for read access",
+  );
+
+  // --- Account deletion must handle private data -------------------------
+  assert.match(
+    deletionSql,
+    /delete from public\.user_private_data/,
+    "Account deletion RPC must delete from user_private_data",
+  );
+  assert.match(
+    deletionSql,
+    /to_regclass.*public\.user_private_data/,
+    "Account deletion RPC must guard user_private_data deletion with to_regclass",
+  );
+
+  // --- Explicit permission hardening for deletion functions ----------------
+  // All three functions must have explicit revokes from public, anon, authenticated
+  // before granting specific execute permissions. This ensures idempotency.
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.check_account_deletion_blockers\(\) from public;/,
+    "check_account_deletion_blockers must explicitly revoke from public",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.check_account_deletion_blockers\(\) from anon;/,
+    "check_account_deletion_blockers must explicitly revoke from anon",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.check_account_deletion_blockers\(\) from authenticated;/,
+    "check_account_deletion_blockers must explicitly revoke from authenticated",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.cleanup_account_deletion_dependencies\(\) from public;/,
+    "cleanup_account_deletion_dependencies must explicitly revoke from public",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.cleanup_account_deletion_dependencies\(\) from anon;/,
+    "cleanup_account_deletion_dependencies must explicitly revoke from anon",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.cleanup_account_deletion_dependencies\(\) from authenticated;/,
+    "cleanup_account_deletion_dependencies must explicitly revoke from authenticated",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.delete_account_data\(\) from public;/,
+    "delete_account_data must explicitly revoke from public",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.delete_account_data\(\) from anon;/,
+    "delete_account_data must explicitly revoke from anon",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.delete_account_data\(\) from authenticated;/,
+    "delete_account_data must explicitly revoke from authenticated",
+  );
+
+  // Grant execute only to the public-facing functions, not the internal one
+  assert.match(
+    deletionSql,
+    /grant execute on function public\.check_account_deletion_blockers\(\) to authenticated;/,
+    "check_account_deletion_blockers must grant EXECUTE to authenticated",
+  );
+  assert.match(
+    deletionSql,
+    /grant execute on function public\.delete_account_data\(\) to authenticated;/,
+    "delete_account_data must grant EXECUTE to authenticated",
+  );
+  assert.doesNotMatch(
+    deletionSql,
+    /grant execute on function public\.cleanup_account_deletion_dependencies\(\) to authenticated;/,
+    "cleanup_account_deletion_dependencies must NOT grant EXECUTE to authenticated (internal only)",
+  );
+
+  // --- Profile field projections -----------------------------------------
+  const profileFields = listOf(
+    currentUserSource.slice(
+      currentUserSource.indexOf('const PROFILE_FIELDS =\n  "') + 26,
+      currentUserSource.indexOf('";', currentUserSource.indexOf("const PROFILE_FIELDS =")),
+    ),
+  );
+  assert.ok(profileFields.length >= 20, "failed to parse PROFILE_FIELDS");
+  assert.ok(
+    !profileFields.includes("full_name") && !profileFields.includes("dj_booking_contact_name"),
+    "PROFILE_FIELDS must not carry either private column",
+  );
+
+  // my_profile view now omits dj_booking_contact_name (fetched separately)
+  // This assertion verifies the read behavior described below
+  // after the cleanupMyProfileView.sql has been run
+  const ownsProfileAssert = currentUserSource.indexOf("OWN_PROFILE_FIELDS");
+  assert.ok(ownsProfileAssert >= 0, "OWN_PROFILE_FIELDS must be defined");
+
+  // --- Two-query read path (final phase, no fallback) -----
+  // The owner's profile is fetched with two queries:
+  // 1. Public fields from my_profile (does NOT include dj_booking_contact_name)
+  // 2. Private contact from user_private_data (authoritative source)
+  assert.match(
+    currentUserSource,
+    /const OWN_PROFILE_SOURCE = "my_profile";/,
+    "owner profile comes from my_profile",
+  );
+
+  // Final phase: OWN_PROFILE_FIELDS equals PROFILE_FIELDS (no dj_booking_contact_name)
+  assert.match(
+    currentUserSource,
+    /const OWN_PROFILE_FIELDS = PROFILE_FIELDS;/,
+    "OWN_PROFILE_FIELDS must equal PROFILE_FIELDS (no private column in public view)",
+  );
+
+  // Two-query pattern: both tables queried, user_private_data is authoritative
+  assert.match(
+    currentUserSource,
+    /\.from\(OWN_PROFILE_SOURCE\)[\s\S]*?\.from\("user_private_data"\)/,
+    "getCurrentUserProfile must query both my_profile and user_private_data",
+  );
+
+  // No fallback: user_private_data is authoritative; if no row exists, value is NULL
+  assert.match(
+    currentUserSource,
+    /privateData\?\.dj_booking_contact_name \?\? null/,
+    "dj_booking_contact_name must use private table as authoritative source (no fallback)",
+  );
+
+  // --- Field distribution in save ----------------------------------------
+  // saveUserProfile distributes fields: public to users, private ONLY to user_private_data
+  // The private field NEVER goes back into the users table - it's a one-way migration
+  assert.match(
+    currentUserSource,
+    /publicUpdatePayload/,
+    "saveUserProfile must separate public fields into their own update",
+  );
+  assert.match(
+    currentUserSource,
+    /privateData.*dj_booking_contact_name/,
+    "saveUserProfile must extract dj_booking_contact_name for private table",
+  );
+  assert.match(
+    currentUserSource,
+    /\.from\("users"\)[\s\S]*?\.from\("user_private_data"\)/,
+    "saveUserProfile must update users AND user_private_data separately",
+  );
+  assert.match(
+    currentUserSource,
+    /upsert.*user_private_data/,
+    "saveUserProfile must upsert private data",
+  );
+
+  // Verify private field is NOT in the public update payload
+  assert.doesNotMatch(
+    currentUserSource.slice(
+      currentUserSource.indexOf("const publicUpdatePayload"),
+      currentUserSource.indexOf("if (options && \"avatarUrl\" in options)"),
+    ),
+    /dj_booking_contact_name/,
+    "dj_booking_contact_name must NOT be in publicUpdatePayload; write only to user_private_data",
+  );
+
+  // --- Backfill safety -----
+  // Backfill must use ON CONFLICT DO NOTHING so users who save after code
+  // deployment get their newer private row preserved, not overwritten by the
+  // backfill of older values from the users table.
+  const backfillSql = readFileSync(
+    new URL("../scripts/backfillPrivateProfileFields.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    backfillSql,
+    /ON CONFLICT.*DO NOTHING/,
+    "Backfill must use ON CONFLICT DO NOTHING to preserve newer saves",
+  );
+
+  // --- Phase 8 transition: remove fallback and clean view ---
+  // Once backfill is complete and verified, Phase 8 removes the fallback:
+  // 1. my_profile is recreated without dj_booking_contact_name
+  // 2. OWN_PROFILE_FIELDS reverts to PROFILE_FIELDS (no private column)
+  // 3. The fallback logic is removed (use only private table, never users)
+  // This assertion documents the expected state AFTER Phase 8:
+  // The cleanupMyProfileView.sql should not include dj_booking_contact_name
+  const cleanupViewSql = stripComments(
+    readFileSync(
+      new URL("../scripts/cleanupMyProfileView.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.doesNotMatch(
+    cleanupViewSql,
+    /select[\s\S]*?dj_booking_contact_name[\s\S]*?from public\.users/i,
+    "Phase 8 cleanup must remove dj_booking_contact_name from my_profile view",
+  );
+  assert.match(
+    cleanupViewSql,
+    /security_invoker = false/,
+    "Phase 8 cleanup must preserve security_invoker = false",
+  );
+  assert.match(
+    cleanupViewSql,
+    /revoke all on public\.my_profile from public;/,
+    "Phase 8 cleanup must explicitly revoke from public",
+  );
+  assert.match(
+    cleanupViewSql,
+    /revoke all on public\.my_profile from anon;/,
+    "Phase 8 cleanup must explicitly revoke from anon",
+  );
+}
+
+/**
+ * P0: DM and Crew Chat attachments render only signed URLs.
+ *
+ * `dm-attachments` is becoming a private bucket because anonymous clients could
+ * list it and fetch every private image. The stored `message_attachments.
+ * file_url` is a public URL that will stop resolving; rendering it is the
+ * defect. These assertions exist so a future edit cannot quietly reinstate it
+ * as a "fallback" when signing fails.
+ */
+function testDmAttachmentsRenderOnlySignedUrls() {
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+
+  const helperSource = readFileSync(
+    new URL("../lib/attachmentUrls.ts", import.meta.url),
+    "utf8",
+  );
+  const groupSource = stripComments(
+    readFileSync(
+      new URL("../app/components/dm/DmMessageAttachmentGroup.tsx", import.meta.url),
+      "utf8",
+    ),
+  );
+  const viewSource = stripComments(
+    readFileSync(
+      new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // TTL is one hour: long enough for a chat session, short enough that a leaked
+  // URL expires the same day.
+  assert.match(
+    stripComments(helperSource),
+    /export const SIGNED_URL_TTL_SECONDS = 3600;/,
+    "signed attachment URLs must expire after 3600s",
+  );
+
+  // Batched signing: a message with N images costs one round trip, not N.
+  assert.match(stripComments(helperSource), /createSignedUrls\(/);
+  assert.doesNotMatch(
+    stripComments(helperSource),
+    /createSignedUrl\(/,
+    "use the plural createSignedUrls so one message costs one request",
+  );
+
+  // Neither rendering component may read the stored URL. Comments are stripped
+  // first: both files discuss file_url at length, and an assertion satisfied by
+  // prose rather than code proves nothing.
+  assert.doesNotMatch(
+    viewSource,
+    /attachment\.file_url/,
+    "DmMessageAttachment must render the signed src, never the stored file_url",
+  );
+  assert.doesNotMatch(
+    groupSource,
+    /src=\{attachment\.file_url\}|url: attachment\.file_url/,
+    "DmMessageAttachmentGroup must render signed URLs, never the stored file_url",
+  );
+
+  // The group is the single signing point for both DM and Crew Chat.
+  assert.match(groupSource, /signAttachmentPaths/);
+  assert.match(groupSource, /toStorageObjectPath/);
+  assert.match(groupSource, /DM_ATTACHMENTS_BUCKET/);
+
+  // Expiry recovery re-signs at most once per attachment. Without the guard a
+  // 403 that is not about expiry (revoked membership, deleted object) retries
+  // forever.
+  assert.match(groupSource, /retriedRef/);
+  assert.match(
+    groupSource,
+    /if \(retriedRef\.current\.has\(attachmentId\)\) \{\s*return;/,
+    "resign must bail out when this attachment has already been retried once",
+  );
+  assert.match(viewSource, /onError=\{onExpired\}/);
+
+  // Path extraction decodes: filenames carry spaces, stored percent-encoded,
+  // but storage addresses objects by raw path.
+  assert.match(stripComments(helperSource), /decodeURIComponent/);
+}
+
+function testDmAttachmentsBucketIsPrivate() {
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+  const sql = stripComments(
+    readFileSync(
+      new URL("../scripts/setupDmAttachmentsAndReactions.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // Bucket must be private.
+  assert.match(
+    sql,
+    /insert into storage\.buckets.*public\s*=\s*false/i,
+    "dm-attachments bucket must have public = false",
+  );
+  assert.match(
+    sql,
+    /on conflict \(id\) do update\s+set public = false/i,
+    "update clause must also set public = false for idempotency",
+  );
+
+  // Public read policy must not be created — it was removed for security.
+  assert.doesNotMatch(
+    sql,
+    /create policy\s+"dm_attachments_public_read"/i,
+    "dm_attachments_public_read policy must not be created (bucket is private)",
+  );
+
+  // Member-scoped SELECT policy must exist with UUID-safe CASE guard.
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_select_member"/i,
+    "Member-scoped SELECT policy dm_attachments_select_member must exist",
+  );
+  assert.match(
+    sql,
+    /dm_attachments_select_member[\s\S]*?for select[\s\S]*?to authenticated/i,
+    "dm_attachments_select_member must be SELECT policy for authenticated role",
+  );
+
+  // UUID-safe regex CASE guard must prevent malformed UUIDs from casting.
+  assert.match(
+    sql,
+    /case\s+when[\s\S]*?\[1\]\s*~\*\s*'\^?\[0-9a-f\]\{8\}-/i,
+    "SELECT policy must have UUID-safe regex CASE guard before ::uuid casting",
+  );
+  assert.match(
+    sql,
+    /then[\s\S]*?is_conversation_member[\s\S]*?or[\s\S]*?is_event_crew_member/i,
+    "SELECT CASE then-branch must check both conversation and event membership",
+  );
+  assert.match(
+    sql,
+    /else\s+false\s+end/i,
+    "SELECT CASE else-branch must deny (false) for malformed UUIDs",
+  );
+
+  // INSERT policy must use is_event_crew_member_for_message, not is_event_crew_member.
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_insert_member"/i,
+    "INSERT policy dm_attachments_insert_member must exist",
+  );
+  assert.match(
+    sql,
+    /is_event_crew_member_for_message/,
+    "INSERT policy must use is_event_crew_member_for_message (for-message variant)",
+  );
+  assert.doesNotMatch(
+    sql,
+    /dm_attachments_insert_member[\s\S]*?is_event_crew_member\(\s*\(\(storage\.foldername/i,
+    "INSERT policy must NOT use generic is_event_crew_member() — only is_event_crew_member_for_message()",
+  );
+
+  // UPDATE and DELETE policies must be unchanged (own-folder scope only).
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_update_own"/i,
+    "UPDATE policy dm_attachments_update_own must exist",
+  );
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_delete_own"/i,
+    "DELETE policy dm_attachments_delete_own must exist",
+  );
+  assert.match(
+    sql,
+    /dm_attachments_update_own[\s\S]*?foldername.*\[2\]\s*=\s*public\.auth_user_id/i,
+    "UPDATE policy must check own-folder ownership",
+  );
+  assert.match(
+    sql,
+    /dm_attachments_delete_own[\s\S]*?foldername.*\[2\]\s*=\s*public\.auth_user_id/i,
+    "DELETE policy must check own-folder ownership",
+  );
+}
+
+/**
+ * P1 security: mark_conversation_unread and mark_conversation_unread_for_cancellation
+ * are internal SECURITY DEFINER helpers that must never be directly callable from the
+ * browser/client. They must be explicitly revoked from PUBLIC, anon, and authenticated
+ * roles to enforce this boundary.
+ */
+function testMessageReadsUnreadHelpersAreInternalOnly() {
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+  const sql = stripComments(
+    readFileSync(
+      new URL("../scripts/setupMessageReadsRpc.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // mark_conversation_unread must explicitly revoke ALL from PUBLIC to deny default access.
+  assert.match(
+    sql,
+    /revoke all on function public\.mark_conversation_unread\(text,\s*uuid,\s*uuid\) from public;/i,
+    "mark_conversation_unread must revoke ALL from PUBLIC",
+  );
+
+  // Must revoke from anon to prevent unauthenticated access.
+  assert.match(
+    sql,
+    /revoke all on function public\.mark_conversation_unread\(text,\s*uuid,\s*uuid\) from anon;/i,
+    "mark_conversation_unread must revoke ALL from anon",
+  );
+
+  // Must revoke from authenticated to prevent direct browser calls.
+  assert.match(
+    sql,
+    /revoke all on function public\.mark_conversation_unread\(text,\s*uuid,\s*uuid\) from authenticated;/i,
+    "mark_conversation_unread must revoke ALL from authenticated",
+  );
+
+  // No GRANT statements to this function for any client-facing role.
+  assert.doesNotMatch(
+    sql,
+    /grant\s+execute\s+on\s+function\s+public\.mark_conversation_unread/i,
+    "mark_conversation_unread must not grant EXECUTE to any client-facing role",
+  );
+}
+
+function testCancelEventAndLegacyFunctionPrivilegesHardened() {
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+  const eventSql = stripComments(
+    readFileSync(
+      new URL("../scripts/setupEventLifecycle.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  const legacySql = stripComments(
+    readFileSync(
+      new URL("../scripts/secureLegacyMessageReadsFunction.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // cancel_event(uuid) must revoke from PUBLIC, anon, and authenticated before granting to authenticated.
+  // This ensures it is never accessible to unauthenticated callers even in fresh environments.
+  assert.match(
+    eventSql,
+    /revoke all on function public\.cancel_event\(uuid\) from public;/i,
+    "cancel_event must revoke ALL from PUBLIC",
+  );
+  assert.match(
+    eventSql,
+    /revoke all on function public\.cancel_event\(uuid\) from anon;/i,
+    "cancel_event must revoke ALL from anon",
+  );
+  assert.match(
+    eventSql,
+    /revoke all on function public\.cancel_event\(uuid\) from authenticated;/i,
+    "cancel_event must revoke ALL from authenticated before granting",
+  );
+  assert.match(
+    eventSql,
+    /grant execute on function public\.cancel_event\(uuid\) to authenticated;/i,
+    "cancel_event must grant EXECUTE to authenticated",
+  );
+
+  // Legacy mark_conversation_unread_for_cancellation must be explicitly revoked from all public roles.
+  assert.match(
+    legacySql,
+    /revoke all on function public\.mark_conversation_unread_for_cancellation\(text,\s*uuid\) from public;/i,
+    "mark_conversation_unread_for_cancellation must revoke ALL from PUBLIC",
+  );
+  assert.match(
+    legacySql,
+    /revoke all on function public\.mark_conversation_unread_for_cancellation\(text,\s*uuid\) from anon;/i,
+    "mark_conversation_unread_for_cancellation must revoke ALL from anon",
+  );
+  assert.match(
+    legacySql,
+    /revoke all on function public\.mark_conversation_unread_for_cancellation\(text,\s*uuid\) from authenticated;/i,
+    "mark_conversation_unread_for_cancellation must revoke ALL from authenticated",
+  );
+
+  // Legacy function must not be granted to any public role.
+  assert.doesNotMatch(
+    legacySql,
+    /grant\s+execute\s+on\s+function\s+public\.mark_conversation_unread_for_cancellation/i,
+    "mark_conversation_unread_for_cancellation must not grant EXECUTE to any role",
+  );
+}
+
+/**
+ * Behavioural counterpart to testDmAttachmentsRenderOnlySignedUrls: the source
+ * assertions there prove the components call this, these prove it is correct.
+ * Every existing `message_attachments` row holds the public-URL form, and none
+ * of them are being migrated - so if this regresses, historical DM and Crew
+ * Chat images stop rendering for everyone.
+ */
+function testToStorageObjectPathResolvesStoredUrls() {
+  const bucket = "dm-attachments";
+  const base = "https://gidplxriruttihfirvii.supabase.co/storage/v1/object/public";
+
+  // The form every existing row holds.
+  assert.equal(
+    toStorageObjectPath(`${base}/dm-attachments/conv-1/user-1/1786149756143-photo.jpg`, bucket),
+    "conv-1/user-1/1786149756143-photo.jpg",
+  );
+
+  // Percent-encoding must be decoded: storage addresses objects by raw path,
+  // but a filename with spaces is encoded into the stored URL.
+  assert.equal(
+    toStorageObjectPath(`${base}/dm-attachments/conv-1/user-1/my%20holiday%20snap.jpg`, bucket),
+    "conv-1/user-1/my holiday snap.jpg",
+  );
+
+  // Crew Chat shares the bucket, keyed by event id instead of conversation id.
+  assert.equal(
+    toStorageObjectPath(`${base}/dm-attachments/event-9/user-2/1786011318110-flyer.png`, bucket),
+    "event-9/user-2/1786011318110-flyer.png",
+  );
+
+  // A bare path is accepted so the column can be normalised later as a pure
+  // data change, with no code change riding along. Nothing writes this yet.
+  assert.equal(
+    toStorageObjectPath("conv-1/user-1/already-a-path.jpg", bucket),
+    "conv-1/user-1/already-a-path.jpg",
+  );
+
+  // Anything unrecognised yields null so the caller renders its unavailable
+  // state. Returning the input unchanged would put a dead public URL in the
+  // DOM, which is the whole defect.
+  assert.equal(toStorageObjectPath("", bucket), null);
+  assert.equal(toStorageObjectPath("   ", bucket), null);
+  assert.equal(toStorageObjectPath("https://evil.example/steal.jpg", bucket), null);
+  assert.equal(
+    toStorageObjectPath(`${base}/profile-images/user-1/avatar.jpg`, bucket),
+    null,
+    "another bucket's object must not resolve as a dm-attachments path",
+  );
 }
 
 function testDmImageGalleryOverviewForLargeGroups() {
@@ -8710,8 +9652,11 @@ function testDmInboxSearchEmptyStateCopy() {
   // in bookings/page.tsx).
   assert.match(inboxPageSource, />\s*No conversations match your search\s*</);
   assert.doesNotMatch(inboxPageSource, /No conversations match your search\./);
-  assert.match(inboxPageSource, />\s*No group chats match your search\s*</);
-  assert.doesNotMatch(inboxPageSource, /No group chats match your search\./);
+  // "group chats" became "crew chats" in 6091dcf2; the negative assertion below
+  // was passing vacuously against the old wording, so the no-trailing-full-stop
+  // convention was unenforced for this string until now.
+  assert.match(inboxPageSource, />\s*No crew chats match your search\s*</);
+  assert.doesNotMatch(inboxPageSource, /No crew chats match your search\./);
 }
 
 type TestInboxMessage = {
@@ -9442,9 +10387,15 @@ function testRunSheetInitialLoadIsNotDirty() {
     "utf8",
   );
 
-  // Structural half: the sync contract. Both success paths hand back one value
-  // used for both fields; only the catch builds them separately.
-  assert.match(sectionSource, /return \{ rows: unchanged, persistedRows: unchanged \}/);
+  // Structural half: the sync contract. Both fields on a success path come from
+  // the same source, so the baseline and the display cannot diverge; only the
+  // catch builds them separately. 7109f2d5 replaced the hoisted `unchanged`
+  // const with two calls to the same pure filter, which is equivalent here —
+  // hasUnsavedRunSheetEdits compares serialized values, not references.
+  assert.match(
+    sectionSource,
+    /\{ rows: currentFiltered\(\), persistedRows: currentFiltered\(\) \}/,
+  );
   assert.match(sectionSource, /return \{ rows: persisted, persistedRows: persisted \}/);
   assert.match(sectionSource, /persistedRows: currentFiltered\(\)/);
 
@@ -10257,10 +11208,15 @@ function testRunSheetDmNotifyOnSave() {
     new URL("../lib/eventRunSheet.ts", import.meta.url),
     "utf8",
   );
-  assert.match(runSheetLib, /type: "message"/);
+  // 6df737ae ("Remove runsheet update DM notifications, keep crew chat only")
+  // moved the channel from the booking DM to the event crew chat. Accepted DJs
+  // are crew participants — get_event_crew_participant_ids unions the event
+  // owner with every accepted booking's recipient_id — so they are still
+  // notified, through a different channel.
+  assert.match(runSheetLib, /notifyParticipants: true/);
   assert.match(runSheetLib, /booking\.recipient_id/);
   assert.doesNotMatch(runSheetLib, /postEventGroupChatUpdate/);
-  assert.doesNotMatch(runSheetLib, /sendEventCrewChatMessage/);
+  assert.match(runSheetLib, /sendEventCrewChatMessage/);
   assert.match(runSheetLib, /booking\.status !== "accepted"/);
   assert.match(runSheetLib, /Notes updated/);
   assert.match(runSheetLib, /Order updated/);
@@ -10307,9 +11263,11 @@ function testRunSheetEditMode() {
   const trySection = saveFn.slice(saveFn.indexOf("try {"), saveFn.indexOf("} catch"));
   assert.match(trySection, /setIsEditing\(false\)/);
   assert.match(trySection, /setExpandedRowIds\(new Set\(\)\)/);
-  // Diff before save; soft DM notify after persist — only changed DJs, never crew chat.
+  // Diff before save; soft notify after persist. The channel became the event
+  // crew chat in 6df737ae, so this asserts the crew-chat notify, not the
+  // removed DM one — the diff itself is unchanged and still drives it.
   assert.match(saveFn, /collectRunSheetBookingChanges\(savedRows, nextRows\)/);
-  assert.match(trySection, /notifyRunSheetUpdatesForChangedBookings/);
+  assert.match(trySection, /notifyCrewChatOfRunSheetUpdate/);
   assert.match(trySection, /changes: runSheetChanges/);
   assert.doesNotMatch(saveFn, /postEventGroupChatUpdate/);
   assert.doesNotMatch(saveFn, /sendEventCrewChatMessage/);
@@ -10455,9 +11413,15 @@ function testRunSheetProductionPolish() {
   // Progress is view-mode only as of testRunSheetHeaderCancelAndSave -- it
   // used to also show live during editing, deliberately reversed since it
   // duplicated what Save/"Unsaved changes" already say once those exist.
+  //
+  // 52819b06 ("hide run sheet progress from DJs") then scoped it to planners
+  // with the leading `canEdit`: "N of M completed" is a browsing aid for whoever
+  // is building the sheet, not for a DJ reading their own set time. Adding a
+  // conjunct only narrows the guard, so the indicator cannot appear anywhere it
+  // did not before -- the sole behavioural delta is that DJs no longer see it.
   assert.match(
     section,
-    /const showRunSheetProgress = !isEditing && rows\.length > 0 && !allRowsIncomplete;/,
+    /const showRunSheetProgress =\s*canEdit && !isEditing && rows\.length > 0 && !allRowsIncomplete;/,
   );
   // One sentence shape at every stage -- the "Run Sheet Complete" variant
   // was dropped so the line always reads as a counter (see
@@ -10996,7 +11960,7 @@ function testRunSheetHeaderAlignmentAndDensity() {
   // testRunSheetAccordionRestructure for the clipping bug that causes).
   assert.match(section, /<div className="space-y-1\.5 pt-0\.5">/);
   // Margin above the toggle tightened, but its `py-1` tap padding is intact.
-  assert.match(section, /className="mt-0\.5 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
+  assert.match(section, /className="mt-0 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
 
   // Nothing that would shrink a touch target, an input, or a textarea.
   assert.match(section, /const RUN_SHEET_NOTES_VISIBLE_ROWS = 4;/);
@@ -11382,7 +12346,7 @@ function testRunSheetProgressAndEmptyStateCopy() {
   assert.ok(chevronClass, "the chevron className must exist");
   assert.match(chevronClass, /\bmr-1\.5\b/);
   const toggle = entryFn.match(/<button[\s\S]*?onToggleExpanded[\s\S]*?<\/button>/)?.[0] ?? "";
-  assert.match(toggle, /className="mt-0\.5 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
+  assert.match(toggle, /className="mt-0 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
   assert.doesNotMatch(toggle, /\bpr-\d/);
 }
 
@@ -11542,14 +12506,19 @@ function testRoleAwareWorkspaceNavigation() {
     plannerEventsNavSource,
     /export function isStandaloneEventDetailPath\(pathname: string\): boolean/,
   );
-  assert.match(
-    appNavigationSource,
-    /eventDetailFromCrewChat[\s\S]{0,200}from"\) === "crew-chat"/,
-  );
-  assert.match(
-    appNavigationSource,
-    /profileFromEventDetail[\s\S]{0,220}from"\) === "event-detail"/,
-  );
+  // Two independent assertions rather than one proximity window. As a single
+  // /A[\s\S]{0,200}B/ this broke on 4f0cf572 ("keep Events lit on profiles
+  // opened from event detail"), which inserted profileFromEventDetail between
+  // the two clauses and pushed them 328 characters apart — neither clause
+  // changed. A window couples the assertion to whatever happens to sit between
+  // its halves, so any future insertion here would break it again.
+  assert.match(appNavigationSource, /eventDetailFromCrewChat/);
+  assert.match(appNavigationSource, /params\.get\("from"\) === "crew-chat"/);
+  // Split for the same reason as the crew-chat pair above: the two features'
+  // declarations and setters interleave, so each one's halves sit either side
+  // of the other's setter block (measured gap 363 against a 220 window).
+  assert.match(appNavigationSource, /profileFromEventDetail/);
+  assert.match(appNavigationSource, /params\.get\("from"\) === "event-detail"/);
   assert.match(appNavigationSource, /function resolveNavItemActive\(item: NavItem\): boolean/);
   assert.match(
     appNavigationSource,
@@ -11877,10 +12846,10 @@ function testBookingRateModeDescriptionsAreUnified() {
     eventDetailSource,
     /<InlineOptionHelpPanel label=\{CREW_CHAT_HELP\.label\} help=\{CREW_CHAT_HELP\.help\} \/>/,
   );
-  assert.match(
-    eventDetailSource,
-    /label: "Start group chat"/,
-  );
+  // d2c0e521 renamed the remaining "group chat" UI references to "crew chat".
+  // The control is unchanged: same handler, same disabled guard, same pending
+  // state — only the wording moved.
+  assert.match(eventDetailSource, /label: "Start crew chat"/);
   assert.match(
     eventDetailSource,
     /help: "Start now with 1 accepted DJ or wait\. It opens automatically when a 2nd DJ accepts"/,
@@ -12116,6 +13085,42 @@ function testEventCancellationRefreshesOpenDmBookingCard() {
 
   assert.match(systemMessagesSource, /export function isEventCancellationDmActivityMessage/);
   assert.match(navBadgeSource, /isEventCancellationDmActivityMessage/);
+
+  // Same planner↔DJ thread can cancel Event A then book/cancel Event B.
+  // A broad "any event-cancelled already exists" skip left the DJ's accept as
+  // latest → isChatUnread always false (own message). Cancel activity must be
+  // unique per event_id and must not use that window skip.
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /event-cancelled:\$\{trimmedEventId\} · \$\{trimmedEventName\}/,
+  );
+  assert.doesNotMatch(
+    bookingRequestsSource,
+    /like\("text", `\$\{BOOKING_ACTIVITY_DM_PREFIX\} event-cancelled ·%`\)/,
+  );
+
+  // Crew-chat "was cancelled" INSERT after mark_conversation_unread recreates
+  // the Crew Chats badge (delete/clear reads → new other-user crew message).
+  const eventDetailsSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    eventDetailsSource,
+    /text:\s*`\$\{event\.name \|\| "Event"\} was cancelled`/,
+  );
+
+  const rpcSource = readFileSync(
+    new URL("../scripts/setupMessageReadsRpc.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(rpcSource, /ON CONFLICT \(user_id, event_id\) WHERE event_id IS NOT NULL/);
+  assert.match(rpcSource, /DO UPDATE SET last_read_at = now\(\)/);
+  assert.doesNotMatch(rpcSource, /DELETE FROM public\.message_reads/);
 }
 
 function testTemporaryDebugInstrumentationIsFullyRemoved() {
@@ -12551,7 +13556,9 @@ function testCrewChatPremiumPolish() {
   assert.match(emptyStateSource, /Welcome to your Crew Chat/);
   assert.match(
     emptyStateSource,
-    /Coordinate set times, arrivals, equipment and event updates with your crew\./,
+    // No trailing full stop: ff0c236a dropped it to match the app-wide
+    // short-message convention this suite already enforces elsewhere.
+    /Coordinate set times, arrivals, equipment and event updates with your crew/,
   );
 
   // Bubble: memoised, messageId-first callbacks (so memo is actually
@@ -12575,10 +13582,18 @@ function testCrewChatPremiumPolish() {
     /seenLabel=\{message\.id === lastMessage\?\.id \? latestMessageSeenLabel : null\}/,
   );
 
-  // eventCrewChat access carries the two new fields on every return path
-  // (type declaration + denied/owner/accepted-DJ outcomes = 4 occurrences).
-  assert.equal((eventCrewChatSource.match(/ownerId:/g) ?? []).length, 4);
-  assert.equal((eventCrewChatSource.match(/eventSetTime:/g) ?? []).length, 4);
+  // eventCrewChat access carries the two new fields on every return path.
+  // Asserted as a pairing rather than a whole-file count of each name: the
+  // count broke when notifyCrewMemberJoined's options type gained an unrelated
+  // `ownerId`, which is not a return path at all. `ownerId: event` matches only
+  // the three access assignments, and the +1 is the single type declaration
+  // that `eventSetTime:` also carries. This now fails when a return path gains
+  // one field without the other — the thing that actually matters — and
+  // survives unrelated additions elsewhere in the file.
+  assert.equal(
+    (eventCrewChatSource.match(/eventSetTime:/g) ?? []).length,
+    (eventCrewChatSource.match(/ownerId: event/g) ?? []).length + 1,
+  );
 
   // Read receipts reuse the existing per-message comparison rather than
   // reimplementing it, and read from message_reads -- no new table/column.
@@ -12866,10 +13881,27 @@ function testCrewChatEventCardToggleScrollCompensation() {
 
   // Entering a chat is always a fresh start, including when React reuses this
   // component instance across two different events rather than remounting.
+  //
+  // loadAccess re-collapses the event card, but must NOT close the member
+  // sheet. 2719fd03 ("Stop loadAccess from closing the crew sheet on Back")
+  // removed that reset: returning from a profile remounts this page with
+  // memberSheetOpen=true in the URL, and loadAccess slammed the sheet shut
+  // again. The sheet is URL-driven now, so the doesNotMatch below is what stops
+  // that regression coming back.
   assert.match(
     chatPageSource,
-    /setMemberSheetOpen\(false\);[\s\S]{0,320}setEventCardCollapsed\(true\);/,
+    /setEventCardCollapsed\(true\);/,
     "switching events must reset the card to collapsed",
+  );
+  assert.match(
+    chatPageSource,
+    /setMemberSheetOpen\(memberSheetOpenFromUrl\);/,
+    "the member sheet must follow the URL, not a blind reset",
+  );
+  assert.doesNotMatch(
+    chatPageSource,
+    /setAccessLoading\(true\);[\s\S]{0,600}setMemberSheetOpen\(false\)/,
+    "loadAccess must never close the member sheet — that is the Back-navigation bug",
   );
   assert.doesNotMatch(
     chatPageSource,
@@ -12988,17 +14020,26 @@ function testEventUpdateMessagePresentation() {
     "the system card must not reuse the outgoing bubble fill or add shadows",
   );
 
-  assert.match(bubbleSource, /const systemAuthored = isEventUpdate;/);
+  // d1e14cf0 gave run-sheet updates the same system-card treatment when they
+  // moved from the booking DM into crew chat, so both kinds suppress the human
+  // sender name and avatar rather than only event updates.
+  assert.match(bubbleSource, /const systemAuthored = isEventUpdate \|\| isRunSheetUpdate;/);
   assert.match(bubbleSource, /systemAuthored\s*\n?\s*\?\s*resolveChatSystemCardShellClass\(\)/);
   assert.match(
     bubbleSource,
     /isOwnMessage=\{systemAuthored \? false : isOwnMessage\}/,
     "reaction pill and picker must anchor left, where the card actually sits",
   );
+  // 97d6c848 ("Refine runsheet update styling and center horizontally in crew
+  // chat") centred the system-card column, widening it to max-w-[90%] to suit.
+  // This deliberately reverses the earlier left-aligned requirement recorded in
+  // CURRENT-STATE: now that event updates and run-sheet updates share one
+  // system treatment, centring is what separates system activity from
+  // person-to-person chat.
   assert.match(
     bubbleSource,
-    /if \(systemAuthored\) \{[\s\S]{0,1200}items-start/,
-    "system notices render in their own left-aligned branch",
+    /if \(systemAuthored\) \{[\s\S]{0,1200}items-center/,
+    "system notices render in their own centred branch",
   );
   // That branch must precede the own/incoming split, or a planner's own
   // update would still take the right-aligned outgoing path.
@@ -13007,8 +14048,10 @@ function testEventUpdateMessagePresentation() {
     "the system-authored branch must come before the own/incoming split",
   );
 
-  // Narrower than a normal message so it supports rather than dominates.
-  assert.match(bubbleSource, /max-w-\[72%\] sm:max-w-\[56%\]/);
+  // Wider than a normal message. The old 72%/56% was tuned for a card pinned
+  // to the left edge; c3d9b64b widened it to suit the centred column, where a
+  // narrow card reads as a stray fragment rather than a full-width notice.
+  assert.match(bubbleSource, /max-w-\[90%\] sm:max-w-\[85%\]/);
 
   /* ---- polish pass: separation, border weight, timestamp ---- */
 
@@ -13763,6 +14806,48 @@ function testChatEmptyStateComponentized() {
 }
 
 /**
+ * Edit Profile avatar Save was hanging on “Saving” when iPhone camera JPEGs
+ * (multi‑MB) uploaded with no timeout, and Saving was not cleared if post-save
+ * navigation stalled.
+ */
+async function testProfileAvatarUploadCannotHangOnSaving() {
+  const uploadSource = readFileSync(
+    new URL("../lib/user/uploadProfileImage.ts", import.meta.url),
+    "utf8",
+  );
+  const formSource = readFileSync(
+    new URL("../app/components/profile/EditProfileForm.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.ok(PROFILE_IMAGE_MAX_EDGE_PX <= 1280);
+  assert.ok(PROFILE_IMAGE_UPLOAD_TIMEOUT_MS <= 30_000);
+  assert.match(uploadSource, /prepareProfileImageForUpload/);
+  assert.match(uploadSource, /withProfileImageUploadTimeout/);
+  assert.match(uploadSource, /createImageBitmap/);
+  assert.match(uploadSource, /image\/jpeg/);
+
+  assert.match(formSource, /finally \{\s*[\s\S]*?setSaving\(false\)/);
+  assert.match(formSource, /await onSaved\(\)/);
+  assert.doesNotMatch(
+    formSource,
+    /setUploadError\("Image upload failed"\)/,
+    "upload errors must surface the real message, not a dead-end label",
+  );
+
+  // Timeout helper must reject — not hang — when the underlying call never settles.
+  const hang = new Promise<void>(() => {});
+
+  await assert.rejects(
+    () => withProfileImageUploadTimeout(hang, 20),
+    (error: unknown) => {
+      assert.match(String((error as Error).message ?? error), /timed out/i);
+      return true;
+    },
+  );
+}
+
+/**
  * Chat media must reserve a box before it decodes, and avatars must be fetched
  * at the size they are drawn at.
  */
@@ -13874,6 +14959,28 @@ function testChatMediaLoadsWithoutARefresh() {
   assert.equal(coerceAvatarSourceUrl("undefined"), null);
   assert.equal(coerceAvatarSourceUrl("profile-images/u/a.jpg"), null);
   assert.equal(resolveAvatarImageUrl("null", "sm"), null);
+
+  // Edit Profile previews the chosen photo with URL.createObjectURL BEFORE any
+  // upload happens - the upload runs inside the save handler. An http-only
+  // predicate returned null here, ProfileAvatar fell through to initials, and
+  // picking a new photo looked like it had done nothing until you saved.
+  const blobUrl = "blob:http://localhost:3000/9f8e7d6c-1234-4abc-9def-0123456789ab";
+  assert.equal(coerceAvatarSourceUrl(blobUrl), blobUrl);
+
+  // A blob URL is not a storage object, so it must pass through untransformed -
+  // rewriting it into the render endpoint would produce a URL that 404s.
+  assert.equal(resolveAvatarImageUrl(blobUrl, "xl"), blobUrl);
+  assert.equal(resolveAvatarImageUrl(blobUrl, "sm"), blobUrl);
+
+  // It has no public-object marker, so there is no "original" to fall back to;
+  // ProfileAvatar's `?? sourceUrl` covers that.
+  assert.equal(resolveAvatarObjectUrl(blobUrl), null);
+
+  // Widened by exactly one scheme. Anything else a browser will not load as an
+  // image source stays rejected.
+  assert.equal(coerceAvatarSourceUrl("data:image/png;base64,iVBORw0KGgo="), null);
+  assert.equal(coerceAvatarSourceUrl("javascript:alert(1)"), null);
+  assert.equal(coerceAvatarSourceUrl("//evil.example/a.jpg"), null);
 
   assert.equal(resolveAvatarObjectUrl(rendered), publicUrl);
   assert.equal(resolveAvatarObjectUrl(publicUrl), publicUrl);
@@ -14239,6 +15346,7 @@ async function testGroupInboxUnreadSurvivesOverlappingRefreshes() {
     coverImageUrl: null,
     fallbackColour: null,
     href: `/events/${eventId}/chat`,
+    isOwnedByViewer: false,
     latestPreview: "see you there",
     latestMessageAt: "2026-08-03T10:00:00.000Z",
     latestMessageUserId: me,
@@ -14487,14 +15595,16 @@ function testEventDetailReturnsToCrewChat() {
   assert.match(detailSource, /whitespace-nowrap/);
   assert.match(
     detailSource,
-    /startingCrewChat \? "Starting" : "Start group chat"/,
+    /startingCrewChat \? "Starting" : "Start crew chat"/,
   );
   assert.doesNotMatch(detailSource, /max-w-\[10\.5rem\]/);
   assert.doesNotMatch(detailSource, /max-w-\[8\.5rem\]/);
   // Help is inside the chip wrapper, not a sibling outside it.
+  // The `}` after the backtick closes the JSX expression container — without it
+  // this could never match valid JSX, which is why it had gone unnoticed.
   assert.match(
     detailSource,
-    /HEADER_GROUP_CHAT_CHIP_CLASS\}`>\s*\{showStartCrewChatAction[\s\S]*?showCrewChatHelpUi \? \(\s*<InlineOptionHelpButton/,
+    /HEADER_GROUP_CHAT_CHIP_CLASS\}`\}>\s*\{showStartCrewChatAction[\s\S]*?showCrewChatHelpUi \? \(\s*<InlineOptionHelpButton/,
   );
 }
 
@@ -14653,6 +15763,133 @@ function testCrewChatsInboxDoesNotFlickerOnBadgeBus() {
     dmPageSource,
     /addEventListener\("ftc-notifications-updated", reloadGroupChatsFromRemote\)/,
   );
+}
+
+/**
+ * When crew chat unlocks, DJs need a notification + unread highlight on
+ * Messages → Crew Chats until they open it. That requires a system message
+ * (unread attaches to latest message from someone else) plus createNotification.
+ * Copy is fixed "Crew chat started" so auto-start (2nd accept) does not blame
+ * the accepting DJ with "{name} started the crew".
+ */
+function testCrewChatStartNotifiesAndSeedsUnread() {
+  assert.equal(CREW_CHAT_STARTED_NOTICE, "Crew chat started");
+  assert.equal(isGroupChatSystemUpdateMessage(CREW_CHAT_STARTED_NOTICE), true);
+  assert.equal(formatGroupChatSystemNoticeText(CREW_CHAT_STARTED_NOTICE), CREW_CHAT_STARTED_NOTICE);
+  assert.equal(
+    formatGroupChatSystemNoticeText("Alex started the crew"),
+    CREW_CHAT_STARTED_NOTICE,
+  );
+  assert.equal(
+    formatGroupChatInboxPreview(CREW_CHAT_STARTED_NOTICE),
+    CREW_CHAT_STARTED_NOTICE,
+  );
+  // In-thread pill is hidden; DB row still drives unread + inbox preview.
+  assert.equal(isHiddenCrewRosterNotice(CREW_CHAT_STARTED_NOTICE), true);
+  assert.equal(isHiddenCrewRosterNotice("Alex started the crew"), true);
+
+  const plannerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+  const djId = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee";
+  assert.equal(
+    isChatUnread(
+      { user_id: plannerId, created_at: "2026-08-07T06:00:00.000Z" },
+      djId,
+      null,
+    ),
+    true,
+    "DJ with no read row treats start notice as unread",
+  );
+  assert.equal(
+    isChatUnread(
+      { user_id: plannerId, created_at: "2026-08-07T06:00:00.000Z" },
+      plannerId,
+      null,
+    ),
+    false,
+    "starter does not unread their own start notice",
+  );
+
+  const eventCrewSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const notifyFn = eventCrewSource.slice(
+    eventCrewSource.indexOf("export async function notifyCrewChatStarted"),
+    eventCrewSource.indexOf("export async function notifyCrewMemberJoined"),
+  );
+  assert.match(notifyFn, /CREW_CHAT_STARTED_NOTICE/);
+  assert.match(notifyFn, /from\("messages"\)\.insert/);
+  assert.match(notifyFn, /insertError/);
+  assert.match(notifyFn, /markEventChatRead\(eventId\)/);
+  assert.match(notifyFn, /createNotification\(/);
+  assert.doesNotMatch(notifyFn, /started the crew`/);
+  assert.doesNotMatch(notifyFn, /\.catch\(/);
+
+  const chatSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(chatSource, /isGroupChatSystemUpdateMessage\(message\.text\)/);
+  assert.match(chatSource, /GroupChatSystemNotice/);
+  assert.match(chatSource, /shouldOmitCrewMessageForViewer/);
+}
+
+/**
+ * Other DJs get "{name} joined the crew" pill + unread; planner gets neither.
+ */
+function testCrewMemberJoinedNoticeForOtherDjsOnly() {
+  assert.equal(isCrewMemberJoinedNotice("Alex joined the crew"), true);
+  assert.equal(isGroupChatSystemUpdateMessage("Alex joined the crew"), true);
+  assert.equal(isHiddenCrewRosterNotice("Alex joined the crew"), false);
+  assert.equal(
+    shouldOmitCrewMessageForViewer("Alex joined the crew", {
+      viewerUserId: "owner-1",
+      ownerId: "owner-1",
+    }),
+    true,
+    "planner hides join pill",
+  );
+  assert.equal(
+    shouldOmitCrewMessageForViewer("Alex joined the crew", {
+      viewerUserId: "dj-2",
+      ownerId: "owner-1",
+    }),
+    false,
+    "other DJ sees join pill",
+  );
+  assert.equal(formatCrewMemberJoinedNotice("Alex"), "Alex joined the crew");
+
+  const bookingAcceptanceSource = readFileSync(
+    new URL("../lib/events/bookingAcceptance.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(bookingAcceptanceSource, /notifyCrewMemberJoined/);
+  assert.match(bookingAcceptanceSource, /skipNotification:\s*justStarted/);
+
+  const eventCrewSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const joinFn = eventCrewSource.slice(
+    eventCrewSource.indexOf("export async function notifyCrewMemberJoined"),
+    eventCrewSource.indexOf("export async function sendEventCrewChatMessage"),
+  );
+  assert.match(joinFn, /formatCrewMemberJoinedNotice/);
+  assert.match(joinFn, /participantId !== joinerId && participantId !== ownerKey/);
+  assert.match(joinFn, /skipNotification/);
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmPageSource, /isOwnedByViewer && isCrewMemberJoinedNotice/);
+
+  const groupChatsSource = readFileSync(
+    new URL("../lib/groupChats.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(groupChatsSource, /isOwnedByViewer:\s*true/);
+  assert.match(groupChatsSource, /isOwnedByViewer:\s*false/);
 }
 
 function testEventDetailEditDiscardOnBackOnly() {
@@ -17056,6 +18293,7 @@ async function main() {
   testGigsFreshWorkspaceEntryOpensIncoming();
   testGigsFilterTabCountsPersistDuringLoading();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
+  testGigsPendingRuntimeZeroCarriesProvenance();
   testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero();
   testWorkspaceGigsCountFollowsIncomingDownwards();
   testGigsTabCountDisplayCap();
@@ -17097,6 +18335,14 @@ async function main() {
   testDmImageGridLayout();
   testDmImageGridNoCropping();
   testDmImageGroupFullViewerAndOwnershipAlignment();
+  testDmAttachmentsRenderOnlySignedUrls();
+  testDmAttachmentsBucketIsPrivate();
+  testMessageReadsUnreadHelpersAreInternalOnly();
+  testCancelEventAndLegacyFunctionPrivilegesHardened();
+  testToStorageObjectPathResolvesStoredUrls();
+  testPrivateProfileFieldsAreDatabaseEnforced();
+  testAccountDeletionClearsEveryProfileColumn();
+  testAccountDeletionSuccessState();
   testDmImageGalleryOverviewForLargeGroups();
   testDmMediaViewerCloseButtonConsistentAndClickable();
   testDmImageLightboxUsesPagedTrackNotFloatingCard();
@@ -17207,6 +18453,8 @@ async function main() {
   testEventDetailReturnsToCrewChat();
   testCrewChatBackPreservesEventDetailOrigin();
   testCrewChatsInboxDoesNotFlickerOnBadgeBus();
+  testCrewChatStartNotifiesAndSeedsUnread();
+  testCrewMemberJoinedNoticeForOtherDjsOnly();
   testEventDetailEditDiscardOnBackOnly();
   testEventDetailPopsCrewChatHistoryEntry();
   testCrewChatMemberSheetReopenOnProfileReturn();
@@ -17216,6 +18464,7 @@ async function main() {
   testCrewChatComposerKeepsFocusAfterSend();
   testCrewChatMessageGrouping();
   testChatMediaLoadsWithoutARefresh();
+  await testProfileAvatarUploadCannotHangOnSaving();
   testChatBubbleCannotCollapseToOneCharacterColumn();
   testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();
@@ -17244,7 +18493,816 @@ async function main() {
   await testAgentRoomWritesSummariesAndDecisionRecords();
   await testAgentRoomManualApprovalIsEnforcedServerSide();
   await testAgentRoomManualApprovalCoversEverySummaryPath();
+  await testPlannerRosterShipsDisabledAndKeepsTheFallback();
+  testPlannerRosterIsolatesPlannersAndExcludesUnbookableDjs();
+  testPlannerRosterAddIsExactAndNonEnumerating();
+  testPlannerRosterAutoAddCannotBreakABooking();
+  testPlannerRosterRemoveIsScopedAndNonDestructive();
+  testEventPickerIsSelectionOnly();
+  testMyDjsRosterManager();
+  testProfileProjectionOmitsPrivateFields();
+  testLegalPagesArePublicAndAccurate();
+  testSignupAgeGateAndLegalLinks();
+  testNoAuthenticatedPrefetchWithoutASession();
+  testAuthEmailsRedirectThroughTheSharedHelper();
+  testForgotPasswordFlow();
+  testPlannerRosterMigrationGrantsTablePrivileges();
   console.log("All regression checks passed.");
+}
+
+/**
+ * Roster scoping is ON as of the flip commit. It shipped dark first and was
+ * enabled only after a live two-planner isolation test — planner 2 did not
+ * inherit planner 1's DJ — and after the stranding gate confirmed no active
+ * planner would be left with an empty roster.
+ *
+ * The fallback assertions below still matter and are unchanged: `listBookableDjs`
+ * must remain the other arm of every call site, so switching back is still one
+ * line rather than a revert.
+ */
+async function testPlannerRosterShipsDisabledAndKeepsTheFallback() {
+  const { ROSTER_SCOPING_ENABLED } = await import("../lib/plannerDjRoster");
+
+  assert.equal(
+    ROSTER_SCOPING_ENABLED,
+    true,
+    "roster scoping is enabled; turning it off is its own reviewed commit",
+  );
+
+  const rosterSource = readFileSync(
+    new URL("../lib/plannerDjRoster.ts", import.meta.url),
+    "utf8",
+  );
+  // A constant, not an env var: the switch has to be greppable in the diff.
+  assert.match(rosterSource, /export const ROSTER_SCOPING_ENABLED = true;/);
+  assert.doesNotMatch(
+    rosterSource,
+    /process\.env[^\n]*ROSTER/,
+    "the flag must not be readable from the environment",
+  );
+
+  // Every call site keeps listBookableDjs as the flag-off path. If any of these
+  // stops being a ternary, the feature is no longer reversible by the flag.
+  const draftSource = readFileSync(
+    new URL("../app/components/booking/useSendBookingRequestsDraft.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    draftSource,
+    /ROSTER_SCOPING_ENABLED[\s\S]{0,80}listRosterDjs\(\)[\s\S]{0,60}listBookableDjs\(\)/,
+  );
+
+  const bookingsPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.equal(
+    (bookingsPageSource.match(
+      /ROSTER_SCOPING_ENABLED \? listRosterDjs\(\) : listBookableDjs\(\)/g,
+    ) ?? []).length,
+    2,
+    "both bookings-page loaders must keep the fallback",
+  );
+}
+
+/**
+ * The property the feature exists for: planner A sees roster A, and a DJ can
+ * sit on several rosters without those planners learning about each other.
+ *
+ * RLS is the real boundary — planner_dj_roster_select_own restricts reads to
+ * planner_id = auth_user_id(). The client filter is asserted here so that a
+ * policy regression shows up as a failing test rather than as one promoter
+ * quietly seeing another's roster.
+ */
+function testPlannerRosterIsolatesPlannersAndExcludesUnbookableDjs() {
+  const currentUserSource = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Comments stripped: the block above listRosterDjs's users query quotes
+  // `.is("deleted_at", null)` verbatim while explaining it, which satisfied
+  // this assertion even with the real filter deleted. Mutation testing caught
+  // it. Prose must never stand in for the code it describes.
+  const rosterFn = currentUserSource
+    .slice(currentUserSource.indexOf("export async function listRosterDjs"))
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  assert.ok(rosterFn.length > 0, "listRosterDjs must exist");
+
+  // Scoped to the caller. Nothing here may read another planner's rows.
+  assert.match(rosterFn, /from\("planner_dj_roster"\)/);
+  assert.match(rosterFn, /\.eq\("planner_id", currentUserId\)/);
+
+  // Unbookable accounts must never surface, whatever the roster table holds:
+  // a DJ who deleted their account, never finished onboarding, or changed role.
+  assert.match(rosterFn, /\.is\("deleted_at", null\)/);
+  assert.match(rosterFn, /user\.onboarding_complete/);
+  assert.match(rosterFn, /user\.role === "dj" \|\| user\.role === "both"/);
+  assert.match(rosterFn, /user\.user_id !== currentUserId/);
+
+  // An empty roster must not fall back to every DJ — that would silently
+  // reinstate global discovery for exactly the planners the roster is for.
+  assert.match(rosterFn, /djIds\.length === 0[\s\S]{0,40}return \[\]/);
+  assert.doesNotMatch(rosterFn, /listBookableDjs\(/);
+
+  // Empty roster and empty search result are different states with different
+  // fixes; collapsing them leaves a new planner staring at a dead end.
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    panelSource,
+    /ROSTER_SCOPING_ENABLED && draft\.djs\.length === 0[\s\S]{0,400}Your DJ roster is empty/,
+  );
+  assert.match(panelSource, /No available DJs to invite/);
+}
+
+/**
+ * Adding is exact-match only. A prefix or ilike search here would quietly turn
+ * a private roster into the global directory it exists to replace, and would
+ * also let anyone enumerate usernames.
+ */
+function testPlannerRosterAddIsExactAndNonEnumerating() {
+  const rosterSource = readFileSync(
+    new URL("../lib/plannerDjRoster.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Comments are stripped before asserting. Prose must never be able to satisfy
+  // or break a claim about code — a doc comment describing a behaviour reads
+  // identically to the code implementing it, and the slice below would
+  // otherwise run into the next function's comment block.
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+
+  const addFn = stripComments(
+    rosterSource.slice(
+      rosterSource.indexOf("export async function addDjToRosterByUsername"),
+      rosterSource.indexOf("export async function recordRosterFromBooking"),
+    ),
+  );
+  assert.ok(addFn.length > 0, "addDjToRosterByUsername must exist");
+
+  assert.match(addFn, /\.eq\("username", username\)/);
+  assert.doesNotMatch(
+    addFn,
+    /\.(ilike|like)\(|\.textSearch\(|\.or\(/,
+    "no fuzzy or multi-field matching — exact username only",
+  );
+
+  // "No such user" and "not a bookable DJ" must be indistinguishable, or the
+  // field becomes an oracle for which accounts exist and what type they are.
+  assert.match(rosterSource, /ADD_DJ_NOT_FOUND_MESSAGE = "No DJ found with that username"/);
+  assert.equal(
+    (addFn.match(/ADD_DJ_NOT_FOUND_MESSAGE/g) ?? []).length,
+    1,
+    "one shared not-found path, so the two cases cannot diverge",
+  );
+  assert.doesNotMatch(addFn, /not a DJ|is a promoter|already exists/i);
+
+  assert.match(addFn, /djId === plannerId/, "self-add is refused client-side too");
+}
+
+/**
+ * Removing a DJ takes one row out of one planner's roster and touches nothing
+ * else. The risk is not that it under-deletes — it is that a missing filter
+ * clears a whole roster, or that "remove from my list" quietly becomes "delete
+ * the working relationship".
+ */
+function testPlannerRosterRemoveIsScopedAndNonDestructive() {
+  const rosterSource = readFileSync(
+    new URL("../lib/plannerDjRoster.ts", import.meta.url),
+    "utf8",
+  );
+  const removeFn = rosterSource
+    .slice(
+      rosterSource.indexOf("export async function removeDjFromRoster"),
+      rosterSource.indexOf("export async function recordRosterFromBooking"),
+    )
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  assert.ok(removeFn.length > 0, "removeDjFromRoster must exist");
+
+  // Both ids. Dropping either turns one removal into a mass delete: without
+  // dj_id it clears the planner's entire roster, and RLS would not stop it
+  // because every one of those rows legitimately belongs to that planner.
+  assert.match(removeFn, /\.delete\(\)/);
+  assert.match(removeFn, /\.eq\("planner_id", plannerId\)/);
+  assert.match(removeFn, /\.eq\("dj_id", djId\)/);
+
+  // Nothing but the roster table. A remove must never reach the DJ's account,
+  // bookings, conversations, messages or crew chat.
+  const tablesTouched = [...removeFn.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]);
+  assert.deepEqual(
+    tablesTouched,
+    ["planner_dj_roster"],
+    "remove must touch only planner_dj_roster",
+  );
+  // Exactly one query, so no second call can be added without failing this.
+  assert.equal((removeFn.match(/await supabase/g) ?? []).length, 1);
+  assert.doesNotMatch(removeFn, /\.rpc\(/, "no RPC that could reach other tables");
+
+  // Re-adding later must work, so removal leaves no tombstone or blocklist —
+  // the add path is a plain upsert against the same table.
+  assert.doesNotMatch(rosterSource, /removed_at|is_removed|blocked/i);
+}
+
+/**
+ * Roster management has one home, and the event picker is only for choosing who
+ * to invite. Mixing them put a destructive control next to a selection control
+ * and made the event form the place people learned to manage a roster.
+ */
+function testEventPickerIsSelectionOnly() {
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // No add-by-username form and no remove control in the invite flow.
+  assert.doesNotMatch(panelSource, /AddDjByUsernameField/);
+  assert.doesNotMatch(panelSource, /addDjToRosterByUsername/);
+  assert.doesNotMatch(panelSource, /removeDjFromRoster/);
+  assert.doesNotMatch(panelSource, /onRemove/);
+
+  assert.match(panelSource, /Choose DJs to invite/);
+  assert.match(panelSource, /Invite DJs · Optional/);
+  assert.match(panelSource, /placeholder="Search DJs"/);
+
+  // An empty roster is a dead end without a way out of it.
+  assert.match(panelSource, /Your DJ roster is empty\. Add DJs to your roster before sending invitations/);
+  assert.match(panelSource, /Add DJs/);
+  // Selecting, not managing: no persistent management affordance once the
+  // planner already has DJs.
+  assert.doesNotMatch(panelSource, /Manage roster|Manage My DJs/);
+
+  // Managing the roster must open a sheet, never navigate: the event draft is
+  // component state and a route change would discard a half-typed event.
+  assert.match(panelSource, /setRosterSheetOpen\(true\)/);
+  assert.doesNotMatch(panelSource, /router\.push|<Link/);
+
+  // Closing the sheet refreshes the picker so a newly added DJ is selectable
+  // straight away.
+  assert.match(
+    panelSource,
+    /closeRosterSheet = useCallback\(\(\) => \{[\s\S]{0,200}draft\.reloadDjs\(\)/,
+  );
+
+  // Still the planner-scoped roster, never a global list.
+  const draftSource = readFileSync(
+    new URL("../app/components/booking/useSendBookingRequestsDraft.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    draftSource,
+    /ROSTER_SCOPING_ENABLED[\s\S]{0,80}listRosterDjs\(\)[\s\S]{0,60}listBookableDjs\(\)/,
+  );
+}
+
+/**
+ * One management component, rendered by both the permanent page and the sheet,
+ * so the two surfaces cannot drift apart.
+ */
+function testMyDjsRosterManager() {
+  const managerSource = readFileSync(
+    new URL("../app/components/roster/PlannerDjRosterManager.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(managerSource, /addDjToRosterByUsername\(plannerId, username\)/);
+  assert.match(managerSource, /placeholder="DJ username"/);
+  assert.match(managerSource, /Enter their exact FTC username/);
+  assert.match(managerSource, /Your DJ roster is empty\. Add DJs by their FTC username/);
+  assert.match(managerSource, /placeholder="Search DJs"/);
+
+  // Remove still goes through a confirmation, and Cancel issues no delete.
+  assert.match(managerSource, /setDjPendingRemoval\(dj\)/);
+  assert.match(managerSource, /handleConfirmRemove[\s\S]{0,900}removeDjFromRoster\(/);
+  assert.match(managerSource, /Past bookings and chats won't be affected/);
+  const cancelBlock = managerSource.slice(
+    managerSource.indexOf("<BookingSheetSecondaryButton"),
+    managerSource.indexOf("<BookingSheetDangerButton"),
+  );
+  assert.doesNotMatch(cancelBlock, /removeDjFromRoster/, "Cancel must issue no delete");
+
+  // Planner-scoped read only. A global list here would reintroduce discovery
+  // through the back door.
+  assert.match(managerSource, /listRosterDjs\(\)/);
+  assert.doesNotMatch(managerSource, /listBookableDjs/);
+
+  // The permanent page guards by role: hiding an entry point is not access
+  // control, and /my-djs is reachable by URL.
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/my-djs/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(pageSource, /canManageEvents\(userRole\)/);
+  assert.match(pageSource, /router\.replace\(getDefaultRouteForRole\(userRole\)\)/);
+  assert.match(pageSource, /title="My DJs"/);
+  // Reached from Settings, so it must not present as a child of Events.
+  assert.match(pageSource, /href=\{SETTINGS_PATH\}/);
+  assert.doesNotMatch(pageSource, /EVENTS_AREA_SUB_NAV|← Events/);
+
+  // The Events header keeps only its primary action.
+  const eventsSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(eventsSource, /my-djs|ROSTER_SCOPING_ENABLED/);
+
+  // Settings is the entry point, planner-gated, above the account card.
+  const settingsSource = readFileSync(
+    new URL("../app/settings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(settingsSource, /canManageEvents\(role\)/);
+  assert.match(settingsSource, /setRole\(profile\?\.role \?\? null\)/, "role must actually be read, or the row never renders");
+  assert.match(settingsSource, /href="\/my-djs"/);
+  assert.match(settingsSource, /Manage the DJs you work with/);
+  assert.ok(
+    settingsSource.indexOf("Workspace") < settingsSource.indexOf(">\n                    Account"),
+    "workspace card sits above account admin",
+  );
+  assert.match(pageSource, /<PlannerDjRosterManager/);
+}
+
+/**
+ * The migration must grant table privileges, not just create policies.
+ *
+ * This exists because it was missed. RLS narrows access; it grants nothing, and
+ * Postgres checks the table privilege first — so a table with perfect policies
+ * and no GRANT is completely unreachable, failing every read and write with
+ * 42501. It shipped that way, the post-migration verification passed 19/19
+ * because it only inspected policies, and the bug surfaced as a live add
+ * failure with an empty state that looked correct because the roster read was
+ * throwing and being swallowed.
+ */
+function testPlannerRosterMigrationGrantsTablePrivileges() {
+  const migrationSource = readFileSync(
+    new URL("../scripts/setupPlannerDjRoster.sql", import.meta.url),
+    "utf8",
+  );
+  const executable = migrationSource
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n");
+
+  assert.match(
+    executable,
+    /grant select, insert, delete on table public\.planner_dj_roster to authenticated;/,
+    "without this the three policies are never reached",
+  );
+
+  // Only what the policies admit. There is no update policy, and every policy
+  // is `to authenticated`, so granting either would be privilege with no
+  // matching rule behind it.
+  assert.doesNotMatch(executable, /grant[^;]*update[^;]*planner_dj_roster/i);
+  assert.doesNotMatch(executable, /grant[^;]*planner_dj_roster[^;]*anon/i);
+
+  // The verification query must check reachability, not just policy shape.
+  const verifySource = readFileSync(
+    new URL("../scripts/verifyPlannerDjRoster.sql", import.meta.url),
+    "utf8",
+  );
+  for (const privilege of ["SELECT", "INSERT", "DELETE"]) {
+    assert.ok(
+      verifySource.includes(
+        `has_table_privilege('authenticated', 'public.planner_dj_roster', '${privilege}')`,
+      ),
+      `verification must prove authenticated can ${privilege}`,
+    );
+  }
+}
+
+/**
+ * A booking that already exists in the database must never fail because a
+ * bookkeeping row did not. Same reasoning as the notification call it sits
+ * beside — and the same failure mode if it is ever unwrapped.
+ */
+function testPlannerRosterAutoAddCannotBreakABooking() {
+  const rosterSource = readFileSync(
+    new URL("../lib/plannerDjRoster.ts", import.meta.url),
+    "utf8",
+  );
+  const recordFn = rosterSource
+    .slice(rosterSource.indexOf("export async function recordRosterFromBooking"))
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+
+  assert.match(recordFn, /try \{[\s\S]*\} catch \(rosterError\) \{/);
+  assert.doesNotMatch(recordFn, /throw /, "must swallow every failure");
+  assert.match(recordFn, /ignoreDuplicates: true/, "re-sends must not error");
+
+  const bookingSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  // Fires on creation, not acceptance: a declined DJ must stay findable.
+  assert.match(
+    bookingSource,
+    /await recordRosterFromBooking\(currentUserId, recipientId\);/,
+  );
+  assert.ok(
+    bookingSource.indexOf("await recordRosterFromBooking(currentUserId, recipientId);") >
+      bookingSource.indexOf("const { error: messageError } = await supabase"),
+    "roster write happens after the booking and DM already exist",
+  );
+}
+
+/**
+ * Two fields must not ride along on every profile read.
+ *
+ * DATA MINIMISATION, NOT CONFIDENTIALITY. users_select_authenticated still
+ * allows any authenticated client to query public.users directly, so this
+ * narrows ordinary application traffic rather than enforcing secrecy. Real
+ * database-enforced private fields are post-beta security debt — this test
+ * exists so the projection does not quietly widen again in the meantime.
+ */
+function testProfileProjectionOmitsPrivateFields() {
+  const source = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+
+  const publicProjection = source.slice(
+    source.indexOf("const PROFILE_FIELDS ="),
+    source.indexOf("const OWN_PROFILE_FIELDS"),
+  );
+  assert.ok(publicProjection.length > 0, "PROFILE_FIELDS must exist");
+
+  // full_name is never written and rendered nowhere; it should not be fetched.
+  assert.doesNotMatch(publicProjection, /full_name/);
+  assert.doesNotMatch(publicProjection, /dj_booking_contact_name/);
+
+  // ...and the owner projection is the only place the contact field appears.
+  assert.match(
+    source,
+    /const OWN_PROFILE_FIELDS = `\$\{PROFILE_FIELDS\}, dj_booking_contact_name`;/,
+  );
+
+  // full_name is gone from the type too, so it cannot be reintroduced by a
+  // literal without a compile error.
+  const profileType = source.slice(
+    source.indexOf("export type UserProfile = {"),
+    source.indexOf("export type UserProfileInput"),
+  );
+  assert.doesNotMatch(profileType, /full_name/);
+
+  // Exactly one query may use the owner projection: the owner's own fetch.
+  assert.equal(
+    (source.match(/\.select\(OWN_PROFILE_FIELDS\)/g) ?? []).length,
+    1,
+    "only the owner's own profile read may use the owner projection",
+  );
+
+  // Every other-user query stays on the public projection.
+  for (const fn of ["getUserProfileById", "listDiscoverUsers", "listBookableDjs", "listRosterDjs"]) {
+    const body = source.slice(source.indexOf(`export async function ${fn}`));
+    assert.doesNotMatch(
+      body.slice(0, 900),
+      /OWN_PROFILE_FIELDS/,
+      `${fn} reads other users and must not use the owner projection`,
+    );
+  }
+
+  // The owner's edit flow still round-trips the contact field.
+  const formUtils = readFileSync(
+    new URL("../lib/user/profileFormUtils.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(formUtils, /dj_booking_contact_name: profile\.dj_booking_contact_name\?\.trim\(\) \?\? ""/);
+  assert.match(source, /dj_booking_contact_name: input\.dj_booking_contact_name\.trim\(\)/);
+}
+
+/**
+ * The legal layer has two failure modes that matter.
+ *
+ * One: the pages must render logged-out. They are linked from the signup form,
+ * so wrapping them in OnboardingGuard would make the acceptance line point at a
+ * screen a prospective user cannot open.
+ *
+ * Two: the documents must keep describing the product as audited. If FTC starts
+ * processing payments, adds analytics, or enables AI, the Privacy Policy becomes
+ * false — these assertions are a tripwire for that, not decoration.
+ */
+function testLegalPagesArePublicAndAccurate() {
+  const terms = readFileSync(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
+  const privacy = readFileSync(new URL("../app/privacy/page.tsx", import.meta.url), "utf8");
+  const shell = readFileSync(
+    new URL("../app/components/legal/LegalPageShell.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Public: reachable before an account exists. Comments are stripped first —
+  // the shell's own docstring explains why it is NOT wrapped in OnboardingGuard,
+  // and prose must never stand in for the code it describes.
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  for (const [name, source] of [["terms", terms], ["privacy", privacy], ["shell", shell]] as const) {
+    assert.doesNotMatch(
+      stripComments(source),
+      /OnboardingGuard/,
+      `${name} must render logged out`,
+    );
+  }
+
+  // Back control works from both origins, and still works with no history.
+  assert.match(shell, /window\.history\.length > 1/);
+  assert.match(shell, /router\.back\(\)/);
+  assert.match(shell, /readSupabaseSessionUserIdSync\(\) \? SETTINGS_PATH : SIGNUP_PATH/);
+
+  // Operator is an individual — FTC is not a registered company.
+  const legal = readFileSync(new URL("../lib/legal.ts", import.meta.url), "utf8");
+  assert.match(legal, /LEGAL_OPERATOR = "Isaac Cunningham"/);
+  assert.match(legal, /ap-northeast-1/, "hosting region drives the cross-border disclosure");
+  // No invented corporate identity. "registered company" is deliberately NOT in
+  // this list: the Terms use it correctly, in the negative, to disclose that FTC
+  // is not one.
+  for (const source of [terms, privacy]) {
+    assert.doesNotMatch(source, /Pty Ltd|\bABN\b|\bACN\b/i);
+  }
+  assert.match(terms, /not a registered company/i, "the operator disclosure must stay");
+
+  // Facts the audit established. Each of these is false the moment the product
+  // changes, which is the point.
+  assert.match(privacy, /does not process payments/i);
+  assert.match(privacy, /no analytics/i);
+  assert.match(privacy, /does not collect GPS/i);
+  assert.match(privacy, /outside Australia/);
+  assert.match(privacy, /Deleted User/);
+  assert.match(privacy, /Messages and booking history involving other people are not deleted/i);
+  assert.match(terms, /not a party to any agreement/i);
+  assert.match(terms, /Australian Consumer Law/);
+
+  // AI is disabled for beta and must not be described to users as an active
+  // feature. Comments stripped: the file docstrings mention AI precisely to say
+  // it is off, and a comment is not something a user reads.
+  for (const source of [terms, privacy]) {
+    assert.doesNotMatch(
+      stripComments(source),
+      /\bAI\b|artificial intelligence|machine learning/,
+    );
+  }
+
+  // No user-facing "draft" language. These are the operative beta terms — the
+  // "needs professional legal review" note lives in lib/legal.ts and the QA
+  // checklist, deliberately not on the page.
+  for (const source of [terms, privacy]) {
+    assert.doesNotMatch(stripComments(source), /draft|not legally binding|placeholder/i);
+  }
+  const legalConstants = readFileSync(new URL("../lib/legal.ts", import.meta.url), "utf8");
+  assert.match(legalConstants, /NOT had professional legal review/i);
+}
+
+/**
+ * Account creation is gated on the 18+ confirmation, and both documents are
+ * reachable from the form that asks you to agree to them.
+ */
+function testSignupAgeGateAndLegalLinks() {
+  const signup = readFileSync(new URL("../app/signup/page.tsx", import.meta.url), "utf8");
+
+  assert.match(signup, /I confirm I am 18 or older/);
+  assert.match(signup, /type="checkbox"/);
+  // Unticked by default — a pre-ticked box is not a confirmation. Anchored on
+  // the declaration itself: a bare /useState\(false\)/ matched any of the
+  // page's other flags and passed even when this one defaulted to true.
+  assert.match(signup, /const \[ageConfirmed, setAgeConfirmed\] = useState\(false\);/);
+  // ...and it actually blocks submission. The lookbehind matters: without it
+  // the assertion was satisfied by the aria-disabled attribute and passed with
+  // the real disabled prop reverted to `{submitting}`.
+  assert.match(signup, /(?<!aria-)disabled=\{submitting \|\| !ageConfirmed\}/);
+
+  // A null session is not proof of creation. With email confirmation enabled
+  // Supabase returns the same success-shaped response for a new signup and for
+  // an address that is already registered, so claiming "Account created" tells
+  // a returning user they made an account they did not make.
+  assert.doesNotMatch(signup, /Account created/);
+  assert.match(signup, /setSuccessMessage\("Check your email to continue"\)/);
+  assert.match(signup, /If you already have an account with this email/);
+  assert.match(signup, /log in instead/);
+
+  // The supporting line is unconditional. Rendering it only for existing
+  // accounts would signal which emails exist.
+  const successBlock = signup.slice(
+    signup.indexOf("{successMessage ? ("),
+    signup.indexOf(") : null}", signup.indexOf("{successMessage ? (")),
+  );
+  assert.doesNotMatch(successBlock, /identities|alreadyRegistered|isExisting/);
+
+  // Nothing may branch user-visible behaviour on data.user.identities: it
+  // distinguishes an existing account from a new one, and any visible
+  // difference rebuilds the enumeration oracle Supabase suppresses. Comments
+  // are stripped because the code documents precisely why it is left unread.
+  const signupCode = signup
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  assert.doesNotMatch(signupCode, /identities/);
+  const authHelper = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(authHelper, /identities/);
+
+  assert.match(signup, /By creating an account, you agree to the/);
+  assert.match(signup, /href="\/terms"/);
+  assert.match(signup, /href="\/privacy"/);
+
+  // Settings carries permanent links too.
+  const settings = readFileSync(new URL("../app/settings/page.tsx", import.meta.url), "utf8");
+  assert.match(settings, /Legal\s*<\/h2>/);
+  assert.match(settings, /href: "\/terms"/);
+  assert.match(settings, /href: "\/privacy"/);
+}
+
+/**
+ * Authenticated prefetches must not fire without a real session.
+ *
+ * They warmed badges from a cached role alone, so after a sign-out — or for an
+ * account deleted server-side, which cannot reach a device's storage — the role
+ * survived on the device and drove queries that reached PostgREST as `anon`.
+ * booking_requests correctly refused with 42501, and three prefetches each
+ * logged it, so one mistake looked like a page of errors.
+ *
+ * The fix is to stop asking. Granting `anon` the table would silence the console
+ * by making private booking data readable without authentication, which is the
+ * opposite of a fix.
+ */
+function testNoAuthenticatedPrefetchWithoutASession() {
+  const guard = readFileSync(
+    new URL("../app/components/OnboardingGuard.tsx", import.meta.url),
+    "utf8",
+  );
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  const guardCode = stripComments(guard);
+
+  // The module-scope block reads a session first, and the cached navigation is
+  // only consulted when one exists.
+  assert.match(guardCode, /const sessionUserIdOnLoad = readSupabaseSessionUserIdSync\(\);/);
+  assert.match(
+    guardCode,
+    /const cachedNavigationOnLoad = sessionUserIdOnLoad\s*\?\s*readCachedNavigation\(\)\s*:\s*\{ role: null, userId: null \}/,
+  );
+
+  // Prefetches take the live session id, never a cached one that may belong to
+  // a previously signed-in or deleted account.
+  assert.match(guardCode, /ensureNavMessagesPrefetched\(\s*sessionUserIdOnLoad,/);
+  assert.match(guardCode, /ensureNavigationBadgesPrefetched\(\s*sessionUserIdOnLoad,/);
+  assert.doesNotMatch(guardCode, /Prefetched\(\s*cachedNavigationOnLoad\.userId/);
+
+  // Cached navigation state is discarded, not merely ignored, without a session.
+  const cache = readFileSync(
+    new URL("../lib/navigationRoleCache.ts", import.meta.url),
+    "utf8",
+  );
+  const cacheCode = stripComments(cache);
+  assert.match(cacheCode, /function discardCacheWithoutSession\(\): boolean/);
+  assert.match(cacheCode, /if \(readSupabaseSessionUserIdSync\(\)\) \{\s*return false;/);
+  assert.match(cacheCode, /clearCachedNavigation\(\);/);
+
+  // Both readers go through it.
+  assert.match(
+    cacheCode,
+    /export function readCachedNavRole[\s\S]{0,240}discardCacheWithoutSession\(\)/,
+  );
+  assert.match(
+    cacheCode,
+    /export function readCachedNavigation[\s\S]{0,200}discardCacheWithoutSession\(\)/,
+  );
+
+  // A stale cached id must never win over the live session id.
+  assert.match(cacheCode, /cachedUserId !== liveUserId/);
+  assert.match(cacheCode, /const userId = liveUserId \?\? cachedUserId;/);
+  assert.doesNotMatch(cacheCode, /const userId = sessionUserId \?\? readSupabaseSessionUserIdSync\(\)/);
+
+  // Nothing here may be "fixed" by widening database access.
+  const rls = readFileSync(
+    new URL("../scripts/setupProductionRls.sql", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    rls.split("\n").filter((line) => !line.trim().startsWith("--")).join("\n"),
+    /grant[^;]*booking_requests[^;]*anon/i,
+    "booking_requests must never be granted to anon",
+  );
+}
+
+/**
+ * Auth emails outlive the session that sent them, so their links must never
+ * carry a localhost or LAN address.
+ *
+ * signUp originally passed no emailRedirectTo, so Supabase fell back to the
+ * project Site URL — still the default localhost:3000 — and anyone confirming
+ * on a phone landed on a dead page. The account was created and confirmed
+ * correctly; only the return trip was broken. Password reset already routed
+ * through getAuthRedirectUrl; signup was the one that missed it.
+ */
+function testAuthEmailsRedirectThroughTheSharedHelper() {
+  const source = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  const code = source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+
+  // Both auth emails resolve their destination the same way.
+  assert.match(code, /options: \{ emailRedirectTo: getAuthRedirectUrl\(LOGIN_PATH\) \}/);
+  assert.match(code, /redirectTo: getAuthRedirectUrl\(LOGIN_PATH\)/);
+  assert.equal(
+    (code.match(/getAuthRedirectUrl\(LOGIN_PATH\)/g) ?? []).length,
+    2,
+    "signUp and resetPasswordForEmail must both use the helper",
+  );
+
+  // signUp specifically must not omit it again.
+  const signUpFn = code.slice(
+    code.indexOf("export async function signUpWithEmail"),
+    code.indexOf("export async function ensureAuthenticatedUserProfileRow"),
+  );
+  assert.ok(signUpFn.length > 0, "signUpWithEmail must exist");
+  assert.match(signUpFn, /emailRedirectTo/);
+
+  // No hardcoded origins anywhere in the auth path — an email cannot be
+  // corrected after it is sent.
+  const appUrl = readFileSync(
+    new URL("../lib/auth/appUrl.ts", import.meta.url),
+    "utf8",
+  );
+  for (const [name, contents] of [["currentUser", code], ["appUrl", appUrl]] as const) {
+    assert.doesNotMatch(
+      contents.replace(/\/\/[^\n]*/g, ""),
+      /https?:\/\/(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/,
+      `${name} must not hardcode a localhost or LAN origin`,
+    );
+  }
+
+  // The resolver refuses a localhost window origin rather than emailing it.
+  assert.match(appUrl, /function isLocalhostHostname/);
+  assert.match(appUrl, /if \(!isLocalhostHostname\(hostname\)\)/);
+  assert.match(appUrl, /FTC_APP_URL_FALLBACK = "https:\/\/follow-the-crowd\.vercel\.app"/);
+}
+
+/**
+ * Password recovery had a working second half and no first half.
+ *
+ * /login already detected PASSWORD_RECOVERY and rendered "Set a new password",
+ * and requestPasswordResetEmail already sent through getAuthRedirectUrl. The
+ * only way to ask for the email was Settings — which you must be logged in to
+ * reach, and being unable to log in is the entire problem.
+ */
+function testForgotPasswordFlow() {
+  const page = readFileSync(
+    new URL("../app/forgot-password/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  const pageCode = stripComments(page);
+
+  // Reachable signed out — the whole point.
+  assert.doesNotMatch(pageCode, /OnboardingGuard/);
+
+  // Reuses the existing helper rather than calling supabase.auth directly, so
+  // the reset link keeps resolving through getAuthRedirectUrl.
+  assert.match(pageCode, /requestPasswordResetEmail\(email\)/);
+  assert.doesNotMatch(pageCode, /supabase\.auth/);
+
+  // Neutral result. Confirming which addresses are registered would let anyone
+  // probe the user base one email at a time — the same reason signup does not
+  // branch on identities.
+  assert.match(page, /If an account exists for that email/);
+  assert.doesNotMatch(pageCode, /no account|not found|does not exist|unregistered/i);
+
+  // The success state must not depend on whether the address existed.
+  const sentBlock = pageCode.slice(pageCode.indexOf("{sent ? ("), pageCode.indexOf(") : ("));
+  assert.doesNotMatch(sentBlock, /exists \?|found \?|registered \?/);
+
+  assert.match(page, /Back to login/);
+  assert.match(pageCode, /href=\{LOGIN_PATH\}/);
+
+  // Login offers the entry point, and only outside recovery mode: sending
+  // someone back to the start of a flow they are finishing is a dead end.
+  const login = readFileSync(
+    new URL("../app/login/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(login, /Forgot password\?/);
+  assert.match(login, /href=\{FORGOT_PASSWORD_PATH\}/);
+  const recoveryBranch = login.slice(
+    login.indexOf("recoveryMode ? ("),
+    login.indexOf("</form>", login.indexOf("handleRecoverySubmit")),
+  );
+  assert.doesNotMatch(recoveryBranch, /Forgot password/);
+
+  // One source of truth for the route.
+  const currentUser = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(currentUser, /FORGOT_PASSWORD_PATH = "\/forgot-password"/);
+  assert.doesNotMatch(stripComments(login), /"\/forgot-password"/);
 }
 
 main().catch((error) => {

@@ -7,7 +7,6 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import FtcAppVersionFooter from "@/app/components/settings/FtcAppVersionFooter";
 import DeleteAccountSection from "@/app/components/settings/DeleteAccountSection";
-import PushNotificationsSection from "@/app/components/settings/PushNotificationsSection";
 import {
   getCurrentAuthUser,
   getCurrentUserId,
@@ -239,8 +238,6 @@ export default function SettingsPage() {
                   </Link>
                 ))}
               </section>
-
-              <PushNotificationsSection />
 
               <DeleteAccountSection onError={setError} />
 

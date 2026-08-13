@@ -15,6 +15,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
+import HelpBetaSheet from "@/app/components/help/HelpBetaSheet";
 import {
   PlannerWorkspacePage,
   useSetPlannerWorkspaceHeaderState,
@@ -452,6 +453,7 @@ function EventsPageClientView({
   const isCalendarWorkspaceHost = workspaceHost === "calendar";
   const guardProfile = useGuardProfile();
   const handledCreateParamsRef = useRef<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [mountListState] = useState(readMountEventsListState);
   const [role, setRole] = useState<UserRole | null>(() =>
     resolveEventsWorkspaceChromeRole(guardProfile?.role, readCachedNavRole()),
@@ -1506,19 +1508,51 @@ function EventsPageClientView({
     }
   }
 
+  const helpIconButtonClass =
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
+
   const workspaceHeaderActions: ReactNode | undefined = !isPlanner
     ? undefined
     : hideEventsHeaderCreateForCalendarFlow || createOpen || historyTabRowSelectionMode
-      ? EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER
+      ? (
+          <div className="flex gap-2 items-center">
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              aria-label="Help"
+              title="Help"
+              className={helpIconButtonClass}
+            >
+              <span className="flex h-4 w-4 items-center justify-center text-xs font-bold">
+                ?
+              </span>
+            </button>
+            {EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER}
+          </div>
+        )
       : (
-          <EventsWorkspaceCreateEventAction
-            onClick={() => {
-              void openCreateFlow();
-            }}
-          />
+          <div className="flex gap-2 items-center">
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              aria-label="Help"
+              title="Help"
+              className={helpIconButtonClass}
+            >
+              <span className="flex h-4 w-4 items-center justify-center text-xs font-bold">
+                ?
+              </span>
+            </button>
+            <EventsWorkspaceCreateEventAction
+              onClick={() => {
+                void openCreateFlow();
+              }}
+            />
+          </div>
         );
 
   return (
+    <>
       <PlannerWorkspacePage
         initialRole={resolvedRole}
         activeWorkspaceHref={eventsWorkspaceActiveHref}
@@ -1909,5 +1943,8 @@ function EventsPageClientView({
             </>
           ) : null}
       </PlannerWorkspacePage>
+
+      <HelpBetaSheet open={helpOpen} onClose={() => setHelpOpen(false)} context="events" />
+    </>
   );
 }

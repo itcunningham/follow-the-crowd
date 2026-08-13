@@ -86,8 +86,9 @@ import {
 import { markEventChatRead } from "@/lib/messageReads";
 import {
   formatGroupChatSystemNoticeText,
+  isCrewMemberJoinedNotice,
   isGroupChatSystemUpdateMessage,
-  isHiddenCrewRosterNotice,
+  shouldOmitCrewMessageForViewer,
 } from "@/lib/groupChatSystemMessages";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -876,7 +877,13 @@ export default function EventCrewChatPage() {
 
       setMessages(
         rows
-          .filter((message) => !isHiddenCrewRosterNotice(message.text))
+          .filter(
+            (message) =>
+              !shouldOmitCrewMessageForViewer(message.text, {
+                viewerUserId: userId,
+                ownerId,
+              }),
+          )
           .map((message) => tagChatMessageForScroll(message, userId)),
       );
       setReactions(reactionsResult);
@@ -895,7 +902,7 @@ export default function EventCrewChatPage() {
         setMessagesLoading(false);
       }
     }
-  }, [canAccessChat, currentUserId, eventId, loadSenderProfiles, markGroupChatOpened]);
+  }, [canAccessChat, currentUserId, eventId, loadSenderProfiles, markGroupChatOpened, ownerId]);
 
   const loadAccess = useCallback(async () => {
     if (!eventId) {
@@ -1033,7 +1040,16 @@ export default function EventCrewChatPage() {
         },
         async (payload) => {
           const newMessage = payload.new as EventCrewChatMessage;
-          if (isHiddenCrewRosterNotice(newMessage.text)) {
+          if (isCrewMemberJoinedNotice(newMessage.text)) {
+            void loadCrewParticipants(eventId);
+          }
+
+          if (
+            shouldOmitCrewMessageForViewer(newMessage.text, {
+              viewerUserId: currentUserId,
+              ownerId,
+            })
+          ) {
             return;
           }
 
@@ -1112,7 +1128,14 @@ export default function EventCrewChatPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventId, currentUserId, captureScrollBeforeIncomingInsert, addHighlightedMessageId]);
+  }, [
+    eventId,
+    currentUserId,
+    ownerId,
+    captureScrollBeforeIncomingInsert,
+    addHighlightedMessageId,
+    loadCrewParticipants,
+  ]);
 
   useEffect(() => {
     if (!eventId) {

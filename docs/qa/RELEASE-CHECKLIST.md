@@ -16,11 +16,20 @@ Steps before and during FTC coached private beta releases.
 | REL-03 | Handoff docs updated (`docs/handoff/CURRENT-STATE.md`) | Passed | Builder | 2026-07-16 |
 | REL-04 | New Supabase SQL identified and documented | Passed | Builder | See `docs/handoff/SUPABASE.md` |
 | REL-05 | Isaac runs any new migrations in Supabase SQL Editor | Passed | Isaac | Applied before GO |
+| REL-05a | **Rerun the security audit after any manually applied SQL** | Not Started | Isaac | Standing rule — see below |
 | REL-06 | [TEST-PLAN.md](./TEST-PLAN.md) critical paths **Passed** | Passed | QA | Automated 8/8 + manual iPhone 7/7 |
 | REL-07 | [REGRESSION-CHECKLIST.md](./REGRESSION-CHECKLIST.md) **Passed** on production | Passed | QA | At GO |
 | REL-08 | Zero open **Critical** bugs | Passed | QA / Isaac | |
 | REL-09 | **High** bugs reviewed — fix or accept risk | Passed | Isaac | Zero High at GO |
 | REL-10 | Beta tester accounts provisioned | Not Started | Isaac | Before first coached invite |
+
+### REL-05a — standing rule: SQL applied by hand means the audit is stale
+
+**Any time SQL is applied manually, rerun the security audit before shipping.** Run `scripts/supabaseSecurityAuditChecklist.sql`, then `scripts/supabaseSecurityAuditChecklistSupplement.sql`. Both are read-only.
+
+This is not a one-off task that can be marked Passed and forgotten. Setup scripts are applied by hand in an order nobody records, so running an older script after a newer one silently reinstates whatever it creates — `setupProductionRls.sql` re-creates `messages_select_event_authenticated`, which `setupEventCrewChat.sql` exists to drop. Postgres permissive policies are OR'd together, so one stale broad policy quietly defeats every tighter policy beside it, and nothing in the app fails or logs when that happens.
+
+A passing audit is therefore a statement about the database *at that moment*, not a property the schema holds. The 16/16 recorded below was true on 2026-07-16 and says nothing about today.
 
 ---
 

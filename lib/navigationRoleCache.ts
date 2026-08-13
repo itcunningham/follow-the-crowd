@@ -100,8 +100,44 @@ if (typeof window !== "undefined") {
   seedSessionNavigationFromPersistentStorage();
 }
 
+/**
+ * Cached navigation state only means something while a session exists.
+ *
+ * `readLocalNavRoleCache` already guarded on the session; the sessionStorage
+ * path above it did not, so after a sign-out — or for an account deleted
+ * server-side, which cannot reach a device's storage — a stale role survived
+ * and drove authenticated prefetches that reached PostgREST as `anon`.
+ *
+ * Discarding here rather than only ignoring: a cache belonging to a session
+ * that no longer exists is not going to become valid again, and leaving it
+ * means the next reader repeats the same mistake.
+ */
+function discardCacheWithoutSession(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  if (readSupabaseSessionUserIdSync()) {
+    return false;
+  }
+
+  const hadCachedState =
+    sessionStorage.getItem(NAV_ROLE_CACHE_KEY) !== null ||
+    sessionStorage.getItem(NAV_USER_CACHE_KEY) !== null;
+
+  if (hadCachedState) {
+    clearCachedNavigation();
+  }
+
+  return true;
+}
+
 export function readCachedNavRole(): UserRole | null {
   if (typeof window === "undefined") {
+    return null;
+  }
+
+  if (discardCacheWithoutSession()) {
     return null;
   }
 
@@ -115,10 +151,24 @@ export function readCachedNavRole(): UserRole | null {
 }
 
 export function readCachedNavigation(): { role: UserRole | null; userId: string | null } {
+  if (discardCacheWithoutSession()) {
+    return { role: null, userId: null };
+  }
+
   const role = readCachedNavRole();
-  const sessionUserId =
+  const liveUserId = readSupabaseSessionUserIdSync();
+  const cachedUserId =
     typeof window === "undefined" ? null : sessionStorage.getItem(NAV_USER_CACHE_KEY)?.trim() || null;
-  const userId = sessionUserId ?? readSupabaseSessionUserIdSync();
+
+  // The live session wins. Previously a cached id was preferred over it, so an
+  // id left behind by the previously signed-in account kept being used — which
+  // is how a deleted user's id was still appearing in notification queries.
+  if (cachedUserId && liveUserId && cachedUserId !== liveUserId) {
+    clearCachedNavigation();
+    return { role: null, userId: liveUserId };
+  }
+
+  const userId = liveUserId ?? cachedUserId;
 
   return { role, userId: userId?.trim() ? userId : null };
 }

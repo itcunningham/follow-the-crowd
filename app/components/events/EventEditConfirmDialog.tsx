@@ -32,11 +32,10 @@ export default function EventEditConfirmDialog({
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="event-edit-confirm-title" className="text-base font-semibold text-ftc-text">
-          Update event and notify group chat?
+          Update event and notify crew chat?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-          This event has booking requests or confirmed DJs. A summary of these changes will be
-          posted in the event group chat.
+          DJs with bookings will be notified of these changes in the crew chat
         </p>
 
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">

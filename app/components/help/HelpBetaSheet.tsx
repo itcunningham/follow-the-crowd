@@ -7,18 +7,26 @@ import BookingSheetDialog, {
 import { getSupportEmail } from "@/lib/supportContact";
 
 type HelpView = "menu" | "bookings" | "dm" | "crew-chat" | "need-help";
+type HelpContext = "profile" | "events" | "messages" | "crew-chat";
 
 export default function HelpBetaSheet({
   open,
   onClose,
+  context = "profile",
 }: {
   open: boolean;
   onClose: () => void;
+  context?: HelpContext;
 }) {
   const [view, setView] = useState<HelpView>("menu");
   const [bookingsStep, setBookingsStep] = useState(1);
   const supportEmail = getSupportEmail();
   const isRealEmail = supportEmail && !supportEmail.includes("example.com");
+
+  const showBookings = context === "events";
+  const showDm = context === "messages";
+  const showCrewChat = context === "crew-chat";
+  const showNeedHelp = true;
 
   function handleBackFromTopic() {
     setView("menu");
@@ -60,40 +68,48 @@ export default function HelpBetaSheet({
         footer={<BookingSheetSecondaryButton onClick={handleClose}>Close</BookingSheetSecondaryButton>}
       >
         <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => {
-              setView("bookings");
-              setBookingsStep(1);
-            }}
-            className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-left text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong"
-          >
-            How bookings work
-          </button>
+          {showBookings ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView("bookings");
+                setBookingsStep(1);
+              }}
+              className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-left text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong"
+            >
+              How bookings work
+            </button>
+          ) : null}
 
-          <button
-            type="button"
-            onClick={() => setView("dm")}
-            className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-left text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong"
-          >
-            Direct messages
-          </button>
+          {showDm ? (
+            <button
+              type="button"
+              onClick={() => setView("dm")}
+              className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-left text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong"
+            >
+              Direct messages
+            </button>
+          ) : null}
 
-          <button
-            type="button"
-            onClick={() => setView("crew-chat")}
-            className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-left text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong"
-          >
-            Event crew chat
-          </button>
+          {showCrewChat ? (
+            <button
+              type="button"
+              onClick={() => setView("crew-chat")}
+              className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-left text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong"
+            >
+              Event crew chat
+            </button>
+          ) : null}
 
-          <button
-            type="button"
-            onClick={() => setView("need-help")}
-            className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-left text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong"
-          >
-            Need help?
-          </button>
+          {showNeedHelp ? (
+            <button
+              type="button"
+              onClick={() => setView("need-help")}
+              className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-left text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong"
+            >
+              Need help?
+            </button>
+          ) : null}
         </div>
       </BookingSheetDialog>
     );
@@ -106,19 +122,19 @@ export default function HelpBetaSheet({
     const bookingSteps = [
       {
         title: "Create event",
-        copy: "Start in Events and create a new event with date, time, and location.",
+        copy: "Start in Events and create a new event with date, time, and location",
       },
       {
         title: "Add DJs",
-        copy: "Search for DJs you want to book and add them to the event.",
+        copy: "Search for DJs you want to book and add them to the event",
       },
       {
         title: "Send bookings",
-        copy: "Review the details, then send the booking requests to the DJs.",
+        copy: "Review the details, then send the booking requests to the DJs",
       },
       {
         title: "Coordinate once accepted",
-        copy: "When a DJ accepts, you can message them or use the event crew chat to coordinate with the event crew.",
+        copy: "When a DJ accepts, you can message them or use the event crew chat to coordinate with the event crew",
       },
     ];
 
@@ -134,7 +150,7 @@ export default function HelpBetaSheet({
         footer={
           <div className="flex w-full items-center justify-between gap-2 sm:justify-end">
             <BookingSheetSecondaryButton onClick={handleBackFromTopic}>
-              ← Back
+              Help
             </BookingSheetSecondaryButton>
 
             <div className="flex gap-2">
@@ -181,7 +197,7 @@ export default function HelpBetaSheet({
               Start a conversation
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text">
-              Find a profile and tap to send a direct message.
+              Find a profile and tap to send a direct message
             </p>
           </div>
 
@@ -190,7 +206,7 @@ export default function HelpBetaSheet({
               Your messages
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text">
-              All conversations appear in the Messages tab. Each person has their own message thread.
+              All conversations appear in the Messages tab. Each person has their own message thread
             </p>
           </div>
         </div>
@@ -216,7 +232,7 @@ export default function HelpBetaSheet({
               Appears after booking accepted
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text">
-              Once bookings are accepted, the event crew can use crew chat to coordinate.
+              Once bookings are accepted, the event crew can use crew chat to coordinate
             </p>
           </div>
 
@@ -225,7 +241,7 @@ export default function HelpBetaSheet({
               Coordinate together
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text">
-              Message the event crew in one place to share updates and confirm details.
+              Message the event crew in one place to share updates and confirm details
             </p>
           </div>
         </div>
@@ -247,7 +263,7 @@ export default function HelpBetaSheet({
       >
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-ftc-text">
-            Something not working or stuck? We're here to help.
+            Something not working or stuck? We&apos;re here to help
           </p>
 
           {isRealEmail ? (
@@ -259,7 +275,7 @@ export default function HelpBetaSheet({
             </a>
           ) : (
             <p className="text-xs text-ftc-text-secondary">
-              Support contact is not configured yet. Check back soon.
+              Support contact is not configured yet. Check back soon
             </p>
           )}
         </div>

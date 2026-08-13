@@ -267,6 +267,14 @@ function parseLegacyBookingActivityCancelledBookingId(text: string): string | nu
 
 function parseLegacyEventCancellationActivityEventName(text: string): string | null {
   const trimmed = text.trim();
+  const withEventId = trimmed.match(
+    /^BOOKING ACTIVITY · event-cancelled:[0-9a-f-]+ · (.+)$/i,
+  );
+
+  if (withEventId?.[1]?.trim()) {
+    return withEventId[1].trim();
+  }
+
   const match = trimmed.match(/^BOOKING ACTIVITY · event-cancelled · (.+)$/i);
 
   return match?.[1]?.trim() || null;

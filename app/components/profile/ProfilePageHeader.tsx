@@ -117,7 +117,7 @@ export default function ProfilePageHeader({
         </div>
       </header>
 
-      <HelpBetaSheet open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpBetaSheet open={helpOpen} onClose={() => setHelpOpen(false)} context="profile" />
     </>
   );
 }

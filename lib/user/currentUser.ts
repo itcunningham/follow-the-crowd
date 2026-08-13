@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 export const LOGIN_PATH = "/login";
 export const SIGNUP_PATH = "/signup";
+export const FORGOT_PASSWORD_PATH = "/forgot-password";
 export const PROFILE_SETUP_PATH = "/profile/setup";
 export const SETTINGS_PATH = "/settings";
 export const BOOKING_PLANS_PATH = "/booking-plans";
@@ -18,7 +19,6 @@ export type UserProfile = {
   user_id: string;
   role: UserRole | null;
   onboarding_complete: boolean;
-  full_name: string | null;
   username: string | null;
   display_name: string | null;
   bio: string | null;
@@ -30,7 +30,8 @@ export type UserProfile = {
   location: string | null;
   avatar_url: string | null;
   artist_name: string | null;
-  dj_booking_contact_name: string | null;
+  /** Present only on the owner's own profile — omitted from public reads. */
+  dj_booking_contact_name?: string | null;
   dj_availability: string | null;
   dj_past_gigs: string | null;
   promoter_brand_name: string | null;
@@ -61,8 +62,52 @@ export type UserProfileInput = {
   promoter_past_events: string;
 };
 
+/**
+ * Fields any authenticated user may be shown about another user.
+ *
+ * DATA MINIMISATION, NOT CONFIDENTIALITY. `users_select_authenticated` still
+ * permits `select to authenticated using (auth.uid() is not null)`, so a
+ * determined API client can read the underlying row regardless of what this
+ * projection asks for. This narrows what ordinary application traffic carries;
+ * it is not a security boundary. Database-enforced private profile fields are
+ * tracked as post-beta security debt.
+ *
+ * Two fields are deliberately absent:
+ *   full_name               - never written by any form and rendered nowhere;
+ *                             it was fetched on every profile read and used by
+ *                             nothing. Removed from the type too, so it cannot
+ *                             quietly come back.
+ *   dj_booking_contact_name - written by the owner's profile form and displayed
+ *                             on no surface. Stored separately in user_private_data;
+ *                             owner-only read below.
+ */
 const PROFILE_FIELDS =
-  "user_id, role, onboarding_complete, full_name, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_booking_contact_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
+  "user_id, role, onboarding_complete, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
+
+/**
+ * The owner's own profile fields from the public view.
+ * dj_booking_contact_name is now private-table-only and fetched separately (Phase 8+).
+ * my_profile still includes the old column temporarily (not yet cleaned up),
+ * but we no longer read it here — only user_private_data is authoritative.
+ */
+const OWN_PROFILE_FIELDS = PROFILE_FIELDS;
+
+/**
+ * Where the owner's own profile public fields come from.
+ *
+ * `public.my_profile` is a view over public.users filtered to
+ * `user_id = auth_user_id()`, exposing exactly PROFILE_FIELDS (no private columns).
+ * It takes no parameters, so a caller can narrow the result but never widen it
+ * to someone else's row.
+ *
+ * The private contact field (dj_booking_contact_name) is fetched in a separate
+ * query from user_private_data and merged in application code.
+ *
+ * Reads of OTHER users stay on `users` with PROFILE_FIELDS. Writes stay on
+ * `users` too - INSERT/UPDATE were left table-level, so profile editing is
+ * unchanged.
+ */
+const OWN_PROFILE_SOURCE = "my_profile";
 
 const PROFILE_LOCAL_CACHE_KEY = "ftc-user-profile-local";
 
@@ -328,6 +373,15 @@ export async function signUpWithEmail(email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
+    // Without this, Supabase falls back to the project's Site URL for the
+    // confirmation link — which was still the default localhost:3000, so anyone
+    // confirming on a phone landed on a dead page. Password reset already used
+    // this helper; signup was the one that missed it.
+    //
+    // getAuthRedirectUrl resolves NEXT_PUBLIC_APP_URL, then a non-localhost
+    // window origin, then the production fallback — so it never emits a
+    // localhost or LAN address into an email that outlives the session.
+    options: { emailRedirectTo: getAuthRedirectUrl(LOGIN_PATH) },
   });
 
   if (error) {
@@ -454,25 +508,50 @@ export async function getCurrentUserProfile(options?: {
 
   profileRequest = (async () => {
     try {
-      const { data, error } = await supabase
-        .from("users")
-        .select(PROFILE_FIELDS)
+      // Query 1: Public/owner profile fields from my_profile
+      const { data: publicData, error: publicError } = await supabase
+        .from(OWN_PROFILE_SOURCE)
+        .select(OWN_PROFILE_FIELDS)
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (error) {
-        throw error;
+      if (publicError) {
+        throw publicError;
       }
 
-      const profile = (data as UserProfile | null) ?? null;
+      const publicProfile = (publicData as UserProfile | null) ?? null;
 
-      if (profile) {
-        applyCachedProfile(profile);
-        writeLocalProfileCache(profile);
-      } else {
+      if (!publicProfile) {
         cachedProfile = null;
         cachedProfileUserId = userId;
+        return null;
       }
+
+      // Query 2: Private contact field from user_private_data
+      // user_private_data is now the authoritative source for dj_booking_contact_name.
+      // No fallback to the old column.
+      const { data: privateData, error: privateError } = await supabase
+        .from("user_private_data")
+        .select("dj_booking_contact_name")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      // If row doesn't exist, treat as NULL (not an error)
+      if (privateError && privateError.code !== "PGRST116") {
+        throw privateError;
+      }
+
+      // Merge results: public fields + private contact field
+      // user_private_data is authoritative; if no private row exists, value is NULL
+      const dj_booking_contact_name = privateData?.dj_booking_contact_name ?? null;
+
+      const profile: UserProfile = {
+        ...publicProfile,
+        dj_booking_contact_name,
+      };
+
+      applyCachedProfile(profile);
+      writeLocalProfileCache(profile);
 
       return profile;
     } finally {
@@ -581,7 +660,8 @@ export async function saveUserProfile(
     throw new Error("Complete role onboarding before saving your profile");
   }
 
-  const updatePayload: Record<string, string> = {
+  // Distribute fields to their respective tables
+  const publicUpdatePayload: Record<string, string> = {
     username: normalizeUsername(input.username),
     display_name: input.display_name.trim().slice(0, MAX_PROFILE_DISPLAY_NAME_LENGTH),
     bio: input.bio.trim(),
@@ -592,7 +672,6 @@ export async function saveUserProfile(
     soundcloud_url: input.soundcloud_url.trim(),
     website_url: input.website_url.trim(),
     artist_name: input.artist_name.trim(),
-    dj_booking_contact_name: input.dj_booking_contact_name.trim(),
     promoter_brand_name: input.promoter_brand_name.trim(),
     promoter_brand_description: input.promoter_brand_description.trim(),
     dj_availability: input.dj_availability.trim(),
@@ -603,43 +682,65 @@ export async function saveUserProfile(
   };
 
   if (options && "avatarUrl" in options) {
-    updatePayload.avatar_url = options.avatarUrl?.trim() ?? "";
+    publicUpdatePayload.avatar_url = options.avatarUrl?.trim() ?? "";
   }
 
-  const { data, error } = await supabase
+  const privateData = {
+    user_id: userId,
+    dj_booking_contact_name: input.dj_booking_contact_name.trim(),
+  };
+
+  // Save public fields to users table
+  const { data: publicData, error: publicError } = await supabase
     .from("users")
-    .update(updatePayload)
+    .update(publicUpdatePayload)
     .eq("user_id", userId)
     .select("user_id, role, onboarding_complete, display_name")
     .maybeSingle();
 
-  if (error) {
-    console.error("[users] Failed to save profile:", {
+  if (publicError) {
+    console.error("[users] Failed to save public profile fields:", {
       userId,
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
+      message: publicError.message,
+      code: publicError.code,
+      details: publicError.details,
+      hint: publicError.hint,
     });
 
-    if (error.code === "23505") {
+    if (publicError.code === "23505") {
       throw new Error("That username is already taken");
     }
 
-    throw error;
+    throw publicError;
   }
 
-  if (!data) {
+  if (!publicData) {
     console.error("[users] Profile update matched no row for current user:", { userId });
     throw new Error("Profile row not found for the current user");
   }
 
-  if (!data.display_name?.trim()) {
+  if (!publicData.display_name?.trim()) {
     console.error("[users] Profile save did not persist display name:", {
       userId,
-      display_name: data.display_name,
+      display_name: publicData.display_name,
     });
     throw new Error("Failed to save your profile. Please try again.");
+  }
+
+  // Save private contact field to user_private_data table
+  const { error: privateError } = await supabase
+    .from("user_private_data")
+    .upsert(privateData, { onConflict: "user_id" });
+
+  if (privateError) {
+    console.error("[users] Failed to save private profile fields:", {
+      userId,
+      message: privateError.message,
+      code: privateError.code,
+      details: privateError.details,
+      hint: privateError.hint,
+    });
+    throw privateError;
   }
 
   invalidateCurrentUserProfileCache();
@@ -791,7 +892,11 @@ export function getRoleLabel(role: UserRole | null): string {
   }
 
   if (role === "promoter") {
-    return "Promoter";
+    // "Promoter / Event Planner", not "Promoter": onboarding and Edit Profile
+    // have always offered this role under the long name, so the short label
+    // here was the drift the comment above warns about, not a deliberate
+    // abbreviation.
+    return "Promoter / Event Planner";
   }
 
   if (role === "both") {
@@ -817,6 +922,65 @@ export async function listBookableDjs(): Promise<UserProfile[]> {
   const currentUserId = await getCurrentUserId();
 
   const { data, error } = await supabase.from("users").select(PROFILE_FIELDS);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as UserProfile[])
+    .filter(
+      (user) =>
+        user.user_id !== currentUserId &&
+        user.onboarding_complete &&
+        Boolean(user.display_name?.trim()) &&
+        (user.role === "dj" || user.role === "both"),
+    )
+    .sort((a, b) => (a.display_name ?? "").localeCompare(b.display_name ?? ""));
+}
+
+/**
+ * The planner's own roster, in the same shape `listBookableDjs` returns.
+ *
+ * `listBookableDjs` is deliberately left untouched beside this: while the
+ * scoping flag is off it stays the only caller-visible behaviour, so the
+ * rollback for anything wrong here is a flag rather than a migration.
+ *
+ * RLS already restricts `planner_dj_roster` to `planner_id = auth_user_id()`,
+ * so the roster query needs no planner filter of its own — but relying on that
+ * silently would make a policy change look like a product bug, so the eq() is
+ * stated anyway.
+ */
+export async function listRosterDjs(): Promise<UserProfile[]> {
+  const currentUserId = await getCurrentUserId();
+
+  if (!currentUserId) {
+    return [];
+  }
+
+  const { data: rosterRows, error: rosterError } = await supabase
+    .from("planner_dj_roster")
+    .select("dj_id")
+    .eq("planner_id", currentUserId);
+
+  if (rosterError) {
+    throw rosterError;
+  }
+
+  const djIds = (rosterRows ?? []).map((row) => row.dj_id as string);
+
+  if (djIds.length === 0) {
+    return [];
+  }
+
+  // `.is("deleted_at", null)` filters server-side on a column PROFILE_FIELDS
+  // does not select, which is why the projection stays unchanged. It is
+  // redundant today — anonymisation already clears onboarding_complete — but
+  // stated so this filter does not silently depend on that staying true.
+  const { data, error } = await supabase
+    .from("users")
+    .select(PROFILE_FIELDS)
+    .in("user_id", djIds)
+    .is("deleted_at", null);
 
   if (error) {
     throw error;

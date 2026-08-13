@@ -14,6 +14,53 @@ This script removes **QA account data only**. Non-QA users (e.g. real beta teste
 
 ---
 
+## The 2026-08-08 reset did NOT use this script — read before reaching for it
+
+The clean reset before the two-account beta pass ran off an **explicit list of
+four literal user ids**, not the detection rules below. That was not a
+preference; the script could not have done the job.
+
+**Why.** Detection (`resetQaEnvironment.sql` lines 91–95) requires a
+`FTC QA` display name, an `ftcqa_` username, or an `ftcqa` / `ftc.qa` / `ftc_qa`
+email local part. The accounts holding the data were `FTC QABot` and `Synergy`.
+Neither matched. Running the script would have reported success and deleted
+almost nothing.
+
+**Do not loosen the detection rules to fix this.** They are the only thing
+standing between a reset and a real user's data — the regexes at lines 72–77 are
+deliberately permissive about *labelling* and the tight gate below them is what
+makes that safe. Widening the gate trades a one-time inconvenience for a
+permanent hazard.
+
+**Use an explicit scope instead.** The procedure that worked:
+
+1. **Inventory** — read-only, one row per account with counts of events owned,
+   bookings, DM threads, messages authored and last activity. This is how you
+   identify which accounts actually hold test data.
+2. **Pre-flight** — read-only, replicating the deletion rules against an explicit
+   `targets(user_id)` list, reporting per-table counts **plus** a
+   `NON-QA COLLATERAL` section. That section is the point of the exercise.
+3. **Review the collateral, then widen or narrow the target list** and re-run the
+   pre-flight until collateral is zero.
+4. **Delete** — one transaction, every filter a literal id, no `LIKE` and no
+   pattern match anywhere.
+5. **Verify** — read-only, asserting the accounts survived *and* their data is
+   gone *and* nothing was orphaned.
+
+**The trap this catches.** Two of the deletion rules scope by **event
+ownership, not authorship**. A booking or crew message belonging to an account
+you never listed is still deleted if it sits on a target-owned event. The first
+pre-flight run surfaced 14 bookings, 2 crew messages, 2 read rows and 2
+notifications belonging to `Synergy` — an account explicitly excluded at the
+time. "Delete only my test accounts' data" and "reset this account's events"
+are not the same instruction, and the difference is invisible without that
+check.
+
+Storage is not covered by the explicit-scope route. Event covers and DM
+attachments remain as orphaned bucket files; see the storage note below.
+
+---
+
 ## Step 1 — Open Supabase SQL Editor
 
 Dashboard → **SQL** → **New query**.

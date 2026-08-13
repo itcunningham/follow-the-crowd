@@ -15,6 +15,8 @@ import {
   CREW_CHAT_EVENT_DETAIL_RETURN_PARAM,
   buildEventDetailHrefFromReturnQuery,
 } from "@/lib/events/eventDetailCrewChatReturn";
+import { CREW_CHAT_STARTED_NOTICE, formatCrewMemberJoinedNotice } from "@/lib/groupChatSystemMessages";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 
 export type EventCrewChatMessage = {
   id: string;
@@ -271,11 +273,12 @@ export async function getEventCrewParticipantIds(eventId: string): Promise<strin
 }
 
 /**
- * After crew chat unlocks (manual Start or auto-start on 2nd accept): notify
- * every other crew member so their Messages → Crew Chats inbox can refetch.
- * Start only writes `events.crew_chat_started_at` — without this there is no
- * realtime signal on the DJ side. Also inserts a system message and ensures
- * the crew chat shows as unread. Soft-fail per recipient.
+ * After crew chat unlocks (manual Start or auto-start on 2nd accept):
+ * 1. Insert a system notice so Crew Chats can show unread until opened
+ * 2. Notify every other crew member (badge + inbox refetch)
+ *
+ * Start only writes `events.crew_chat_started_at` — without a message, unread
+ * math has nothing to attach to. Soft-fail per step.
  */
 export async function notifyCrewChatStarted(options: {
   eventId: string;
@@ -287,61 +290,135 @@ export async function notifyCrewChatStarted(options: {
 
   let senderId: string;
   let participants: string[];
-  let senderProfile;
 
   try {
     senderId = await getCurrentUserId();
-    senderProfile = await getCurrentUserProfile();
     participants = await getEventCrewParticipantIds(eventId);
   } catch (loadError) {
     console.error("[eventCrewChat] Crew chat start notify setup failed:", loadError);
     return;
   }
 
-  const senderName = senderProfile?.display_name?.trim() || "Planner";
-  const now = new Date().toISOString();
-
-  // Insert system message for crew start
-  const insertPromise = Promise.resolve(supabase.from("messages").insert({
+  const { error: insertError } = await supabase.from("messages").insert({
     event_id: eventId,
     user_id: senderId,
-    text: `${senderName} started the crew`,
-  })).catch((error) => {
-    console.error("[eventCrewChat] Failed to insert crew started system message:", error);
+    text: CREW_CHAT_STARTED_NOTICE,
   });
 
-  // Mark crew chat as read for the planner (they don't need to see it as unread)
-  const markReadPromise = Promise.resolve(supabase
-    .from("message_reads")
-    .upsert(
-      { user_id: senderId, event_id: eventId, last_read_at: now },
-      { onConflict: "user_id,event_id" },
-    )
-  ).catch((error) => {
-    console.error("[eventCrewChat] Failed to mark crew chat read for planner:", error);
+  if (insertError) {
+    console.error("[eventCrewChat] Failed to insert crew started system message:", insertError);
+  } else {
+    try {
+      await markEventChatRead(eventId);
+    } catch (readError) {
+      console.error("[eventCrewChat] Failed to mark crew chat read after start notice:", readError);
+    }
+  }
+
+  await Promise.all(
+    participants
+      .filter((participantId) => participantId !== senderId)
+      .map(async (participantId) => {
+        try {
+          await createNotification(
+            participantId,
+            "message",
+            eventName,
+            CREW_CHAT_STARTED_NOTICE,
+            link,
+          );
+        } catch (notificationError) {
+          console.error(
+            "[eventCrewChat] Crew chat started but notification failed:",
+            participantId,
+            notificationError,
+          );
+        }
+      }),
+  );
+}
+
+/**
+ * After a DJ accepts into an unlocked crew chat: insert "{name} joined the crew"
+ * so other DJs get an Instagram-style pill + inbox unread. Notify other DJs only
+ * (not the planner, not the joiner). Soft-fail.
+ */
+export async function notifyCrewMemberJoined(options: {
+  eventId: string;
+  eventName: string;
+  ownerId: string;
+  /** When true, insert the pill/unread seed but skip push (e.g. auto-start already notified). */
+  skipNotification?: boolean;
+}): Promise<void> {
+  const { eventId, ownerId, skipNotification = false } = options;
+  const eventName = options.eventName.trim() || "Crew chat";
+  const link = getEventCrewChatLink(eventId);
+  const ownerKey = ownerId.trim();
+
+  let joinerId: string;
+  let participants: string[];
+  let joinerProfile;
+
+  try {
+    joinerId = await getCurrentUserId();
+    joinerProfile = await getCurrentUserProfile();
+    participants = await getEventCrewParticipantIds(eventId);
+  } catch (loadError) {
+    console.error("[eventCrewChat] Crew join notify setup failed:", loadError);
+    return;
+  }
+
+  // Planner accepting into their own event as DJ/both is rare; never fan-out a
+  // join notice as if the owner "joined" the crew they run.
+  if (ownerKey && joinerId === ownerKey) {
+    return;
+  }
+
+  const joinerName = resolveUserDisplayName(joinerProfile, { fallback: "Someone" });
+  const noticeText = formatCrewMemberJoinedNotice(joinerName);
+
+  const { error: insertError } = await supabase.from("messages").insert({
+    event_id: eventId,
+    user_id: joinerId,
+    text: noticeText,
   });
 
-  const notifyPromises = participants
-    .filter((participantId) => participantId !== senderId)
-    .map(async (participantId) => {
-      try {
-        await createNotification(
-          participantId,
-          "message",
-          eventName,
-          "Crew started",
-          link,
-        );
-      } catch (notificationError) {
-        console.error(
-          "[eventCrewChat] Crew started but notification failed:",
-          participantId,
-          notificationError,
-        );
-      }
-    });
+  if (insertError) {
+    console.error("[eventCrewChat] Failed to insert crew join system message:", insertError);
+    return;
+  }
 
-  await Promise.all([insertPromise, markReadPromise, ...notifyPromises]);
+  try {
+    await markEventChatRead(eventId);
+  } catch (readError) {
+    console.error("[eventCrewChat] Failed to mark crew chat read after join notice:", readError);
+  }
+
+  if (skipNotification) {
+    return;
+  }
+
+  await Promise.all(
+    participants
+      .filter((participantId) => participantId !== joinerId && participantId !== ownerKey)
+      .map(async (participantId) => {
+        try {
+          await createNotification(
+            participantId,
+            "message",
+            eventName,
+            noticeText,
+            link,
+          );
+        } catch (notificationError) {
+          console.error(
+            "[eventCrewChat] Crew join notify failed:",
+            participantId,
+            notificationError,
+          );
+        }
+      }),
+  );
 }
 
 export async function sendEventCrewChatMessage(

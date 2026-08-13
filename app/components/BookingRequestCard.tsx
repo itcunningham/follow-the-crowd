@@ -209,7 +209,7 @@ export default function BookingRequestCard({
   function renderStatusBadge() {
     const displayStatus: BookingRequestStatus = showAsCancelled ? "cancelled" : booking.status;
 
-    return <BookingStatusBadge status={displayStatus} isDmContext={!!dmConversationId} />;
+    return <BookingStatusBadge status={displayStatus} />;
   }
 
   function renderExpandedHeader(statusBadge: ReactNode) {
@@ -423,22 +423,6 @@ export default function BookingRequestCard({
                 </button>
               </div>
             )}
-          </div>
-        ) : null}
-
-        {showActionButtons &&
-        canRespond &&
-        isPending &&
-        pendingProposal &&
-        booking.recipient_id === currentUserId ? (
-          <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
-            <DeclineConfirmButton
-              onConfirm={onDecline}
-              disabled={actionDisabled}
-              idleClassName={DM_BOOKING_CARD_DECLINE_BUTTON_CLASS}
-              armedClassName={DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS}
-              className="w-full"
-            />
           </div>
         ) : null}
 

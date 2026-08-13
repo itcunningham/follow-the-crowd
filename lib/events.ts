@@ -7,6 +7,7 @@ import {
 } from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import {
+  formatEventCancelledInboxPreview,
   getActiveEventLineupStats,
   insertEventCancellationActivityMessagesIfNeeded,
   listBookingRequestsForEvent,
@@ -791,13 +792,23 @@ function parseCancelEventRpcResult(data: unknown): CancelEventResult {
 async function notifyCancelledBookingsFromEventCancellation(
   cancelledBookings: BookingRequest[],
 ): Promise<void> {
+  console.log("[events] Notifying DJ of event cancellation for", cancelledBookings.length, "bookings");
+
   await Promise.all(
     cancelledBookings.map(async (booking) => {
+      console.log("[events] Processing cancelled booking notification:", {
+        id: booking.id,
+        recipient_id: booking.recipient_id,
+        conversation_id: booking.conversation_id,
+      });
+
       if (!booking.recipient_id || !booking.conversation_id) {
+        console.log("[events] Skipping: missing recipient_id or conversation_id");
         return;
       }
 
       try {
+        console.log("[events] Creating booking_update notification");
         await createNotification(
           booking.recipient_id,
           "booking_update",
@@ -805,6 +816,7 @@ async function notifyCancelledBookingsFromEventCancellation(
           `${booking.event_name} at ${booking.venue}`,
           `/dm/${booking.conversation_id}`,
         );
+        console.log("[events] booking_update notification created");
       } catch (notificationError) {
         console.error(
           "[events] Failed to notify DJ of event cancellation:",
@@ -812,11 +824,42 @@ async function notifyCancelledBookingsFromEventCancellation(
           notificationError,
         );
       }
+
+      try {
+        const eventCancellationPreview = formatEventCancelledInboxPreview(booking.event_name);
+        console.log("[events] Creating message notification with text:", eventCancellationPreview);
+        await createNotification(
+          booking.recipient_id,
+          "message",
+          "New message",
+          eventCancellationPreview,
+          `/dm/${booking.conversation_id}`,
+        );
+        console.log("[events] message notification created");
+      } catch (messageNotificationError) {
+        console.error(
+          "[events] Failed to send message notification for event cancellation:",
+          booking.id,
+          messageNotificationError,
+        );
+      }
     }),
   );
 }
 
 export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
+  console.log("[events] cancelEvent called with eventId:", eventId);
+
+  // Fetch bookings BEFORE calling cancel_event RPC, since the RPC may modify them
+  let eventBookings: BookingRequest[] = [];
+  try {
+    eventBookings = await listBookingRequestsForEvent(eventId);
+    console.log("[events] Fetched", eventBookings.length, "bookings before RPC call");
+  } catch (fetchError) {
+    console.error("[events] Failed to fetch bookings before RPC call:", fetchError);
+    eventBookings = [];
+  }
+
   const { data, error } = await supabase.rpc("cancel_event", {
     p_event_id: eventId,
   });
@@ -835,7 +878,6 @@ export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
   const result = parseCancelEventRpcResult(data);
 
   try {
-    const eventBookings = await listBookingRequestsForEvent(eventId);
     await insertEventCancellationActivityMessagesIfNeeded({
       eventName: result.event.name,
       plannerUserId: result.event.owner_id,
@@ -845,7 +887,13 @@ export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
     console.error("[events] Failed to insert event-cancellation activity DM messages:", activityError);
   }
 
-  await notifyCancelledBookingsFromEventCancellation(result.cancelledBookings);
+  // Notify all affected bookings (not just pending ones)
+  // result.cancelledBookings only contains pending bookings cancelled by the RPC,
+  // but accepted bookings are also affected by the event cancellation
+  const affectedBookings = eventBookings.filter(
+    (b) => b.status === "accepted" || b.status === "pending" || b.status === "cancelled"
+  );
+  await notifyCancelledBookingsFromEventCancellation(affectedBookings);
 
   // Pending rows may have been cancelled by the RPC; accepted rows keep
   // status=accepted and only flip in the UI via refreshed event artwork.
