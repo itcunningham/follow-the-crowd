@@ -192,6 +192,21 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
               return;
             }
 
+            // TEMPORARY — iOS Home Screen PWA session-loss investigation.
+            // Logs only booleans/stage names, never token contents. If
+            // rawTokenFound=true and getSessionFoundUser=false, the raw
+            // localStorage entry survived but auth-js's session read did
+            // not see it — the exact signature of the client falling back
+            // to in-memory storage. Remove once confirmed resolved on device.
+            if (!authUser && !AUTH_PATHS.includes(pathname) && pathname !== HOME_PATH) {
+              console.warn("[auth-diagnostic] redirecting to /login", {
+                stage: "onboarding-guard-check-access",
+                pathname,
+                rawTokenFound: Boolean(syncUserId),
+                getSessionFoundUser: Boolean(authUser),
+              });
+            }
+
             if (AUTH_PATHS.includes(pathname)) {
               if (authUser) {
                 router.replace(await getPostAuthRedirectPath());

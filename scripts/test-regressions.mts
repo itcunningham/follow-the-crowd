@@ -18512,6 +18512,7 @@ async function main() {
   testForgotPasswordFlow();
   testPlannerRosterMigrationGrantsTablePrivileges();
   testBetaPushFinalPassFourFixes();
+  testSupabaseClientHasResilientAuthStorage();
   console.log("All regression checks passed.");
 }
 
@@ -19432,6 +19433,80 @@ function testBetaPushFinalPassFourFixes() {
   assert.match(eventCrewChatSource, /"Your event crew chat is now available"/);
   // The in-thread system pill text must be untouched by the push-copy change.
   assert.match(eventCrewChatSource, /text: CREW_CHAT_STARTED_NOTICE/);
+}
+
+/**
+ * iOS Home Screen PWA session-loss root cause: @supabase/auth-js, when no
+ * explicit `auth.storage` is given, runs a ONE-SHOT localStorage write-test
+ * at client construction (`supportsLocalStorage()` in
+ * node_modules/@supabase/auth-js/dist/module/lib/helpers.js) and, on any
+ * failure, permanently falls back to an in-memory store for that client's
+ * entire lifetime -- silently, with the real (unexpired, valid) session
+ * left untouched in actual localStorage. A cold-launched standalone PWA
+ * (fresh WKWebView process, worse on older/lower-storage iPhones) can hit a
+ * transient localStorage access failure at exactly that moment, and the
+ * user is bounced to /login as if signed out.
+ *
+ * The fix passes an explicit `storage` so auth-js never runs that
+ * self-test at all -- every call gets its own try/catch instead of one
+ * make-or-break probe. This locks in that the wiring cannot silently
+ * regress back to the bare `createClient(url, key)` call.
+ */
+function testSupabaseClientHasResilientAuthStorage() {
+  const source = readFileSync(
+    new URL("../lib/supabaseClient.ts", import.meta.url),
+    "utf8",
+  );
+
+  // An explicit storage object must be passed -- this is what makes auth-js
+  // skip its own supportsLocalStorage() self-test entirely (GoTrueClient:
+  // `if (settings.storage) { this.storage = settings.storage; } else { ... }`).
+  assert.match(source, /auth:\s*\{[\s\S]*?storage:\s*resilientLocalStorage/);
+
+  // Each of the three Storage methods must be independently try/catch
+  // wrapped -- a single failed call must not disable persistence for the
+  // rest of the client's lifetime the way the SDK's default behaviour does.
+  const storageObjectSource = source.slice(
+    source.indexOf("const resilientLocalStorage"),
+    source.indexOf("export const supabase"),
+  );
+
+  for (const method of ["getItem", "setItem", "removeItem"]) {
+    const methodSource = storageObjectSource.slice(
+      storageObjectSource.indexOf(`${method}(`),
+      storageObjectSource.indexOf(`${method}(`) + 300,
+    );
+    assert.match(
+      methodSource,
+      /try\s*\{[\s\S]*?window\.localStorage\.\w+[\s\S]*?\}\s*catch/,
+      `${method} must wrap window.localStorage access in its own try/catch`,
+    );
+  }
+
+  // Must not silently disable persistence or auto-refresh -- this is a
+  // resilience fix, not a behaviour change.
+  assert.match(source, /persistSession:\s*true/);
+  assert.match(source, /autoRefreshToken:\s*true/);
+  assert.match(source, /detectSessionInUrl:\s*true/);
+
+  // No other browser-facing client creation exists to drift out of sync
+  // with this one (server-side clients in API routes/edge functions use
+  // their own createClient calls with service-role/per-request tokens and
+  // are intentionally not persistent — out of scope here).
+  const onboardingGuardSource = readFileSync(
+    new URL("../app/components/OnboardingGuard.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The temporary diagnostic added alongside this fix must never log token
+  // contents -- only booleans/stage/pathname.
+  const diagnosticBlock = onboardingGuardSource.slice(
+    onboardingGuardSource.indexOf("[auth-diagnostic]") - 50,
+    onboardingGuardSource.indexOf("[auth-diagnostic]") + 400,
+  );
+  assert.doesNotMatch(diagnosticBlock, /access_token|refresh_token|authUser\.(?!$)/);
+  assert.match(diagnosticBlock, /rawTokenFound: Boolean\(/);
+  assert.match(diagnosticBlock, /getSessionFoundUser: Boolean\(/);
 }
 
 main().catch((error) => {
