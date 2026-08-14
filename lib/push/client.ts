@@ -2,6 +2,21 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
 /**
+ * Thrown when the browser's PushSubscription (its `endpoint`, unique per
+ * browser+push-service registration) already belongs to a DIFFERENT FTC
+ * account's row — e.g. a previous account signed in on this same device
+ * without a clean sign-out. `endpoint` has a DB-level unique constraint,
+ * and RLS hides the other user's row from our existence check, so the
+ * insert fails with 23505 even though nothing looked wrong beforehand.
+ */
+class PushEndpointCollisionError extends Error {
+  constructor() {
+    super("Push endpoint already registered to another account");
+    this.name = "PushEndpointCollisionError";
+  }
+}
+
+/**
  * Detect actual notification support from browser APIs
  * (not localStorage)
  */
@@ -9,6 +24,7 @@ export type NotificationState =
   | "supported"
   | "denied"
   | "granted"
+  | "granted_not_subscribed"
   | "prompt"
   | "unsupported"
   | "ios_not_installed";
@@ -30,11 +46,47 @@ export async function detectNotificationState(): Promise<NotificationState> {
   }
 
   if (Notification.permission === "granted") {
-    return "granted";
+    // Notification.permission is per-origin, not per FTC account. A device
+    // that already granted permission for a different FTC account (or a
+    // prior subscribe that never made it into push_subscriptions) still
+    // reads "granted" here even though THIS account has no working push
+    // subscription. Confirm the actual FTC-side row before claiming this
+    // device is enabled, so we never show "enabled" when it isn't.
+    return (await hasActivePushSubscriptionForCurrentUser())
+      ? "granted"
+      : "granted_not_subscribed";
   }
 
   // "default" = not yet requested
   return "prompt";
+}
+
+async function hasActivePushSubscriptionForCurrentUser(): Promise<boolean> {
+  let userId: string;
+
+  try {
+    userId = await getCurrentUserId();
+  } catch {
+    // Not authenticated yet — nothing to report as "enabled".
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[push] Failed to check existing subscription:", error.message);
+    // Fail open to the pre-existing behaviour on a transient read error
+    // rather than trapping the user in a re-enable loop.
+    return true;
+  }
+
+  return Boolean(data);
 }
 
 /**
@@ -110,9 +162,37 @@ export async function enableNotifications(): Promise<boolean> {
     });
 
     // Save to Supabase
-    await savePushSubscription(subscription);
+    try {
+      await savePushSubscription(subscription);
+    } catch (saveError) {
+      if (!(saveError instanceof PushEndpointCollisionError)) {
+        throw saveError;
+      }
+
+      // The browser handed back a PushSubscription another account's row
+      // already owns (same device, prior account never signed out). Drop
+      // our stale browser-side subscription and mint a genuinely new one —
+      // this is our own subscription object, so unsubscribing it is a
+      // local browser operation and never touches the other account's row.
+      await subscription.unsubscribe().catch(() => {});
+
+      const freshSubscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: bytes,
+      });
+
+      await savePushSubscription(freshSubscription);
+    }
+
     return true;
   } catch (subscribeError) {
+    if (subscribeError instanceof PushEndpointCollisionError) {
+      console.error("[push] Endpoint collision persisted after resubscribe");
+      throw new Error(
+        "Couldn't enable notifications on this device — it may still be linked to another account. Try turning off notification permission for Follow The Crowd in your device Settings, then reopen the app and enable notifications again.",
+      );
+    }
+
     const errorMessage = subscribeError instanceof Error ? subscribeError.message : String(subscribeError);
     console.error("[push] Failed during subscription flow:", {
       error: errorMessage,
@@ -274,9 +354,7 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     });
     // If unique constraint violated, endpoint belongs to another session/account
     if (insertError.code === "23505" || insertError.message.includes("duplicate key")) {
-      throw new Error(
-        "This push endpoint is already registered to another session or account. Please try again or use a different device."
-      );
+      throw new PushEndpointCollisionError();
     }
     throw new Error(`Failed to save subscription: ${insertError.message}`);
   }

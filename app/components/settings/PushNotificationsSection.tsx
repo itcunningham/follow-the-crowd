@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { detectNotificationState, enableNotifications, disableNotifications } from "@/lib/push/client";
-
-type NotificationState = "supported" | "denied" | "granted" | "prompt" | "unsupported" | "ios_not_installed";
+import {
+  detectNotificationState,
+  enableNotifications,
+  disableNotifications,
+  type NotificationState,
+} from "@/lib/push/client";
 
 export default function PushNotificationsSection() {
   const [state, setState] = useState<NotificationState | null>(null);
@@ -140,6 +143,23 @@ export default function PushNotificationsSection() {
           <div className="space-y-3">
             <p className="text-sm text-ftc-text-muted">
               Get push notifications for messages, booking requests, and event updates.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleEnable()}
+              disabled={enabling}
+              className="rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-sm font-semibold text-ftc-primary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {enabling ? "Enabling..." : "Enable notifications"}
+            </button>
+          </div>
+        )}
+
+        {state === "granted_not_subscribed" && (
+          <div className="space-y-3">
+            <p className="text-sm text-ftc-text-muted">
+              This device has notification permission, but isn't set up to receive Follow The Crowd
+              notifications for this account yet. Tap below to finish setup.
             </p>
             <button
               type="button"
