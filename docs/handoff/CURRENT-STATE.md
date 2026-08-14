@@ -1,31 +1,28 @@
-# Current state (last updated: 2026-08-13)
+# Current state (last updated: 2026-08-14)
 
-## Web Push Notifications (2026-08-13)
+## Web Push Notifications (2026-08-14)
 
-**Status:** Code complete and committed to main. Ready for production configuration.
+**Status:** Live in production end-to-end. DM and crew chat push content polished; temporary debug diagnostics removed.
 
 **What's shipped:**
 - Push subscription lifecycle with endpoint ownership enforcement
 - Service Worker for background push reception and deep-linking
 - Notification permission UI in Settings
 - PWA manifest with home screen installation support
-- Database schema with RLS policies for push_subscriptions
-- Supabase Edge Function for Web Push delivery (RFC 8188 encryption + VAPID ES256 signing)
-- Logout cleanup wired into signOut() with proper ordering (DB delete first, then browser unsubscribe)
+- Database schema with RLS policies for push_subscriptions; `service_role` granted on `public.notifications` (push-send reads via service role — was missing, caused silent "Notification not found")
+- Supabase Edge Function for Web Push delivery (RFC 8188 encryption + VAPID ES256 signing), JWT verification disabled for this function only, authenticated via constant-time `x-push-webhook-secret` comparison
+- `create_notification()` RPC upgraded to 6-arg (adds `p_reaction_id` for reaction notification lifecycle) — `20250730120000_reaction_notification_lifecycle.sql` applied to production
+- Logout cleanup wired into signOut() with proper ordering (DB delete first, then browser unsubscribe) — verified still intact after content polish pass
 - Security hardening: constant-time webhook secret comparison, shared device safety, safe deep-link validation
+- VAPID keys and `PUSH_WEBHOOK_SECRET` rotated multiple times after accidental exposure in chat during setup; current values live only in Supabase/Vercel secrets, never committed
 
-**Build status:** ✅ No errors, ready to deploy
+**Push content (`ff821ba9` on `main`, 2026-08-14):** DM pushes previously showed a hardcoded title **"New message"** with the raw message body. Now the title is the sender's resolved display name (falls back to "Someone"), and the body runs through a shared `formatNotificationPreview()` (lib/notifications.ts) that collapses whitespace/newlines and truncates to 120 chars. Applies to 1:1 DM sends/attachments (`lib/dm/resolveDmOtherUserId.ts`), run-sheet update DMs (`lib/eventRunSheet.ts`), the two booking rate-proposal DM system messages (`lib/bookingRequests.ts`), and the whole-event-cancellation DM notice (`lib/events.ts`). Crew/event chat pushes changed from title = event name only, body = "Sender: message" to title = **"Sender · Event name"**, body = preview alone (`lib/eventCrewChat.ts`, `lib/groupChatAttachments.ts`). Booking request/update notification style was left as-is (already good). Removed the temporary `diagnostics` UI state/panel from `PushNotificationsSection.tsx` and the stage-by-stage `console.log` calls added in `lib/push/client.ts` while debugging production delivery; genuine `console.error` failure logging kept. Did not touch `push-send`, VAPID handling, webhook secret, JWT config, pg_net, or RLS.
 
-**What you need to do:**
-- Supabase: Set 4 Edge Function secrets (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, PUSH_CONTACT, PUSH_WEBHOOK_SECRET)
-- Supabase: Deploy push-send Edge Function from supabase/functions/push-send/
-- Supabase: Create webhook on public.notifications INSERT → push-send
-- Vercel: Add NEXT_PUBLIC_VAPID_PUBLIC_KEY to Production environment, trigger redeploy
-- iPhone: Install FTC as PWA, enable notifications, verify push arrives and opens correct conversation
+**Known beta limitations (reported, not fixed — explicitly out of scope):**
+- **Reactions already push.** `lib/dm/dmReactionNotifications.ts` creates a `type: "message"`, title `"New reaction"` notification on every DM reaction add/change, keyed by `reaction_id` so an emoji change updates in place rather than spamming. Flagged as a possible noise source for a busy thread; no reaction-push change was made this round.
+- **No active-conversation push suppression.** There is no mechanism today that skips sending a push to a user who is actively viewing the exact conversation being pushed to (`push-send` has no notion of client focus/route; `public/sw.js` shows every push it receives unconditionally). Not built — would require a presence system disproportionate to a beta.
 
-**Documentation:** See docs in /tmp/.../scratchpad/ (DEPLOYMENT_CHECKLIST.md for step-by-step setup)
-
-**Commit:** 7c6cf928 — "Integrate PushNotificationsSection into Settings"
+**Commit:** `ff821ba9` — "Merge feature/push-notification-content-polish into main" (Builder branch: `feature/push-notification-content-polish`, HEAD `1d490984`)
 
 ---
 
