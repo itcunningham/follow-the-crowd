@@ -323,8 +323,8 @@ export async function notifyCrewChatStarted(options: {
           await createNotification(
             participantId,
             "message",
-            eventName,
-            CREW_CHAT_STARTED_NOTICE,
+            `${eventName} · Crew chat ready`,
+            "Your event crew chat is now available",
             link,
           );
         } catch (notificationError) {

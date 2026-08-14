@@ -76,7 +76,11 @@ import {
   resolveBookingDateKey,
   sortDjGigsCalendarAgendaBookings,
 } from "../lib/bookingRequests";
-import { formatEventGroupChatUpdateMessage } from "../lib/events/eventGroupChatUpdate";
+import {
+  formatEventGroupChatUpdateMessage,
+  formatEventScheduleChangeSummary,
+  selectDjFacingScheduleChanges,
+} from "../lib/events/eventGroupChatUpdate";
 import { parseEventGroupChatUpdateMessage } from "../lib/events/eventGroupChatUpdateMessage";
 import {
   getAppendedMessageIds,
@@ -18507,6 +18511,7 @@ async function main() {
   testAuthEmailsRedirectThroughTheSharedHelper();
   testForgotPasswordFlow();
   testPlannerRosterMigrationGrantsTablePrivileges();
+  testBetaPushFinalPassFourFixes();
   console.log("All regression checks passed.");
 }
 
@@ -19303,6 +19308,130 @@ function testForgotPasswordFlow() {
   );
   assert.match(currentUser, /FORGOT_PASSWORD_PATH = "\/forgot-password"/);
   assert.doesNotMatch(stripComments(login), /"\/forgot-password"/);
+}
+
+/**
+ * Beta push-notification final pass, four fixes verified together:
+ *
+ * 1. Crew chat image-only push must prefer an accompanying caption over the
+ *    generic "Sent a photo" copy (the DM path already did this).
+ * 2. Booking-accepted push to the planner must name the accepting DJ, so
+ *    dedupe (keyed on user_id/type/title/link within 10 minutes) cannot
+ *    collapse a 2nd/3rd DJ's acceptance into the 1st DJ's push — link was
+ *    already unique per DJ (separate DM conversations), and title is now
+ *    unique too.
+ * 3. Crew-chat-ready push copy changed to "<event> · Crew chat ready" /
+ *    "Your event crew chat is now available".
+ * 4. A confirmed DJ must be notified of a meaningful event date/time/venue
+ *    change independently of crew-chat unlock state — the old mechanism
+ *    only fired through the crew-chat post, which requires 2+ accepted DJs
+ *    or a manual start, silently excluding the common single-DJ case.
+ */
+function testBetaPushFinalPassFourFixes() {
+  // --- Fix 4: pure filtering/formatting logic ---------------------------
+  const allFieldChanges = [
+    { label: "Event name", from: "Old Name", to: "New Name" },
+    { label: "Venue", from: "Old Venue", to: "Revolver" },
+    { label: "Date", from: "Aug 10", to: "Aug 20" },
+    { label: "Set time", from: "8:00 PM", to: "9:00 PM" },
+    { label: "Rate", from: "$500", to: "$600" },
+  ];
+
+  // Name and rate are excluded from the DJ-facing schedule push -- name is
+  // cosmetic to a DJ already in the conversation, and rate changes on an
+  // accepted booking flow through the rate-proposal notification instead.
+  assert.deepEqual(
+    selectDjFacingScheduleChanges(allFieldChanges).map((change) => change.label),
+    ["Venue", "Date", "Set time"],
+  );
+
+  assert.equal(selectDjFacingScheduleChanges([allFieldChanges[0], allFieldChanges[4]]).length, 0);
+
+  const summary = formatEventScheduleChangeSummary(
+    selectDjFacingScheduleChanges(allFieldChanges),
+  );
+  assert.equal(summary, "Venue changed to Revolver · Date changed to Aug 20 · Time changed to 9:00 PM");
+
+  // --- Fix 4: wiring must not depend on crew-chat unlock -----------------
+  const eventDetailPage = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    eventDetailPage,
+    /notifyConfirmedDjsOfEventScheduleChange/,
+    "the independent DJ schedule-change notify must be wired into the save flow",
+  );
+
+  const saveEditBody = eventDetailPage.slice(
+    eventDetailPage.indexOf("async function performSaveEdit"),
+    eventDetailPage.indexOf("async function handleSaveEdit"),
+  );
+
+  // The DJ notify call must appear before the crewChatUnlock-gated block --
+  // this is what proves it isn't only reachable through crew chat.
+  const djNotifyIndex = saveEditBody.indexOf("notifyConfirmedDjsOfEventScheduleChange");
+  const groupChatGateIndex = saveEditBody.indexOf("shouldNotifyGroupChat && groupChatFieldChanges.length > 0");
+  assert.ok(djNotifyIndex > -1 && groupChatGateIndex > -1 && djNotifyIndex < groupChatGateIndex);
+
+  // The call site itself must not be inside the crewChatUnlock-gated branch.
+  const djNotifyCallSite = saveEditBody.slice(
+    Math.max(0, djNotifyIndex - 200),
+    djNotifyIndex,
+  );
+  assert.doesNotMatch(djNotifyCallSite, /crewChatUnlock/);
+
+  // Crew chat's own push must be suppressed now that the DJ notify above is
+  // the single source of push delivery for this edit -- otherwise a DJ on
+  // an already-unlocked crew chat gets pushed twice for the same edit.
+  assert.match(eventDetailPage, /shouldNotifyGroupChat/);
+  const groupChatUpdateSource = readFileSync(
+    new URL("../lib/events/eventGroupChatUpdate.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    groupChatUpdateSource,
+    /sendEventCrewChatMessage\(eventId, text, eventName, \{ notifyParticipants: false \}\)/,
+  );
+
+  // --- Fix 1: crew chat image-only push prefers the caption --------------
+  const groupChatAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    groupChatAttachmentsSource,
+    /const preview = formatNotificationPreview\(text \|\| genericPhotoPreview\)/,
+    "a caption alongside crew-chat photos must win over generic 'Sent a photo' copy",
+  );
+
+  // --- Fix 2: booking-accepted push names the DJ --------------------------
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{djName\} · Booking accepted`/,
+    "planner's booking-accepted push must name the accepting DJ",
+  );
+  // Recipient-scoped: must resolve the ACCEPTING DJ (recipient_id), not the
+  // planner who is about to receive this notification.
+  assert.match(
+    bookingRequestsSource,
+    /getUserProfileById\(booking\.recipient_id\)[\s\S]{0,120}createNotification\(\s*booking\.sender_id/,
+  );
+
+  // --- Fix 3: crew-chat-ready push copy -----------------------------------
+  const eventCrewChatSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventCrewChatSource, /`\$\{eventName\} · Crew chat ready`/);
+  assert.match(eventCrewChatSource, /"Your event crew chat is now available"/);
+  // The in-thread system pill text must be untouched by the push-copy change.
+  assert.match(eventCrewChatSource, /text: CREW_CHAT_STARTED_NOTICE/);
 }
 
 main().catch((error) => {

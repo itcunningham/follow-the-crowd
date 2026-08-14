@@ -3410,11 +3410,14 @@ export async function updateBookingRequestStatus(
     // no longer gated on the DM insert -- that gate meant a skipped or failed
     // system message silently swallowed the planner's only notification.
     try {
+      const djProfile = await getUserProfileById(booking.recipient_id);
+      const djName = resolveUserDisplayName(djProfile, { fallback: "A DJ" });
+
       await createNotification(
         booking.sender_id,
         "booking_update",
-        "Booking accepted",
-        `${booking.event_name} · ${formatStatusLabel(status)}`,
+        `${djName} · Booking accepted`,
+        booking.event_name,
         booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
       );
     } catch (notificationError) {
