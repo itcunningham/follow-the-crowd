@@ -1,5 +1,17 @@
 # Current state (last updated: 2026-08-14)
 
+## iOS Home Screen PWA session loss on reopen — fixed (`673d23ff` on `main`, 2026-08-14)
+
+**Bug:** Log in on iPhone Safari, Add to Home Screen, open the installed app — works. Fully close it (swipe away) and reopen from the Home Screen icon — bounced back to `/login`, even though the session was still valid. Reported on a small/older iPhone with a fresh account.
+
+**Root cause:** `lib/supabaseClient.ts` called `createClient(url, key)` with no explicit `auth.storage`. `@supabase/auth-js` (2.110.0) runs a ONE-SHOT localStorage write-test at client construction (`supportsLocalStorage()` in `node_modules/@supabase/auth-js/dist/module/lib/helpers.js`) when no storage is given; on ANY failure it falls back to an in-memory store for that client's entire lifetime, no retry (`GoTrueClient.js` ~line 219-231). A cold-launched standalone PWA — a fresh WKWebView process on every full close/reopen, more likely to hit a transient localStorage hiccup on an older/lower-storage device — can trip that self-test once and then never see the real, unexpired session sitting untouched in actual localStorage for the rest of that launch. `getSession()` returns null; `OnboardingGuard` correctly (from its own view) redirects to `/login`.
+
+**Fix:** `lib/supabaseClient.ts` now passes an explicit `auth.storage` (`resilientLocalStorage`) to `createClient()`, which makes auth-js skip its own self-test entirely per its constructor logic (`if (settings.storage) {...} else {...}`). Same `window.localStorage` underneath, same token format/handling/expiry — just independent try/catch per `getItem`/`setItem`/`removeItem` call instead of one probe that can permanently disable persistence on a single transient failure. `persistSession`/`autoRefreshToken`/`detectSessionInUrl` made explicit (unchanged defaults, now documented in code). Added a temporary, boolean-only diagnostic (`app/components/OnboardingGuard.tsx`) on the redirect-to-login path — logs whether a raw token was found in storage vs whether `getSession()` found a user, no token/session/user-id values — to confirm on a real device whether this is the failure signature.
+
+**Not touched:** Supabase project/auth settings, token storage location/format/lifetime, sign-out cleanup (still `disableNotifications()` before `supabase.auth.signOut()`), any other browser Supabase client (there isn't one — verified the only browser-facing client is this one; server routes/edge functions use their own non-persistent clients).
+
+**Residual risk, not addressed here:** if a device is closed longer than the refresh token's real lifetime, or iOS itself evicts the standalone app's site data under storage pressure, logout is still correct/expected — this fix only removes the SDK's own self-inflicted single-point-of-failure, not iOS's own storage eviction behavior (not directly controllable from application code).
+
 ## Web Push Notifications (2026-08-14)
 
 **Status:** Live in production end-to-end on multiple iPhones. Full notification-coverage audit complete; the one confirmed beta-blocking gap (event schedule changes not reaching a single confirmed DJ) is fixed, along with three copy/correctness issues found during the audit.
