@@ -2,7 +2,7 @@
 
 ## Web Push Notifications (2026-08-14)
 
-**Status:** Live in production end-to-end. DM and crew chat push content polished; temporary debug diagnostics removed.
+**Status:** Live in production end-to-end on multiple iPhones. DM/crew chat/booking-request push content polished; temporary debug diagnostics removed; fresh-account-on-reused-device enable failure fixed.
 
 **What's shipped:**
 - Push subscription lifecycle with endpoint ownership enforcement
@@ -22,7 +22,15 @@
 - **Reactions already push.** `lib/dm/dmReactionNotifications.ts` creates a `type: "message"`, title `"New reaction"` notification on every DM reaction add/change, keyed by `reaction_id` so an emoji change updates in place rather than spamming. Flagged as a possible noise source for a busy thread; no reaction-push change was made this round.
 - **No active-conversation push suppression.** There is no mechanism today that skips sending a push to a user who is actively viewing the exact conversation being pushed to (`push-send` has no notion of client focus/route; `public/sw.js` shows every push it receives unconditionally). Not built — would require a presence system disproportionate to a beta.
 
-**Commit:** `ff821ba9` — "Merge feature/push-notification-content-polish into main" (Builder branch: `feature/push-notification-content-polish`, HEAD `1d490984`)
+**Beta fixes 2 (`91e5ba65` on `main`, 2026-08-14):** Two follow-up issues after two-iPhone verification.
+
+- **Booking-request push had no sender.** Title was hardcoded `"New booking request"`. Now `"<planner display name> · Booking request"` (`lib/bookingRequests.ts`, `sendBookingRequestToDj`), resolved via `getCurrentUserProfile()` + `resolveUserDisplayName()`. Body/link unchanged. `booking_update` notifications (accepted/declined/cancelled/rate-related) were inspected and deliberately left as-is — each is already scoped to one specific 1:1 booking conversation and states the concrete status change, so a name wasn't judged to add enough clarity to justify touching five more call sites.
+- **Fresh account on a reused device couldn't enable push.** Two independent root causes, both in `lib/push/client.ts`:
+  1. `detectNotificationState()` treated the browser's origin-scoped `Notification.permission === "granted"` as proof the CURRENT FTC account had a working subscription. A device that previously granted permission under a different account (no clean sign-out) showed "Notifications enabled on this device" for a brand-new account without ever creating its `push_subscriptions` row. Fixed by checking for an actual active row for the current user before returning `"granted"`; added `"granted_not_subscribed"` state with its own copy + enable button in `PushNotificationsSection.tsx` for when permission is granted but the account has no row yet — never claims "enabled" in that case.
+  2. `push_subscriptions.endpoint` is unique DB-wide; the client's existence check is RLS-scoped to the caller's own rows, so a stale browser-level `PushSubscription` still tied to a *different* account's row (same device, prior account never signed out) passed the check invisibly and then failed the insert with Postgres 23505 — previously surfaced as "please try again," which could never actually resolve anything by retrying. `enableNotifications()` now catches that specific collision (`PushEndpointCollisionError`), unsubscribes its own just-created browser subscription (local operation, never touches the other account's row), resubscribes for a genuinely new endpoint, and retries once.
+  - Did not touch push-send, VAPID, webhook secret, JWT, pg_net, or any SQL/RLS — client-side query/state logic only, against the existing schema.
+
+**Commit:** `91e5ba65` — "Merge feature/push-beta-fixes into main" (Builder branch: `feature/push-beta-fixes`, HEAD `c72b4115`). Prior: `ff821ba9` — "Merge feature/push-notification-content-polish into main" (Builder branch: `feature/push-notification-content-polish`, HEAD `1d490984`)
 
 ---
 
