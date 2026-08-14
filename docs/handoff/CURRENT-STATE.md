@@ -2,7 +2,7 @@
 
 ## Web Push Notifications (2026-08-14)
 
-**Status:** Live in production end-to-end on multiple iPhones. DM/crew chat/booking-request push content polished; temporary debug diagnostics removed; fresh-account-on-reused-device enable failure fixed.
+**Status:** Live in production end-to-end on multiple iPhones. Full notification-coverage audit complete; the one confirmed beta-blocking gap (event schedule changes not reaching a single confirmed DJ) is fixed, along with three copy/correctness issues found during the audit.
 
 **What's shipped:**
 - Push subscription lifecycle with endpoint ownership enforcement
@@ -31,6 +31,19 @@
   - Did not touch push-send, VAPID, webhook secret, JWT, pg_net, or any SQL/RLS — client-side query/state logic only, against the existing schema.
 
 **Commit:** `91e5ba65` — "Merge feature/push-beta-fixes into main" (Builder branch: `feature/push-beta-fixes`, HEAD `c72b4115`). Prior: `ff821ba9` — "Merge feature/push-notification-content-polish into main" (Builder branch: `feature/push-notification-content-polish`, HEAD `1d490984`)
+
+**Full notification-coverage audit (2026-08-14):** Read-only pass mapping every `createNotification()` call site against every user-facing state change in booking/DM/crew-chat/run-sheet flows. 15 of 16 candidate events already had working push; one confirmed beta-blocking gap found (event schedule changes only reached DJs through the crew-chat-post path, which requires 2+ accepted DJs or a manual planner start — a single confirmed DJ on a locked crew chat got nothing). Full classification (currently-working / missing-before-beta / post-beta / do-not-add) is in this session's transcript, not duplicated here.
+
+**Beta fixes 3 (`f6ebf58b` on `main`, 2026-08-14):** Four fixes from the audit, verified against real code paths (not just inspection) via an independent QA pass.
+
+1. **Crew chat image-only push ignored a caption.** `lib/groupChatAttachments.ts` always sent "Sent a photo"/"Sent N photos" even when the sender typed a caption alongside the image(s) — the DM equivalent already preferred the caption. Fixed: `text || genericPhotoPreview`.
+2. **Booking-accepted push didn't name the DJ.** `lib/bookingRequests.ts`, `updateBookingRequestStatus` — title was a static `"Booking accepted"`; now `"<DJ name> · Booking accepted"` (resolved via `getUserProfileById(booking.recipient_id)`), body is just the event name. Also hardens `create_notification`'s 10-minute dedupe (keyed on user_id/type/title/link) against a 2nd/3rd DJ's acceptance colliding with an unread notification from the 1st — link was already unique per DJ (separate DM conversations), title is now unique too.
+3. **Crew-chat-ready push copy.** `lib/eventCrewChat.ts`, `notifyCrewChatStarted` — push title/body changed to `"<event> · Crew chat ready"` / `"Your event crew chat is now available"`. The in-thread system pill message (separate insert, same shared constant it used to reuse) is untouched.
+4. **New: confirmed DJs notified of event date/set-time/venue changes independently of crew-chat unlock state.** `lib/events/eventGroupChatUpdate.ts` gained `selectDjFacingScheduleChanges` (filters the existing field-diff helper down to Date/Set time/Venue — excludes Event name and Rate) and `notifyConfirmedDjsOfEventScheduleChange` (one push per accepted booking, type `"message"` since `booking_update`'s RPC-side authorization only covers rate-proposal-linked acceptances, not a plain accept). Wired into `app/events/[eventId]/page.tsx`'s save handler unconditionally (not gated on `crewChatUnlock`). `postEventGroupChatUpdate`'s own push is now suppressed (`notifyParticipants: false`) so a DJ on an already-unlocked crew chat isn't pushed twice for the same edit — the crew-chat thread message itself still posts when unlocked, only its push side-effect was disabled.
+
+Did not touch push-send, VAPID, webhook secret, JWT config, pg_net, service-role grants, or push_subscriptions/RLS. One regression test appended (`scripts/test-regressions.mts`, `testBetaPushFinalPassFourFixes`) covering all four via pure-logic + source-wiring assertions.
+
+**Commit:** `f6ebf58b` — "Merge feature/push-beta-final-pass into main" (Builder branch: `feature/push-beta-final-pass`, HEAD `162859e9`)
 
 ---
 
