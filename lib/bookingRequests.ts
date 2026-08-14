@@ -44,6 +44,7 @@ import {
 } from "@/lib/ftcFlatStatus";
 import {
   getCurrentUserId,
+  getCurrentUserProfile,
   getUserProfileById,
   type BookingRecipientProfile,
 } from "@/lib/user/currentUser";
@@ -2250,10 +2251,13 @@ export async function sendBookingRequestToDj(
   await recordRosterFromBooking(currentUserId, recipientId);
 
   try {
+    const senderProfile = await getCurrentUserProfile();
+    const senderName = resolveUserDisplayName(senderProfile, { fallback: "Someone" });
+
     await createNotification(
       recipientId,
       "booking_request",
-      "New booking request",
+      `${senderName} · Booking request`,
       `${input.eventName.trim()} at ${input.venue.trim()}`,
       `/dm/${conversationId}`,
     );
