@@ -144,6 +144,7 @@ import { isEventDetailEditDirty } from "@/lib/events/eventEditDirty";
 import UnsavedChangesDiscardDialog from "@/app/components/UnsavedChangesDiscardDialog";
 import {
   getBookingImpactingEventFieldChanges,
+  notifyConfirmedDjsOfEventScheduleChange,
   postEventGroupChatUpdate,
   shouldPostEventGroupChatUpdate,
 } from "@/lib/events/eventGroupChatUpdate";
@@ -838,12 +839,13 @@ function EventDetailPageView() {
       return;
     }
 
+    const fieldChanges = getBookingImpactingEventFieldChanges(event, editForm);
+    const confirmedLineup = lineup.filter((booking) => booking.status === "accepted");
+
     const shouldNotifyGroupChat =
       Boolean(crewChatUnlock?.isUnlocked) &&
       shouldPostEventGroupChatUpdate(event, editForm, lineup);
-    const groupChatFieldChanges = shouldNotifyGroupChat
-      ? getBookingImpactingEventFieldChanges(event, editForm)
-      : [];
+    const groupChatFieldChanges = shouldNotifyGroupChat ? fieldChanges : [];
 
     setSavingEdit(true);
     setEditFormError(null);
@@ -873,6 +875,16 @@ function EventDetailPageView() {
         }
 
         savedEvent = await updateEvent(event.id, editForm);
+      }
+
+      // Independent of crew-chat unlock state, so a single confirmed DJ on a
+      // locked crew chat still hears about a date/time/venue change.
+      if (confirmedLineup.length > 0 && fieldChanges.length > 0) {
+        try {
+          await notifyConfirmedDjsOfEventScheduleChange(savedEvent.name, fieldChanges, confirmedLineup);
+        } catch (djNotifyError) {
+          console.error("Failed to notify DJs of event schedule change:", djNotifyError);
+        }
       }
 
       if (shouldNotifyGroupChat && groupChatFieldChanges.length > 0) {
