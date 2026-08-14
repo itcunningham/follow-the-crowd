@@ -58,11 +58,9 @@ export async function enableNotifications(): Promise<boolean> {
   // Register service worker
   let registration: ServiceWorkerRegistration;
   try {
-    console.log("[push] Registering service worker...");
     registration = await navigator.serviceWorker.register("/sw.js", {
       scope: "/",
     });
-    console.log("[push] Service worker registered successfully");
   } catch (swError) {
     const msg = swError instanceof Error ? swError.message : String(swError);
     console.error("[push] Service worker registration failed:", msg);
@@ -72,9 +70,7 @@ export async function enableNotifications(): Promise<boolean> {
   // Request permission
   let permission: NotificationPermission;
   try {
-    console.log("[push] Requesting notification permission...");
     permission = await Notification.requestPermission();
-    console.log("[push] Permission result:", permission);
   } catch (permissionError) {
     const msg = permissionError instanceof Error ? permissionError.message : String(permissionError);
     console.error("[push] Permission request failed:", msg);
@@ -87,13 +83,11 @@ export async function enableNotifications(): Promise<boolean> {
 
   // Subscribe to push
   try {
-    console.log("[push] Checking VAPID key...");
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidKey) {
       throw new Error("VAPID public key not configured in environment");
     }
 
-    console.log("[push] Converting VAPID key format...");
     // VAPID key should be raw base64, not PEM format
     const base64 = vapidKey.trim();
     if (base64.includes("BEGIN") || base64.includes("END")) {
@@ -105,24 +99,18 @@ export async function enableNotifications(): Promise<boolean> {
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
-    console.log("[push] VAPID key converted, bytes length:", bytes.length);
 
-    console.log("[push] Checking pushManager availability...");
     if (!registration.pushManager) {
       throw new Error("pushManager not available on service worker");
     }
 
-    console.log("[push] Calling pushManager.subscribe()...");
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: bytes,
     });
-    console.log("[push] pushManager.subscribe() succeeded");
 
     // Save to Supabase
-    console.log("[push] Saving subscription to Supabase...");
     await savePushSubscription(subscription);
-    console.log("[push] Subscription saved successfully");
     return true;
   } catch (subscribeError) {
     const errorMessage = subscribeError instanceof Error ? subscribeError.message : String(subscribeError);
@@ -198,8 +186,6 @@ export async function disableNotifications(): Promise<void> {
  * SECURITY: Never transfer endpoints between users. Ownership must be explicit.
  */
 async function savePushSubscription(subscription: PushSubscription): Promise<void> {
-  console.log("[push] savePushSubscription: starting");
-
   const key = subscription.getKey("p256dh");
   const auth = subscription.getKey("auth");
 
@@ -207,10 +193,7 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     throw new Error("Failed to extract push keys");
   }
 
-  console.log("[push] savePushSubscription: keys extracted");
-
   const userId = await getCurrentUserId();
-  console.log("[push] savePushSubscription: userId =", userId ? "present" : "missing");
 
   if (!userId) {
     throw new Error("User not authenticated");
@@ -229,12 +212,10 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
 
   const p256dhEncoded = encodeBytes(new Uint8Array(key));
   const authEncoded = encodeBytes(new Uint8Array(auth));
-  console.log("[push] savePushSubscription: keys encoded");
 
   // SECURITY: Query for existing endpoint (RLS will only show this user's rows).
   // If found, update it. If not found, insert. If insert fails with unique constraint,
   // the endpoint belongs to another session/account (RLS hides other users' rows).
-  console.log("[push] savePushSubscription: checking for existing endpoint");
   const { data: existing, error: checkError } = await supabase
     .from("push_subscriptions")
     .select("id")
@@ -250,11 +231,8 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     throw new Error(`Failed to check endpoint: ${checkError.message}`);
   }
 
-  console.log("[push] savePushSubscription: existing endpoint =", existing ? "yes" : "no");
-
   // If endpoint exists for this user, update it
   if (existing) {
-    console.log("[push] savePushSubscription: updating existing subscription");
     const { error: updateError } = await supabase
       .from("push_subscriptions")
       .update({
@@ -275,12 +253,10 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
       throw new Error(`Failed to update subscription: ${updateError.message}`);
     }
 
-    console.log("[push] savePushSubscription: update succeeded");
     return;
   }
 
   // Endpoint doesn't exist for this user, attempt insert
-  console.log("[push] savePushSubscription: inserting new subscription");
   const { error: insertError } = await supabase.from("push_subscriptions").insert({
     endpoint: subscription.endpoint,
     user_id: userId,
@@ -304,8 +280,6 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     }
     throw new Error(`Failed to save subscription: ${insertError.message}`);
   }
-
-  console.log("[push] savePushSubscription: insert succeeded");
 }
 
 /**

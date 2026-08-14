@@ -18,7 +18,7 @@ import {
 } from "@/lib/bookingRequests";
 import { notifyBookingRequestsChanged } from "@/lib/bookings/bookingRequestsSync";
 import { normalizeStoredRate } from "@/lib/bookingRate";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, formatNotificationPreview } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import {
   assertEventFormTextFieldLimits,
@@ -36,7 +36,8 @@ import {
   FTC_STATUS_TODAY,
   FTC_STATUS_UPCOMING,
 } from "@/lib/ftcFlatStatus";
-import { getCurrentUserId } from "@/lib/user/currentUser";
+import { getCurrentUserId, getCurrentUserProfile } from "@/lib/user/currentUser";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 import {
   isEventBrandColumnMissing,
   isEventHistoryHideAvailable,
@@ -794,6 +795,9 @@ async function notifyCancelledBookingsFromEventCancellation(
 ): Promise<void> {
   console.log("[events] Notifying DJ of event cancellation for", cancelledBookings.length, "bookings");
 
+  const plannerProfile = await getCurrentUserProfile();
+  const plannerName = resolveUserDisplayName(plannerProfile, { fallback: "Someone" });
+
   await Promise.all(
     cancelledBookings.map(async (booking) => {
       console.log("[events] Processing cancelled booking notification:", {
@@ -831,8 +835,8 @@ async function notifyCancelledBookingsFromEventCancellation(
         await createNotification(
           booking.recipient_id,
           "message",
-          "New message",
-          eventCancellationPreview,
+          plannerName,
+          formatNotificationPreview(eventCancellationPreview),
           `/dm/${booking.conversation_id}`,
         );
         console.log("[events] message notification created");

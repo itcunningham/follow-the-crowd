@@ -7,7 +7,11 @@ import {
   resolveEventEndDateTime,
   resolveEventStartDateTime,
 } from "@/lib/bookingDateTime";
-import { createNotification, getNotificationCreateErrorMessage } from "@/lib/notifications";
+import {
+  createNotification,
+  formatNotificationPreview,
+  getNotificationCreateErrorMessage,
+} from "@/lib/notifications";
 import { recordRosterFromBooking } from "@/lib/plannerDjRoster";
 import { notifyBookingRequestsChanged } from "@/lib/bookings/bookingRequestsSync";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
@@ -38,7 +42,11 @@ import {
   FTC_STATUS_SUCCESS,
   FTC_STATUS_WARNING,
 } from "@/lib/ftcFlatStatus";
-import { getCurrentUserId, type BookingRecipientProfile } from "@/lib/user/currentUser";
+import {
+  getCurrentUserId,
+  getUserProfileById,
+  type BookingRecipientProfile,
+} from "@/lib/user/currentUser";
 import { postBookingAcceptanceGroupChatUpdate } from "@/lib/events/bookingAcceptance";
 import { sanitizeWithdrawalOtherReason } from "@/lib/booking/withdrawalReasonDetails";
 
@@ -3239,11 +3247,14 @@ export async function proposeBookingRate(
 
   if (dmResult.inserted && booking.conversation_id) {
     try {
+      const proposerProfile = await getUserProfileById(booking.recipient_id);
+      const proposerName = resolveUserDisplayName(proposerProfile, { fallback: "Someone" });
+
       await createNotification(
         booking.sender_id,
         "message",
-        "New message",
-        dmResult.messageText,
+        proposerName,
+        formatNotificationPreview(dmResult.messageText),
         `/dm/${booking.conversation_id}`,
       );
     } catch (notificationError) {
@@ -3286,11 +3297,14 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
 
   if (dmResult.inserted && booking.conversation_id) {
     try {
+      const accepterProfile = await getUserProfileById(booking.sender_id);
+      const accepterName = resolveUserDisplayName(accepterProfile, { fallback: "Someone" });
+
       await createNotification(
         booking.recipient_id,
         "message",
-        "New message",
-        dmResult.messageText,
+        accepterName,
+        formatNotificationPreview(dmResult.messageText),
         `/dm/${booking.conversation_id}`,
       );
     } catch (notificationError) {
