@@ -3,11 +3,13 @@ import { SET_TIME_RANGE_JOINER } from "@/lib/bookingDateTime";
 import { formatRunSheetUpdatedDmMessage } from "@/lib/dm/dmBookingSystemMessages";
 import {
   createNotification,
+  formatNotificationPreview,
   getNotificationCreateErrorMessage,
 } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
-import { getCurrentUserId } from "@/lib/user/currentUser";
+import { getCurrentUserId, getCurrentUserProfile } from "@/lib/user/currentUser";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 import { sendEventCrewChatMessage } from "@/lib/eventCrewChat";
 import {
   formatRunSheetUpdateMessage,
@@ -924,6 +926,9 @@ export async function notifyRunSheetUpdatesForChangedBookings(options: {
     return;
   }
 
+  const authorProfile = await getCurrentUserProfile();
+  const authorName = resolveUserDisplayName(authorProfile, { fallback: "Someone" });
+
   for (const change of changes) {
     const booking = lineup.find((item) => item.id === change.bookingRequestId);
 
@@ -952,8 +957,8 @@ export async function notifyRunSheetUpdatesForChangedBookings(options: {
         await createNotification(
           booking.recipient_id,
           "message",
-          "New message",
-          messageText,
+          authorName,
+          formatNotificationPreview(messageText),
           `/dm/${booking.conversation_id}`,
         );
       } catch (notificationError) {

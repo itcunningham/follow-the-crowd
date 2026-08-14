@@ -242,6 +242,7 @@ export async function sendEventCrewChatMessageWithAttachments(input: {
       const preview =
         uploaded.length > 1 ? `Sent ${uploaded.length} photos` : "Sent a photo";
       const link = getEventCrewChatLink(input.eventId);
+      const title = `${senderName} · ${input.eventName}`;
 
       await Promise.all(
         participants
@@ -251,8 +252,8 @@ export async function sendEventCrewChatMessageWithAttachments(input: {
               await createNotification(
                 participantId,
                 "message",
-                input.eventName,
-                `${senderName}: ${preview}`,
+                title,
+                preview,
                 link,
               );
             } catch (notificationError) {

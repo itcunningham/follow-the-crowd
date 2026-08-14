@@ -11,7 +11,6 @@ export default function PushNotificationsSection() {
   const [enabling, setEnabling] = useState(false);
   const [disabling, setDisabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [diagnostics, setDiagnostics] = useState<string[]>([]);
 
   // Detect current state on mount and when window regains focus
   useEffect(() => {
@@ -43,17 +42,14 @@ export default function PushNotificationsSection() {
   async function handleEnable() {
     setEnabling(true);
     setError(null);
-    setDiagnostics([]);
 
     try {
       await enableNotifications();
       setState("granted");
-      setDiagnostics((prev) => [...prev, "✓ Subscription saved successfully"]);
     } catch (enableError) {
       console.error("[push-settings] Failed to enable:", enableError);
       const errorMsg = enableError instanceof Error ? enableError.message : "Failed to enable notifications";
       setError(errorMsg);
-      setDiagnostics((prev) => [...prev, `✗ ${errorMsg}`]);
       // Re-check state in case permission was denied
       const newState = await detectNotificationState();
       setState(newState);
@@ -176,14 +172,6 @@ export default function PushNotificationsSection() {
         {error && (
           <div className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">
             {error}
-          </div>
-        )}
-
-        {diagnostics.length > 0 && (
-          <div className="mt-3 rounded-lg bg-ftc-surface px-3 py-2 text-xs font-mono text-ftc-text-muted space-y-1">
-            {diagnostics.map((msg, i) => (
-              <div key={i}>{msg}</div>
-            ))}
           </div>
         )}
       </div>

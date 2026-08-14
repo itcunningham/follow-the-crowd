@@ -1,5 +1,7 @@
-import { createNotification } from "@/lib/notifications";
+import { createNotification, formatNotificationPreview } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUserProfile } from "@/lib/user/currentUser";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 
 /**
  * Other participant in a 1:1 DM. Used for header profile, blocks, and
@@ -51,11 +53,14 @@ export async function notifyDmPeerOfMessage(options: {
   }
 
   try {
+    const senderProfile = await getCurrentUserProfile();
+    const senderName = resolveUserDisplayName(senderProfile, { fallback: "Someone" });
+
     await createNotification(
       recipientId,
       "message",
-      "New message",
-      body,
+      senderName,
+      formatNotificationPreview(body),
       `/dm/${conversationId}`,
     );
   } catch (notificationError) {

@@ -21,6 +21,25 @@ export type NavBadgeCounts = {
   total: number;
 };
 
+const NOTIFICATION_PREVIEW_MAX_LENGTH = 120;
+
+/**
+ * Collapses newlines/whitespace and truncates so a long message can't produce
+ * a huge lock-screen push body. Reused by every message-type notification.
+ */
+export function formatNotificationPreview(
+  text: string,
+  maxLength: number = NOTIFICATION_PREVIEW_MAX_LENGTH,
+): string {
+  const collapsed = text.replace(/\s+/g, " ").trim();
+
+  if (collapsed.length <= maxLength) {
+    return collapsed;
+  }
+
+  return `${collapsed.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
 export function notifyNavigationBadgesRefresh(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ftc-notifications-updated"));

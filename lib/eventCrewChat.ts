@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, formatNotificationPreview } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
 import { getEventById, isEventCancelled, type EventStatus } from "@/lib/events";
 import {
@@ -477,9 +477,9 @@ export async function sendEventCrewChatMessage(
   const senderProfile = await getCurrentUserProfile();
 
   const senderName = senderProfile?.display_name?.trim() || "Group member";
-  const preview =
-    trimmed.length > 80 ? `${trimmed.slice(0, 77)}...` : trimmed;
+  const preview = formatNotificationPreview(trimmed);
   const link = getEventCrewChatLink(eventId);
+  const title = `${senderName} · ${eventName}`;
 
   await Promise.all(
     participants
@@ -489,8 +489,8 @@ export async function sendEventCrewChatMessage(
           await createNotification(
             participantId,
             "message",
-            eventName,
-            `${senderName}: ${preview}`,
+            title,
+            preview,
             link,
           );
         } catch (notificationError) {
