@@ -24,7 +24,7 @@ export type NotificationState =
   | "supported"
   | "denied"
   | "granted"
-  | "granted_not_subscribed"
+  | "reconnect"
   | "prompt"
   | "unsupported"
   | "unsupported_ios_version"
@@ -61,19 +61,44 @@ export async function detectNotificationState(): Promise<NotificationState> {
   }
 
   if (Notification.permission === "granted") {
-    // Notification.permission is per-origin, not per FTC account. A device
-    // that already granted permission for a different FTC account (or a
-    // prior subscribe that never made it into push_subscriptions) still
-    // reads "granted" here even though THIS account has no working push
-    // subscription. Confirm the actual FTC-side row before claiming this
-    // device is enabled, so we never show "enabled" when it isn't.
+    // Notification.permission is per-origin, not per FTC account, and is
+    // NOT proof a working subscription exists. Two things must both be
+    // true before claiming this device is enabled:
+    //  1. the browser itself still has a live PushSubscription (iOS can
+    //     silently drop this without ever telling the app or resetting
+    //     permission — the split-brain that let "enabled" show while the
+    //     device diagnostics panel already read pushSubscriptionExists:
+    //     false)
+    //  2. the current authenticated FTC user has a matching active row
+    //     (a device that granted permission for a different FTC account,
+    //     or a subscribe that never made it into push_subscriptions,
+    //     otherwise still reads "granted" here)
+    const browserSubscription = await getBrowserPushSubscription();
+
+    if (!browserSubscription) {
+      return "reconnect";
+    }
+
     return (await hasActivePushSubscriptionForCurrentUser())
       ? "granted"
-      : "granted_not_subscribed";
+      : "reconnect";
   }
 
   // "default" = not yet requested
   return "prompt";
+}
+
+async function getBrowserPushSubscription(): Promise<PushSubscription | null> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    return registration ? await registration.pushManager.getSubscription() : null;
+  } catch {
+    return null;
+  }
 }
 
 async function hasActivePushSubscriptionForCurrentUser(): Promise<boolean> {
@@ -159,13 +184,28 @@ export async function enableNotifications(): Promise<boolean> {
       throw new Error("VAPID public key not configured in environment");
     }
 
-    // VAPID key should be raw base64, not PEM format
+    // VAPID public keys are distributed as URL-safe base64 (RFC 8292) --
+    // '-'/'_' instead of '+'/'/', usually unpadded. The browser's native
+    // atob() only understands STANDARD base64 and throws "The string
+    // contains invalid characters" the moment it hits a '-' or '_', which
+    // an 87-character random key is overwhelmingly likely to contain. This
+    // conversion was missing entirely, so a fresh subscribe attempt (e.g.
+    // the reconnect path below, after the browser lost its old
+    // subscription) could fail here — not the VAPID key itself, its
+    // decoding.
     const base64 = vapidKey.trim();
     if (base64.includes("BEGIN") || base64.includes("END")) {
       throw new Error("VAPID key appears to be in PEM format, expected base64");
     }
 
-    const binaryString = atob(base64);
+    let binaryString: string;
+    try {
+      binaryString = atob(urlSafeBase64ToStandardBase64(base64));
+    } catch (decodeError) {
+      console.error("[push] Failed to decode VAPID public key:", decodeError);
+      throw new Error("VAPID public key could not be decoded");
+    }
+
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
@@ -351,31 +391,51 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
       });
       throw new Error(`Failed to update subscription: ${updateError.message}`);
     }
+  } else {
+    // Endpoint doesn't exist for this user, attempt insert
+    const { error: insertError } = await supabase.from("push_subscriptions").insert({
+      endpoint: subscription.endpoint,
+      user_id: userId,
+      p256dh: p256dhEncoded,
+      auth: authEncoded,
+      device_name: deviceName,
+      is_active: true,
+      last_used_at: new Date().toISOString(),
+    });
 
-    return;
+    if (insertError) {
+      console.error("[push] savePushSubscription: insert failed", {
+        code: insertError.code,
+        message: insertError.message,
+      });
+      // If unique constraint violated, endpoint belongs to another session/account
+      if (insertError.code === "23505" || insertError.message.includes("duplicate key")) {
+        throw new PushEndpointCollisionError();
+      }
+      throw new Error(`Failed to save subscription: ${insertError.message}`);
+    }
   }
 
-  // Endpoint doesn't exist for this user, attempt insert
-  const { error: insertError } = await supabase.from("push_subscriptions").insert({
-    endpoint: subscription.endpoint,
-    user_id: userId,
-    p256dh: p256dhEncoded,
-    auth: authEncoded,
-    device_name: deviceName,
-    is_active: true,
-    last_used_at: new Date().toISOString(),
-  });
+  // Both paths above just confirmed THIS endpoint is saved and active for
+  // this user. The browser only ever has one live PushSubscription per
+  // origin, so any OTHER active row still on file for this same user_id
+  // is provably stale (e.g. left behind when the browser silently lost an
+  // earlier subscription without ever calling disableNotifications()) --
+  // exactly the split-brain that let "enabled" show with no real
+  // subscription. Scoped strictly to our own user_id; RLS backs this even
+  // if the filter above were ever removed by mistake.
+  const { error: staleCleanupError } = await supabase
+    .from("push_subscriptions")
+    .update({ is_active: false })
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .neq("endpoint", subscription.endpoint);
 
-  if (insertError) {
-    console.error("[push] savePushSubscription: insert failed", {
-      code: insertError.code,
-      message: insertError.message,
-    });
-    // If unique constraint violated, endpoint belongs to another session/account
-    if (insertError.code === "23505" || insertError.message.includes("duplicate key")) {
-      throw new PushEndpointCollisionError();
-    }
-    throw new Error(`Failed to save subscription: ${insertError.message}`);
+  if (staleCleanupError) {
+    console.error(
+      "[push] savePushSubscription: failed to deactivate stale rows for user (non-fatal):",
+      staleCleanupError.message,
+    );
   }
 }
 
@@ -448,6 +508,17 @@ export async function getPushDiagnostics(): Promise<PushDiagnostics> {
     origin,
     isStandalonePwa,
   };
+}
+
+/**
+ * RFC 8292 VAPID keys are URL-safe base64 ('-'/'_', usually unpadded).
+ * atob() only accepts standard base64 ('+'/'/', '='-padded to a multiple
+ * of 4) -- this restores both before decoding.
+ */
+function urlSafeBase64ToStandardBase64(value: string): string {
+  const standard = value.replace(/-/g, "+").replace(/_/g, "/");
+  const paddingNeeded = (4 - (standard.length % 4)) % 4;
+  return standard + "=".repeat(paddingNeeded);
 }
 
 /**

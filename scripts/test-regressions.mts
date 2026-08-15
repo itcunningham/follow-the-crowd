@@ -18515,6 +18515,7 @@ async function main() {
   testSupabaseClientHasResilientAuthStorage();
   testServiceWorkerPushHandlerAlwaysShowsANotification();
   testUnsupportedIosPushStateDoesNotSuggestInstalling();
+  testPushReconnectStateAndVapidKeyUrlSafeDecoding();
   console.log("All regression checks passed.");
 }
 
@@ -19623,14 +19624,12 @@ function testUnsupportedIosPushStateDoesNotSuggestInstalling() {
   // enable flow, unaffected.
   const promptBlock = uiSource.slice(
     uiSource.indexOf('state === "prompt"'),
-    uiSource.indexOf('state === "granted_not_subscribed"'),
+    uiSource.indexOf('state === "reconnect"'),
   );
   assert.match(promptBlock, /handleEnable/);
   assert.match(promptBlock, /Enable notifications/);
 
   // 4. Supported + subscribed -> existing enabled state, unaffected.
-  // (`'state === "granted"'` with its closing quote does not match inside
-  // `'state === "granted_not_subscribed"'`, so this is the right block.)
   const grantedBlock = uiSource.slice(uiSource.indexOf('state === "granted"'), uiSource.indexOf("{error &&"));
   assert.match(grantedBlock, /Notifications enabled on this device/);
 
@@ -19638,6 +19637,143 @@ function testUnsupportedIosPushStateDoesNotSuggestInstalling() {
   // explicitly keeps it, the small-iPhone stale-subscription investigation
   // isn't finished yet.
   assert.match(uiSource, /Device diagnostics \(temporary\)/);
+}
+
+/**
+ * Two confirmed bugs from a real small-iPhone trace: device diagnostics
+ * showed pushSubscriptionExists: false, yet the UI said "Notifications
+ * enabled on this device" and a red "The string contains invalid
+ * characters" error appeared.
+ *
+ * Root cause 1 (false "enabled"): detectNotificationState()'s granted
+ * branch only ever checked the DB row (hasActivePushSubscriptionForCurrentUser),
+ * never the actual browser-level PushSubscription -- so a device whose
+ * subscription iOS had silently dropped (permission stays "granted";
+ * nothing tells the app) still read as fully enabled from a stale DB row
+ * alone.
+ *
+ * Root cause 2 ("invalid characters"): VAPID public keys are URL-safe
+ * base64 (RFC 8292) -- '-'/'_', not '+'/'/'. The code called the browser's
+ * native atob(), which only accepts STANDARD base64, directly on the raw
+ * key with no conversion. An 87-character random key is overwhelmingly
+ * likely to contain at least one '-' or '_', which is exactly the
+ * character atob() rejects with this exact message. Not a corrupt key --
+ * a missing conversion step, hit on any fresh subscribe attempt.
+ */
+function testPushReconnectStateAndVapidKeyUrlSafeDecoding() {
+  const clientSource = readFileSync(new URL("../lib/push/client.ts", import.meta.url), "utf8");
+
+  // --- Root cause 1: browser subscription must gate "granted" ------------
+  const grantedBranchStart = clientSource.indexOf('Notification.permission === "granted"');
+  const grantedBranchEnd = clientSource.indexOf("async function getBrowserPushSubscription");
+  assert.ok(grantedBranchStart > -1 && grantedBranchEnd > grantedBranchStart);
+  const grantedBranch = clientSource.slice(grantedBranchStart, grantedBranchEnd);
+
+  // The browser-subscription check must come BEFORE the DB check, and
+  // returning "reconnect" (not "granted") when it's absent must be
+  // unconditional -- not reachable only after the DB check fails.
+  const browserCheckIndex = grantedBranch.indexOf("getBrowserPushSubscription()");
+  const earlyReconnectIndex = grantedBranch.indexOf('if (!browserSubscription) {\n      return "reconnect";');
+  const dbCheckIndex = grantedBranch.indexOf("hasActivePushSubscriptionForCurrentUser()");
+  assert.ok(browserCheckIndex > -1 && earlyReconnectIndex > -1 && dbCheckIndex > -1);
+  assert.ok(
+    browserCheckIndex < earlyReconnectIndex && earlyReconnectIndex < dbCheckIndex,
+    "must check the real browser subscription, and bail to reconnect, before ever consulting the DB row",
+  );
+
+  // Even when the DB row IS found, no browser subscription still means
+  // reconnect, not granted -- both conditions are required.
+  assert.match(
+    grantedBranch,
+    /return \(await hasActivePushSubscriptionForCurrentUser\(\)\)\s*\?\s*"granted"\s*:\s*"reconnect";/,
+  );
+
+  // The old state name must be gone -- this task replaces it, not adds
+  // alongside it.
+  assert.doesNotMatch(clientSource, /granted_not_subscribed/);
+
+  // --- Root cause 2: VAPID key must go through URL-safe conversion -------
+  assert.match(
+    clientSource,
+    /binaryString = atob\(urlSafeBase64ToStandardBase64\(base64\)\)/,
+    "VAPID key decode must convert URL-safe base64 before calling atob()",
+  );
+  assert.match(
+    clientSource,
+    /function urlSafeBase64ToStandardBase64\(value: string\): string \{\s*\n\s*const standard = value\.replace\(\/-\/g, "\+"\)\.replace\(\/_\/g, "\/"\);/,
+  );
+  // atob() itself must still be wrapped so a genuine decode failure
+  // becomes a clean thrown Error, not a bare DOMException reaching the UI
+  // layer unmapped.
+  assert.match(clientSource, /catch \(decodeError\) \{[\s\S]{0,150}VAPID public key could not be decoded/);
+
+  // --- Self-heal: stale rows for the CURRENT user only --------------------
+  assert.match(
+    clientSource,
+    /\.update\(\{ is_active: false \}\)\s*\n\s*\.eq\("user_id", userId\)\s*\n\s*\.eq\("is_active", true\)\s*\n\s*\.neq\("endpoint", subscription\.endpoint\)/,
+    "stale-row cleanup must be scoped to the current user's own rows only",
+  );
+
+  // --- UI: reconnect state, no trailing full stops, no raw error text ----
+  const uiSource = readFileSync(
+    new URL("../app/components/settings/PushNotificationsSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(uiSource, /state === "granted_not_subscribed"/);
+
+  const reconnectBlock = uiSource.slice(
+    uiSource.indexOf('state === "reconnect"'),
+    uiSource.indexOf('state === "granted"'),
+  );
+  assert.match(reconnectBlock, /Reconnect notifications/);
+  assert.match(reconnectBlock, /Notifications need to be reconnected on this device/);
+  assert.doesNotMatch(reconnectBlock, /Notifications enabled/);
+  assert.doesNotMatch(reconnectBlock, /device\./, "reconnect copy must not end a line with a full stop");
+  assert.doesNotMatch(reconnectBlock, /notifications\.<\/p>/);
+
+  // Reconnect failures show static friendly copy, never the interpolated
+  // raw error (enableError.message) -- the ternary's isReconnect branch
+  // must be a literal string, not a template built from the caught error.
+  const handleEnableBody = uiSource.slice(
+    uiSource.indexOf("async function handleEnable"),
+    uiSource.indexOf("async function handleDisable"),
+  );
+  assert.match(
+    handleEnableBody,
+    /isReconnect\s*\n?\s*\?\s*"Couldn't reconnect notifications\\nTry again or restart FTC"/,
+  );
+  // The raw error must still be logged for developer diagnosis.
+  assert.match(handleEnableBody, /console\.error\("\[push-settings\] Failed to enable:", enableError\)/);
+
+  // Unsupported-iOS copy: no trailing full stops on any of the three lines.
+  const unsupportedIosBlock = uiSource.slice(
+    uiSource.indexOf('state === "unsupported_ios_version"'),
+    uiSource.indexOf('state === "ios_not_installed"'),
+  );
+  assert.match(unsupportedIosBlock, /Push notifications unavailable/);
+  assert.match(unsupportedIosBlock, /Push notifications require iOS 16\.4 or later<\/p>/);
+  assert.match(
+    unsupportedIosBlock,
+    /You can still use FTC normally, but this device can&rsquo;t receive push notifications\s*\n\s*<\/p>/,
+  );
+  assert.match(
+    unsupportedIosBlock,
+    /If your iPhone supports a newer iOS version, update iOS to enable notifications\s*\n\s*<\/p>/,
+  );
+  assert.doesNotMatch(unsupportedIosBlock, /notifications\.\s*<\/p>/);
+  assert.doesNotMatch(unsupportedIosBlock, /later\.\s/);
+
+  // --- Sign-out cleanup and disable flow unaffected -----------------------
+  const currentUserSource = readFileSync(new URL("../lib/user/currentUser.ts", import.meta.url), "utf8");
+  assert.match(
+    currentUserSource,
+    /disableNotifications\(\)[\s\S]{0,200}supabase\.auth\.signOut\(\)/,
+    "sign-out must still deactivate the device subscription before signing out",
+  );
+
+  assert.match(clientSource, /export async function disableNotifications\(\): Promise<void>/);
+  assert.match(uiSource, /handleDisable/);
 }
 
 main().catch((error) => {
