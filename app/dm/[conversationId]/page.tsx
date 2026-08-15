@@ -1462,11 +1462,15 @@ export default function DmChatPage() {
 
     const userId = await getCurrentUserId();
 
-    const { error: insertError } = await supabase.from("messages").insert({
-      conversation_id: conversationId,
-      user_id: userId,
-      text,
-    });
+    const { data: insertedMessage, error: insertError } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        user_id: userId,
+        text,
+      })
+      .select("id")
+      .single();
 
     if (insertError) {
       setInput(text);
@@ -1481,6 +1485,7 @@ export default function DmChatPage() {
       senderUserId: userId,
       otherUserId,
       body: text,
+      messageId: insertedMessage?.id as string | undefined,
     });
     if (recipientId && recipientId !== otherUserId) {
       setOtherUserId(recipientId);

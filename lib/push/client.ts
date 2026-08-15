@@ -451,65 +451,6 @@ export async function getCurrentSubscription(): Promise<PushSubscription | null>
   }
 }
 
-export type PushDiagnostics = {
-  serviceWorkerRegistered: boolean;
-  serviceWorkerState: ServiceWorkerState | null;
-  serviceWorkerScriptUrl: string | null;
-  pageControlledByServiceWorker: boolean;
-  pushSubscriptionExists: boolean;
-  notificationPermission: NotificationPermission | "unsupported";
-  origin: string;
-  isStandalonePwa: boolean;
-};
-
-/**
- * TEMPORARY — device-side evidence for the "Apple accepted the push but the
- * iPhone never displayed it" investigation. Every field here is already
- * visible to the user in some form (permission state, install state, the
- * app's own script path/origin) or a plain boolean — never an endpoint,
- * key, or token. Remove once the investigation concludes.
- */
-export async function getPushDiagnostics(): Promise<PushDiagnostics> {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const isStandalonePwa = isInstalledPWA();
-
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-    return {
-      serviceWorkerRegistered: false,
-      serviceWorkerState: null,
-      serviceWorkerScriptUrl: null,
-      pageControlledByServiceWorker: false,
-      pushSubscriptionExists: false,
-      notificationPermission: "unsupported",
-      origin,
-      isStandalonePwa,
-    };
-  }
-
-  const registration = await navigator.serviceWorker.getRegistration("/");
-  const activeWorker = registration?.active ?? registration?.waiting ?? registration?.installing ?? null;
-
-  let pushSubscriptionExists = false;
-  if (registration) {
-    try {
-      pushSubscriptionExists = Boolean(await registration.pushManager.getSubscription());
-    } catch {
-      pushSubscriptionExists = false;
-    }
-  }
-
-  return {
-    serviceWorkerRegistered: Boolean(registration),
-    serviceWorkerState: activeWorker?.state ?? null,
-    serviceWorkerScriptUrl: activeWorker?.scriptURL ?? null,
-    pageControlledByServiceWorker: Boolean(navigator.serviceWorker.controller),
-    pushSubscriptionExists,
-    notificationPermission: typeof Notification === "undefined" ? "unsupported" : Notification.permission,
-    origin,
-    isStandalonePwa,
-  };
-}
-
 /**
  * RFC 8292 VAPID keys are URL-safe base64 ('-'/'_', usually unpadded).
  * atob() only accepts standard base64 ('+'/'/', '='-padded to a multiple
@@ -532,7 +473,7 @@ function isIOS(): boolean {
 /**
  * Check if running as installed PWA
  */
-export function isInstalledPWA(): boolean {
+function isInstalledPWA(): boolean {
   if (typeof window === "undefined") return false;
 
   // Method 1: Check display-mode media query

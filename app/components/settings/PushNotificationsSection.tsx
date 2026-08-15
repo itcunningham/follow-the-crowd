@@ -1,19 +1,12 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import {
   detectNotificationState,
   enableNotifications,
   disableNotifications,
-  getPushDiagnostics,
   type NotificationState,
-  type PushDiagnostics,
 } from "@/lib/push/client";
-import {
-  readBadgeDiagnostics,
-  readServerBadgeDiagnosticsSnapshot,
-  subscribeBadgeDiagnostics,
-} from "@/lib/navigation/badgeDiagnostics";
 
 export default function PushNotificationsSection() {
   const [state, setState] = useState<NotificationState | null>(null);
@@ -21,14 +14,6 @@ export default function PushNotificationsSection() {
   const [enabling, setEnabling] = useState(false);
   const [disabling, setDisabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [diagnostics, setDiagnostics] = useState<PushDiagnostics | null>(null);
-  // getServerSnapshot must be the fixed SSR-equivalent snapshot, not
-  // readBadgeDiagnostics -- see readServerBadgeDiagnosticsSnapshot's comment.
-  const badgeDiagnostics = useSyncExternalStore(
-    subscribeBadgeDiagnostics,
-    readBadgeDiagnostics,
-    readServerBadgeDiagnosticsSnapshot,
-  );
 
   // Detect current state on mount and when window regains focus
   useEffect(() => {
@@ -43,12 +28,6 @@ export default function PushNotificationsSection() {
         setState("unsupported");
       } finally {
         setLoading(false);
-      }
-
-      try {
-        setDiagnostics(await getPushDiagnostics());
-      } catch (diagnosticsError) {
-        console.error("[push-settings] Failed to gather diagnostics:", diagnosticsError);
       }
     }
 
@@ -89,12 +68,6 @@ export default function PushNotificationsSection() {
       setState(newState);
     } finally {
       setEnabling(false);
-
-      try {
-        setDiagnostics(await getPushDiagnostics());
-      } catch (diagnosticsError) {
-        console.error("[push-settings] Failed to gather diagnostics:", diagnosticsError);
-      }
     }
   }
 
@@ -246,41 +219,6 @@ export default function PushNotificationsSection() {
             {error}
           </div>
         )}
-
-        {/* TEMPORARY — device diagnostics for the "Apple accepted the push
-            but nothing displayed" investigation. Safe to leave visible to
-            any signed-in user (no endpoint/key/token values), but remove
-            once the investigation concludes. */}
-        {diagnostics && (
-          <div className="mt-3 rounded-lg bg-ftc-surface px-3 py-2 text-xs font-mono text-ftc-text-muted space-y-1">
-            <p className="text-[10px] font-sans uppercase tracking-wide text-ftc-text-muted/70">
-              Device diagnostics (temporary)
-            </p>
-            <div>Service worker registered: {String(diagnostics.serviceWorkerRegistered)}</div>
-            <div>Service worker state: {diagnostics.serviceWorkerState ?? "none"}</div>
-            <div>Service worker script: {diagnostics.serviceWorkerScriptUrl ?? "none"}</div>
-            <div>Page controlled by service worker: {String(diagnostics.pageControlledByServiceWorker)}</div>
-            <div>Push subscription exists: {String(diagnostics.pushSubscriptionExists)}</div>
-            <div>Notification permission: {diagnostics.notificationPermission}</div>
-            <div>Installed as standalone app: {String(diagnostics.isStandalonePwa)}</div>
-            <div>Origin: {diagnostics.origin}</div>
-          </div>
-        )}
-
-        {/* TEMPORARY — device diagnostics for the "Home Screen badge never
-            appears" investigation. Same safety rule as the panel above (no
-            endpoint/key/token values). Remove once the investigation
-            concludes. */}
-        <div className="mt-3 rounded-lg bg-ftc-surface px-3 py-2 text-xs font-mono text-ftc-text-muted space-y-1">
-          <p className="text-[10px] font-sans uppercase tracking-wide text-ftc-text-muted/70">
-            Badge diagnostics (temporary)
-          </p>
-          <div>Unread total: {badgeDiagnostics.unreadTotal ?? "not yet computed"}</div>
-          <div>Badging API supported: {String(badgeDiagnostics.badgingApiSupported)}</div>
-          <div>Last setAppBadge value: {badgeDiagnostics.lastSetValue ?? "none yet"}</div>
-          <div>Last badge result: {badgeDiagnostics.lastResult ?? "none yet"}</div>
-          <div>Standalone: {String(badgeDiagnostics.standalone)}</div>
-        </div>
       </div>
     </section>
   );

@@ -446,11 +446,15 @@ export async function sendEventCrewChatMessage(
     throw new Error("Crew chat is not available for this event yet");
   }
 
-  const { error: insertError } = await supabase.from("messages").insert({
-    event_id: eventId,
-    user_id: userId,
-    text: trimmed,
-  });
+  const { data: messageRow, error: insertError } = await supabase
+    .from("messages")
+    .insert({
+      event_id: eventId,
+      user_id: userId,
+      text: trimmed,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     throw insertError;
@@ -492,6 +496,8 @@ export async function sendEventCrewChatMessage(
             title,
             preview,
             link,
+            null,
+            messageRow?.id as string | undefined,
           );
         } catch (notificationError) {
           console.error(
