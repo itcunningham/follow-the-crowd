@@ -35,8 +35,10 @@ export async function notifyDmPeerOfMessage(options: {
   senderUserId: string;
   otherUserId: string | null;
   body: string;
+  /** The just-inserted messages.id, when the caller has one (attachment sends do). */
+  messageId?: string | null;
 }): Promise<string | null> {
-  const { conversationId, senderUserId, body } = options;
+  const { conversationId, senderUserId, body, messageId } = options;
   let recipientId = options.otherUserId;
 
   if (!recipientId || recipientId === senderUserId) {
@@ -62,6 +64,8 @@ export async function notifyDmPeerOfMessage(options: {
       senderName,
       formatNotificationPreview(body),
       `/dm/${conversationId}`,
+      null,
+      messageId,
     );
   } catch (notificationError) {
     console.error("[dm] Message sent but notification failed:", notificationError);

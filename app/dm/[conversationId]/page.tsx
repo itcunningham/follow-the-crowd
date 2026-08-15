@@ -1559,6 +1559,7 @@ export default function DmChatPage() {
         senderUserId: userId,
         otherUserId,
         body: caption || getDmAttachmentNotificationBody(sentAttachments[0], sentAttachments.length),
+        messageId,
       });
       if (recipientId && recipientId !== otherUserId) {
         setOtherUserId(recipientId);

@@ -18520,6 +18520,7 @@ async function main() {
   testNotificationCopyPolishPass();
   testPushBadgeRunSheetWithdrawalRealDeviceFollowups();
   testWithdrawalNotificationSoftFailsAndBadgeDiagnosticsWired();
+  testMessageIdentityDedupeForAttachmentPushes();
   console.log("All regression checks passed.");
 }
 
@@ -20460,6 +20461,168 @@ function testWithdrawalNotificationSoftFailsAndBadgeDiagnosticsWired() {
     runSheetLibSource,
     /const title = `\$\{eventName\} · Run sheet updated`;/,
     "the run-sheet push, confirmed working last round, must be unchanged",
+  );
+}
+
+/**
+ * Fourth real-device Production QA round, narrowed to DM/crew image-only
+ * push failing while text push works in the same conversations.
+ *
+ * Root cause: DM push title is always just "<sender>" and crew push title
+ * is always "<sender> · <event>" -- constant per sender+thread regardless of
+ * content. Two image-only sends with no caption both render the identical
+ * generic body "Sent a photo". The prior round's fix (dedupe also requires
+ * body to match, not just title+link) does NOT help here, since title AND
+ * body AND link are all genuinely identical between two such sends -- the
+ * second one still collided with the first's still-unread notification row,
+ * never inserted, and push-send (INSERT-only trigger) never fired.
+ *
+ * Fix: give message-type notifications a real identity to key dedupe on --
+ * the triggering chat message's own id (public.messages.id) -- instead of a
+ * title/body/link content fingerprint. Threaded through createNotification's
+ * new optional messageId param, wired at the two attachment call sites (DM
+ * and crew image sends) where a real message row exists. Text sends are
+ * deliberately untouched -- not reported broken, and different text
+ * messages naturally have different bodies. Booking/event/run-sheet
+ * notifications (no real message row) and reaction notifications (already
+ * keyed by reaction_id) are unaffected -- they don't pass messageId.
+ */
+function testMessageIdentityDedupeForAttachmentPushes() {
+  // --- createNotification: new messageId param, always sent to the RPC ----
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    notificationsSource,
+    /reactionId\?: string \| null,[\s\S]{0,800}messageId\?: string \| null,\s*\n\): Promise<string> \{/,
+    "createNotification must accept an optional messageId after reactionId",
+  );
+  assert.match(
+    notificationsSource,
+    /p_reaction_id: reactionId \?\? null,\s*\n\s*p_message_id: messageId \?\? null,/,
+    "p_message_id must always be sent (null when not applicable), same defensive pattern as p_reaction_id",
+  );
+
+  // --- DM image send: messageId threaded from the just-inserted row -------
+  const resolveDmOtherUserIdSource = readFileSync(
+    new URL("../lib/dm/resolveDmOtherUserId.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    resolveDmOtherUserIdSource,
+    /messageId\?: string \| null;/,
+    "notifyDmPeerOfMessage must accept an optional messageId",
+  );
+  assert.match(
+    resolveDmOtherUserIdSource,
+    /createNotification\(\s*\n\s*recipientId,\s*\n\s*"message",\s*\n\s*senderName,\s*\n\s*formatNotificationPreview\(body\),\s*\n\s*`\/dm\/\$\{conversationId\}`,\s*\n\s*null,\s*\n\s*messageId,\s*\n\s*\);/,
+    "the DM push must pass its own message's id through",
+  );
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmPageSource,
+    /body: caption \|\| getDmAttachmentNotificationBody\(sentAttachments\[0\], sentAttachments\.length\),\s*\n\s*messageId,\s*\n\s*\}\);/,
+    "the DM attachment send call site must pass the just-created message's id to notifyDmPeerOfMessage",
+  );
+
+  // --- Crew image send: messageId threaded from messageRow.id -------------
+  const groupChatAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    groupChatAttachmentsSource,
+    /createNotification\(\s*\n\s*participantId,\s*\n\s*"message",\s*\n\s*title,\s*\n\s*preview,\s*\n\s*link,\s*\n\s*null,\s*\n\s*messageRow\.id as string,\s*\n\s*\);/,
+    "the crew image push must pass its own message's id through",
+  );
+
+  // --- Text sends stay untouched: no messageId wiring introduced ----------
+  const eventCrewChatSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const crewTextSendBlock = eventCrewChatSource.slice(
+    eventCrewChatSource.indexOf("export async function sendEventCrewChatMessage("),
+  );
+  assert.doesNotMatch(
+    crewTextSendBlock.slice(0, crewTextSendBlock.indexOf("\n}\n")),
+    /messageRow\.id|messageId/,
+    "crew text send is confirmed working and must not be touched by this fix",
+  );
+
+  // --- SQL migration correctness -------------------------------------------
+  const migrationSource = readFileSync(
+    new URL(
+      "../supabase/migrations/20260817000000_notification_message_identity_dedupe.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migrationSource, /add column if not exists message_id uuid;/);
+  assert.match(
+    migrationSource,
+    /create index if not exists notifications_message_id_idx\s*\n\s*on public\.notifications \(message_id\)\s*\n\s*where message_id is not null;/,
+  );
+  assert.match(
+    migrationSource,
+    /drop function if exists public\.create_notification\(text, text, text, text, text, uuid\);/,
+    "adding a parameter requires dropping the old signature first, or Postgres creates an ambiguous second overload",
+  );
+  assert.match(migrationSource, /p_message_id uuid default null/);
+
+  // Message-identity branch must come AFTER the reaction branch (so reaction
+  // notifications are completely unaffected) and BEFORE the content-based
+  // dedupe (so it takes priority when a real message id is supplied).
+  const reactionBranchIdx = migrationSource.indexOf("if p_reaction_id is not null then");
+  const messageIdBranchIdx = migrationSource.indexOf("if p_message_id is not null then");
+  const contentDedupeIdx = migrationSource.indexOf("Content-based dedupe for everything else");
+  assert.ok(reactionBranchIdx > 0 && messageIdBranchIdx > 0 && contentDedupeIdx > 0);
+  assert.ok(
+    reactionBranchIdx < messageIdBranchIdx && messageIdBranchIdx < contentDedupeIdx,
+    "branch order must be reaction -> message-identity -> content-based dedupe",
+  );
+
+  const messageIdBlock = migrationSource.slice(messageIdBranchIdx, contentDedupeIdx);
+  assert.match(
+    messageIdBlock,
+    /where n\.user_id = p_user_id\s*\n\s*and n\.message_id = p_message_id/,
+    "message-identity dedupe must be scoped to (user_id, message_id) -- not title/body/link",
+  );
+  assert.doesNotMatch(
+    messageIdBlock,
+    /n\.title = p_title|n\.body is not distinct from p_body/,
+    "the message-identity path must not also require title/body to match -- that would recreate the exact bug being fixed",
+  );
+  assert.match(
+    messageIdBlock,
+    /insert into public\.notifications \(user_id, type, title, body, link, read, message_id\)/,
+  );
+
+  // Content-based dedupe (booking/event/run-sheet, and reaction) must be
+  // byte-for-byte unchanged from the prior migration.
+  const contentDedupeBlock = migrationSource.slice(contentDedupeIdx);
+  assert.match(
+    contentDedupeBlock,
+    /and n\.title = p_title\s*\n\s*and n\.body is not distinct from p_body\s*\n\s*and n\.link is not distinct from p_link\s*\n\s*and n\.read = false\s*\n\s*and n\.created_at > now\(\) - interval '10 minutes'/,
+  );
+
+  // Authorization guards must be present, unweakened.
+  assert.match(migrationSource, /raise exception 'Not allowed to create booking_update notification';/);
+  assert.match(migrationSource, /raise exception 'Not allowed to notify this user for this conversation';/);
+  assert.match(migrationSource, /raise exception 'Cannot create notification for yourself';/);
+
+  assert.match(
+    migrationSource,
+    /revoke all on function public\.create_notification\(text, text, text, text, text, uuid, uuid\) from public;/,
+  );
+  assert.match(
+    migrationSource,
+    /grant execute on function public\.create_notification\(text, text, text, text, text, uuid, uuid\) to authenticated;/,
   );
 }
 
