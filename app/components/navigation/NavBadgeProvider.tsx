@@ -441,6 +441,47 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
     return subscribeToBookingRequestChanges(userId, notifyBookingRequestsChanged);
   }, [userId]);
 
+  /**
+   * iOS gives an installed PWA's Home Screen icon a numeric badge, but never
+   * ties it to anything FTC computes -- left alone, it just accumulates one
+   * per delivered push and never comes back down, even after everything is
+   * read in-app. The Badging API is how a web app corrects that: this mirrors
+   * the same unread total already shown in the nav (messages + bookings) onto
+   * the OS badge whenever it changes, and clears it on sign-out. Only runs in
+   * the foreground tab, so a badge left by a push that arrived while FTC was
+   * fully closed is corrected the next time the app is opened, not the
+   * instant the push lands -- doing that would need the service worker to
+   * know the real unread count, which is out of scope here.
+   */
+  useEffect(() => {
+    if (typeof navigator === "undefined") {
+      return;
+    }
+
+    const badgingNavigator = navigator as Navigator & {
+      setAppBadge?: (count?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+
+    if (!badgingNavigator.setAppBadge || !badgingNavigator.clearAppBadge) {
+      return;
+    }
+
+    if (!userId) {
+      void badgingNavigator.clearAppBadge().catch(() => {});
+      return;
+    }
+
+    if (!state.badgesReady) {
+      return;
+    }
+
+    const total = state.badgeCounts.total;
+    void (total > 0 ? badgingNavigator.setAppBadge(total) : badgingNavigator.clearAppBadge()).catch(
+      () => {},
+    );
+  }, [userId, state.badgesReady, state.badgeCounts.total]);
+
   return <NavBadgeContext.Provider value={state}>{children}</NavBadgeContext.Provider>;
 }
 

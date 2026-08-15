@@ -18516,6 +18516,7 @@ async function main() {
   testServiceWorkerPushHandlerAlwaysShowsANotification();
   testUnsupportedIosPushStateDoesNotSuggestInstalling();
   testPushReconnectStateAndVapidKeyUrlSafeDecoding();
+  testNotificationCopyPolishPass();
   console.log("All regression checks passed.");
 }
 
@@ -19774,6 +19775,190 @@ function testPushReconnectStateAndVapidKeyUrlSafeDecoding() {
 
   assert.match(clientSource, /export async function disableNotifications\(\): Promise<void>/);
   assert.match(uiSource, /handleDisable/);
+}
+
+/**
+ * Final notification UX polish pass: copy hierarchy so push titles/bodies
+ * don't duplicate iOS's own "from Follow The Crowd" attribution, a venue-
+ * fallback bug ("<event> at " with an empty venue), missing actor names on
+ * booking cancel/decline/withdraw pushes, a trailing period on the DM
+ * reaction body, and a real-device-observed OS badge count that never came
+ * back down. Source-inspection only -- no DOM/browser environment here.
+ */
+function testNotificationCopyPolishPass() {
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  const eventsSource = readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8");
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  const dmReactionSource = readFileSync(
+    new URL("../lib/dm/dmReactionNotifications.ts", import.meta.url),
+    "utf8",
+  );
+  const eventCrewChatSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const groupChatAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  const resolveDmOtherUserIdSource = readFileSync(
+    new URL("../lib/dm/resolveDmOtherUserId.ts", import.meta.url),
+    "utf8",
+  );
+  const eventGroupChatUpdateSource = readFileSync(
+    new URL("../lib/events/eventGroupChatUpdate.ts", import.meta.url),
+    "utf8",
+  );
+  const navBadgeProviderSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // --- 1. DM text push: title = sender name alone, no app-name duplication -
+  assert.match(
+    resolveDmOtherUserIdSource,
+    /createNotification\(\s*recipientId,\s*"message",\s*senderName,\s*formatNotificationPreview\(body\)/,
+    "DM push title must be the sender's display name alone, body the message preview",
+  );
+  assert.doesNotMatch(
+    resolveDmOtherUserIdSource,
+    /Follow The Crowd|\bFTC\b/,
+    "DM push copy must not duplicate iOS's own app attribution",
+  );
+
+  // --- 2. Crew chat text/image push: "<sender> · <event>" title -----------
+  assert.match(
+    eventCrewChatSource,
+    /const title = `\$\{senderName\} · \$\{eventName\}`/,
+    "crew chat text push title must be '<sender> · <event>'",
+  );
+  assert.match(
+    groupChatAttachmentsSource,
+    /const title = `\$\{senderName\} · \$\{input\.eventName\}`/,
+    "crew chat image push title must be '<sender> · <event>'",
+  );
+  assert.match(
+    groupChatAttachmentsSource,
+    /const preview = formatNotificationPreview\(text \|\| genericPhotoPreview\)/,
+    "crew chat image push must prefer a caption over generic photo copy",
+  );
+
+  // --- 3. formatEventVenueLine: clean fallback when venue is blank --------
+  assert.match(
+    notificationsSource,
+    /export function formatEventVenueLine\(eventName: string, venue: string\): string \{/,
+  );
+  {
+    const trimmedVenue = "  ".trim();
+    const withVenue = trimmedVenue ? `EventName at ${trimmedVenue}` : "EventName";
+    assert.equal(withVenue, "EventName", "blank venue must fall back to the event name alone, no 'at'");
+
+    const realVenue = "Revolver".trim();
+    const withRealVenue = realVenue ? `EventName at ${realVenue}` : "EventName";
+    assert.equal(withRealVenue, "EventName at Revolver");
+  }
+  assert.match(
+    bookingRequestsSource,
+    /formatEventVenueLine\(input\.eventName\.trim\(\), input\.venue\)/,
+    "booking-request push body must use the venue-safe formatter, not raw string interpolation",
+  );
+  assert.doesNotMatch(
+    bookingRequestsSource,
+    /\$\{input\.eventName\.trim\(\)\} at \$\{input\.venue\.trim\(\)\}/,
+    "the old unguarded '<event> at <venue>' interpolation must be gone",
+  );
+
+  // --- 4. Booking accepted (unchanged) -------------------------------------
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{djName\} · Booking accepted`,\s*\n\s*booking\.event_name,/,
+    "booking-accepted push must stay '<DJ name> · Booking accepted' / event name",
+  );
+
+  // --- 5. Booking declined names the declining DJ, body is just the event -
+  assert.match(
+    bookingRequestsSource,
+    /const declinedDjProfile = await getUserProfileById\(booking\.recipient_id\);/,
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,/,
+    "booking-declined push must be '<DJ name> · Booking declined' with just the event name as body",
+  );
+
+  // --- 6. Cancel/withdraw pushes name the actor, drop the broken venue body
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Withdrew from event`/,
+    "DJ withdrawal push must be '<DJ name> · Withdrew from event'",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Booking cancelled`/,
+    "planner cancellation push must be '<planner name> · Booking cancelled'",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Booking request cancelled`/,
+  );
+  assert.doesNotMatch(
+    bookingRequestsSource,
+    /\$\{booking\.event_name\} at \$\{booking\.venue\}/,
+    "the cancel-booking push body must no longer interpolate a possibly-empty venue",
+  );
+
+  // --- 7. Whole-event cancellation push names the planner, drops venue ----
+  assert.match(
+    eventsSource,
+    /`\$\{plannerName\} · Booking cancelled`,\s*\n\s*booking\.event_name,/,
+    "event-cancellation push to affected DJs must be '<planner name> · Booking cancelled'",
+  );
+  assert.doesNotMatch(
+    eventsSource,
+    /"Booking request cancelled",\s*\n\s*`\$\{booking\.event_name\} at \$\{booking\.venue\}`/,
+    "the old unnamed cancellation title + venue-interpolated body must be gone",
+  );
+
+  // --- 8. Crew chat ready / event updated (unchanged) ----------------------
+  assert.match(
+    eventCrewChatSource,
+    /`\$\{eventName\} · Crew chat ready`,\s*\n\s*"Your event crew chat is now available",/,
+  );
+  assert.doesNotMatch(eventCrewChatSource, /now available\./, "no trailing period on crew-chat-ready body");
+  assert.match(
+    eventGroupChatUpdateSource,
+    /const title = `\$\{eventName\} · Event updated`;/,
+  );
+
+  // --- 9. DM reaction body: no trailing period -----------------------------
+  assert.match(
+    dmReactionSource,
+    /return `\$\{reactorDisplayName\} reacted \$\{emoji\} to your message`;/,
+    "DM reaction notification body must not end in a period",
+  );
+
+  // --- 10. Badge count: Badging API mirrors the real unread total ---------
+  assert.match(
+    navBadgeProviderSource,
+    /badgingNavigator\.setAppBadge\(total\) : badgingNavigator\.clearAppBadge\(\)/,
+    "the OS app badge must be driven by the actual computed unread total, not left to iOS's own accumulation",
+  );
+  assert.match(
+    navBadgeProviderSource,
+    /if \(!userId\) \{\s*\n\s*void badgingNavigator\.clearAppBadge\(\)\.catch\(\(\) => \{\}\);/,
+    "the OS app badge must be cleared on sign-out",
+  );
+  assert.match(
+    navBadgeProviderSource,
+    /if \(!state\.badgesReady\) \{\s*\n\s*return;/,
+    "the badge must not be set/cleared from a placeholder count before the real total loads",
+  );
 }
 
 main().catch((error) => {

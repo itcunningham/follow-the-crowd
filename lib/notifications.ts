@@ -40,6 +40,16 @@ export function formatNotificationPreview(
   return `${collapsed.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
+/**
+ * "<event name> at <venue>" for push bodies -- venue can be an empty string
+ * (planner left it blank), and "<event> at " reads as broken copy. Falls
+ * back to the event name alone rather than showing an empty/awkward venue.
+ */
+export function formatEventVenueLine(eventName: string, venue: string): string {
+  const trimmedVenue = venue.trim();
+  return trimmedVenue ? `${eventName} at ${trimmedVenue}` : eventName;
+}
+
 export function notifyNavigationBadgesRefresh(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ftc-notifications-updated"));

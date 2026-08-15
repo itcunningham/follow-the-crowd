@@ -9,6 +9,7 @@ import {
 } from "@/lib/bookingDateTime";
 import {
   createNotification,
+  formatEventVenueLine,
   formatNotificationPreview,
   getNotificationCreateErrorMessage,
 } from "@/lib/notifications";
@@ -2258,7 +2259,7 @@ export async function sendBookingRequestToDj(
       recipientId,
       "booking_request",
       `${senderName} · Booking request`,
-      `${input.eventName.trim()} at ${input.venue.trim()}`,
+      formatEventVenueLine(input.eventName.trim(), input.venue),
       `/dm/${conversationId}`,
     );
   } catch (notificationError) {
@@ -2902,19 +2903,22 @@ export async function cancelBookingRequest(
     booking.cancelled_by === booking.recipient_id
       ? booking.sender_id
       : booking.recipient_id;
+  const cancelledByProfile = booking.cancelled_by
+    ? await getUserProfileById(booking.cancelled_by)
+    : null;
+  const cancelledByName = resolveUserDisplayName(cancelledByProfile, { fallback: "Someone" });
   const wasAccepted = options?.previousStatus === "accepted";
   const notificationTitle = wasAccepted
     ? booking.cancelled_by === booking.recipient_id
-      ? "DJ withdrew from event"
-      : "Booking cancelled"
-    : "Booking request cancelled";
-  const notificationBody = `${booking.event_name} at ${booking.venue}`;
+      ? `${cancelledByName} · Withdrew from event`
+      : `${cancelledByName} · Booking cancelled`
+    : `${cancelledByName} · Booking request cancelled`;
 
   await createNotification(
     notifyUserId,
     "booking_update",
     notificationTitle,
-    notificationBody,
+    booking.event_name,
     `/dm/${booking.conversation_id}`,
   );
 
@@ -3442,11 +3446,14 @@ export async function updateBookingRequestStatus(
     return booking;
   }
 
+  const declinedDjProfile = await getUserProfileById(booking.recipient_id);
+  const declinedDjName = resolveUserDisplayName(declinedDjProfile, { fallback: "A DJ" });
+
   await createNotification(
     booking.sender_id,
     "booking_update",
-    "Booking declined",
-    `${booking.event_name} · ${formatStatusLabel(status)}`,
+    `${declinedDjName} · Booking declined`,
+    booking.event_name,
     "/bookings",
   );
 
