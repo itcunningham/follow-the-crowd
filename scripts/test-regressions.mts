@@ -241,6 +241,7 @@ import { resolveCrewChatSeenLabel } from "../lib/events/crewChatReadReceipts";
 import {
   collectChangedRunSheetBookingIds,
   collectRunSheetBookingChanges,
+  collectRunSheetDjFacingChanges,
   computeRunSheetSetLabels,
   describeRunSheetBookingChange,
   hasUnsavedRunSheetEdits,
@@ -18517,6 +18518,7 @@ async function main() {
   testUnsupportedIosPushStateDoesNotSuggestInstalling();
   testPushReconnectStateAndVapidKeyUrlSafeDecoding();
   testNotificationCopyPolishPass();
+  testPushBadgeRunSheetWithdrawalRealDeviceFollowups();
   console.log("All regression checks passed.");
 }
 
@@ -19959,6 +19961,313 @@ function testNotificationCopyPolishPass() {
     /if \(!state\.badgesReady\) \{\s*\n\s*return;/,
     "the badge must not be set/cleared from a placeholder count before the real total loads",
   );
+}
+
+/**
+ * Real-device Production QA follow-up pass, four issues traced to their
+ * actual runtime cause rather than assumed from source shape alone:
+ *
+ * 1. Crew-chat image push never arrived. Root cause: crew-chat push title
+ *    ("<sender> · <event>") and link are identical for every message a
+ *    sender posts to that chat, and create_notification's 10-minute dedupe
+ *    keyed only on (user_id, type, title, link) -- not body -- so a second
+ *    unread message (e.g. a photo sent shortly after a text) matched the
+ *    first message's still-unread row, returned its id without inserting,
+ *    and push-send (which only fires on INSERT) never ran. Fixed in SQL:
+ *    the dedupe now also requires the body to match.
+ * 2. Home Screen badge never appeared. Root cause: getNavBadgeCounts hard-
+ *    zeroed the booking-notification count for role === "dj" (a leftover
+ *    optimization from when nothing in the DJ nav bar read it), so a DJ's
+ *    unread booking_request/booking_update rows never reached
+ *    badgeCounts.total -- exactly the "DJ receives a booking request, badge
+ *    should increment" case. Fixed by counting both types for every role.
+ *    Badge-sync errors were also being silently swallowed; now logged.
+ * 3. Run-sheet edits produced no DJ push. Root cause: the only remaining
+ *    notify channel after 6df737ae removed the DM path was the crew-chat
+ *    post, which requires crew chat unlocked and shares issue 1's exact
+ *    dedupe-collision class. Fixed by adding an independent per-DJ push
+ *    (type "message", link is the booking DM so it can't collide with a
+ *    crew-chat notification's dedupe key), gated on real stage/time changes
+ *    only -- notes and pure reorders are excluded, matching "do not push on
+ *    every Save when nothing DJ-facing changed."
+ * 4. Withdrawal push copy. Traced every call site of cancelBookingRequest
+ *    and cancelAcceptedBookingRequest: exactly one string source exists
+ *    repo-wide, previousStatus: "accepted" is correctly threaded through
+ *    from both real UI entry points, and the service worker has no fetch
+ *    handler (so it cannot be serving a stale JS bundle). No code-level
+ *    duplicate/legacy path found -- see the shipped report for the
+ *    conclusion. This suite locks the currently-correct wiring down so it
+ *    cannot silently regress again.
+ */
+function testPushBadgeRunSheetWithdrawalRealDeviceFollowups() {
+  // --- Issue 1: dedupe must not collapse different content -----------------
+  const dedupeMigrationSource = readFileSync(
+    new URL(
+      "../supabase/migrations/20260816000000_notification_dedupe_includes_body.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(
+    dedupeMigrationSource,
+    /and n\.body is not distinct from p_body/,
+    "the dedupe SELECT must also require the body to match, or two different messages from the same sender to the same chat within 10 minutes collapse into one and the second never pushes",
+  );
+  assert.match(dedupeMigrationSource, /n\.title = p_title/);
+  assert.match(dedupeMigrationSource, /n\.link is not distinct from p_link/);
+  assert.match(dedupeMigrationSource, /n\.read = false/);
+  assert.match(dedupeMigrationSource, /interval '10 minutes'/);
+  // Reaction notifications are keyed by reaction_id and update in place --
+  // must still return before ever reaching the body-matching dedupe select.
+  assert.match(dedupeMigrationSource, /if p_reaction_id is not null then/);
+  const reactionBlock = dedupeMigrationSource.slice(
+    dedupeMigrationSource.indexOf("if p_reaction_id is not null then"),
+    dedupeMigrationSource.indexOf("Dedupe now also requires"),
+  );
+  assert.match(reactionBlock, /return v_notification_id;/);
+
+  // --- Issue 2: badge must count unread booking rows for every role -------
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    notificationsSource,
+    /role === "dj" \? Promise\.resolve\(\[\] as Notification\[\]\)/,
+    "getNavBadgeCounts must no longer force a DJ's booking-notification count to zero",
+  );
+  assert.match(
+    notificationsSource,
+    /const bookingTypes: NotificationType\[\] = \["booking_request", "booking_update"\];/,
+    "both notification types must be counted for every role -- getUnreadNotifications already scopes to the caller's own rows",
+  );
+  assert.match(
+    notificationsSource,
+    /getUnreadNotifications\(userId, bookingTypes\)/,
+    "the booking-notifications query must run unconditionally, not be skipped for a role",
+  );
+
+  const navBadgeProviderSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    navBadgeProviderSource,
+    /\.catch\(\(\) => \{\}\)/,
+    "badge-sync errors must be logged, not silently swallowed -- otherwise a real WebKit-level rejection is indistinguishable from a genuine zero count",
+  );
+  assert.match(navBadgeProviderSource, /console\.error\("\[nav-badges\] clearAppBadge failed:"/);
+  assert.match(navBadgeProviderSource, /console\.error\("\[nav-badges\] App badge sync failed:"/);
+  assert.match(
+    navBadgeProviderSource,
+    /badgingNavigator\.setAppBadge\(total\) : badgingNavigator\.clearAppBadge\(\)/,
+    "the badge must still be driven by the actual computed unread total",
+  );
+
+  // --- Issue 3: run-sheet DJ-facing change detection + wiring -------------
+  const base = (overrides: Partial<RunSheetRowInput> = {}): RunSheetRowInput => ({
+    id: "row-1",
+    sort_order: 0,
+    artist_name: "DJ A",
+    start_time: "11:00 PM",
+    finish_time: "1:00 AM",
+    stage_area: "Front",
+    notes: "",
+    booking_request_id: "booking-a",
+    ...overrides,
+  });
+
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges([base()], [base()]),
+    [],
+    "identical rows must not push",
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges([base()], [base({ notes: "Bring USB" })]),
+    [],
+    "notes are planner-only and must not push",
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base(), base({ id: "row-2", sort_order: 1, booking_request_id: "booking-b", artist_name: "DJ B" })],
+      [base({ id: "row-2", sort_order: 0, booking_request_id: "booking-b", artist_name: "DJ B" }), base({ sort_order: 1 })],
+    ),
+    [],
+    "a pure reorder with no stage/time change must not push either DJ",
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges([base()], [base({ stage_area: "Back" })]),
+    [{ bookingRequestId: "booking-a", changeSummary: "Stage changed to Back" }],
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base()],
+      [base({ start_time: "10:00 PM", finish_time: "2:00 AM" })],
+    ),
+    [{ bookingRequestId: "booking-a", changeSummary: "Set time changed to 10:00 PM – 2:00 AM" }],
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base()],
+      [base({ stage_area: "Back", start_time: "10:00 PM", finish_time: "2:00 AM" })],
+    ),
+    [{ bookingRequestId: "booking-a", changeSummary: "Your run sheet details were updated" }],
+    "both fields changing at once uses the general fallback copy",
+  );
+  // Multi-set DJ: two rows for the same booking. Only the first row's stage
+  // changed -- the copy must aggregate every current row's value (matching
+  // describeRunSheetBookingChange's convention), not just the last row, or a
+  // change on any row but the last would show a stale/wrong set's value.
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base({ id: "set-1", stage_area: "Front" }), base({ id: "set-2", sort_order: 1, stage_area: "Back2" })],
+      [base({ id: "set-1", stage_area: "VIP" }), base({ id: "set-2", sort_order: 1, stage_area: "Back2" })],
+    ),
+    [{ bookingRequestId: "booking-a", changeSummary: "Stage changed to VIP / Back2" }],
+    "multi-set stage change must aggregate all of this DJ's current rows, not just the last one",
+  );
+  // Initial assignment: a brand-new row with real values must push once --
+  // but a brand-new row that's still blank (draft/unassigned) must not.
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [],
+      [base({ id: "row-new", booking_request_id: "booking-c", stage_area: "Main" })],
+    ),
+    [{ bookingRequestId: "booking-c", changeSummary: "Your run sheet details were updated" }],
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [],
+      [
+        base({
+          id: "row-draft",
+          booking_request_id: "booking-d",
+          stage_area: "",
+          start_time: "",
+          finish_time: "",
+        }),
+      ],
+    ),
+    [],
+    "a still-blank freshly-added row must not push",
+  );
+  // Rows with no booking_request_id (unassigned/draft rows) are never
+  // iterated at all -- collectRunSheetDjFacingChanges only walks real
+  // booking ids, so an unassigned row can never appear in its output.
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base({ booking_request_id: undefined })],
+      [base({ booking_request_id: undefined, stage_area: "Back" })],
+    ),
+    [],
+  );
+
+  const runSheetLibSource = readFileSync(
+    new URL("../lib/eventRunSheet.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    runSheetLibSource,
+    /export async function notifyRunSheetUpdatesForChangedBookings\(options: \{\s*\n\s*eventName: string;/,
+    "the per-DJ push needs eventName to build its title",
+  );
+  assert.match(
+    runSheetLibSource,
+    /const title = `\$\{eventName\} · Run sheet updated`;/,
+  );
+  assert.match(
+    runSheetLibSource,
+    /"message",\s*\n\s*title,\s*\n\s*change\.changeSummary,\s*\n\s*`\/dm\/\$\{booking\.conversation_id\}`,/,
+    "the push must use the booking DM link, not the crew-chat link, so it carries its own dedupe key",
+  );
+  assert.match(runSheetLibSource, /booking\.status !== "accepted"/);
+  assert.doesNotMatch(
+    runSheetLibSource,
+    /supabase\.from\("messages"\)\.insert\(\{\s*\n\s*conversation_id: booking\.conversation_id,\s*\n\s*user_id: authorId,/,
+    "this path must not insert its own DM message bubble -- the crew-chat post is already the visible record",
+  );
+
+  const runSheetSectionSource = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    runSheetSectionSource,
+    /const djFacingChanges = collectRunSheetDjFacingChanges\(savedRows, nextRows\);/,
+  );
+  const handleSaveBlock =
+    runSheetSectionSource.match(/async function handleSave\(\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
+  assert.ok(handleSaveBlock, "handleSave must exist");
+  assert.match(
+    handleSaveBlock,
+    /notifyRunSheetUpdatesForChangedBookings\(\{\s*\n\s*eventName,\s*\n\s*lineup,\s*\n\s*changes: djFacingChanges,/,
+    "handleSave must actually call the per-DJ notify -- this is the exact wiring that was missing before this fix",
+  );
+  // Both notify calls fire from the same successful-save path, and crew chat
+  // still gets the broader (notes/order-inclusive) change list -- neither
+  // channel was removed, the DJ push was added alongside it.
+  assert.match(handleSaveBlock, /notifyCrewChatOfRunSheetUpdate/);
+  assert.match(handleSaveBlock, /changes: runSheetChanges,/);
+
+  // --- Issue 4: withdrawal copy wiring must not have silently regressed ---
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Withdrew from event`/,
+    "the withdrawal title must still name the actual DJ, not the old static 'DJ withdrew from event'",
+  );
+  assert.doesNotMatch(
+    bookingRequestsSource,
+    /"DJ withdrew from event"/,
+    "the old unnamed literal must not exist anywhere -- it was the exact text seen stale on a real device",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /export async function cancelAcceptedBookingRequest\([\s\S]*?previousStatus: "accepted",/,
+    "the withdraw/cancel-accepted entry point must thread previousStatus so cancelBookingRequest actually reaches the wasAccepted branch",
+  );
+  // Every real UI entry point for withdrawing from an accepted booking must
+  // route through cancelAcceptedBookingRequest (which supplies
+  // previousStatus), not the raw pending-request cancelBookingRequest.
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventDetailSource, /await cancelAcceptedBookingRequest\(/);
+  assert.match(dmPageSource, /await cancelAcceptedBookingRequest\(/);
+
+  // Only one source location in the whole repo defines this string -- no
+  // duplicate/legacy call site independently constructs the withdrawal copy.
+  const grepPaths = [
+    ["lib/bookingRequests.ts", bookingRequestsSource],
+    ["lib/events.ts", readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8")],
+    [
+      "lib/events/eventGroupChatUpdate.ts",
+      readFileSync(new URL("../lib/events/eventGroupChatUpdate.ts", import.meta.url), "utf8"),
+    ],
+  ] as const;
+  const withdrawTitleSources = grepPaths.filter(([, source]) =>
+    source.includes("Withdrew from event"),
+  );
+  assert.equal(
+    withdrawTitleSources.length,
+    1,
+    "exactly one file should construct the withdrawal push title",
+  );
+  assert.equal(withdrawTitleSources[0]?.[0], "lib/bookingRequests.ts");
+
+  // The service worker has no fetch handler, so it cannot be the source of a
+  // stale JS bundle serving old copy -- confirms the client cannot be
+  // "stuck" on old code via SW caching, ruling out that explanation.
+  const swSource = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+  assert.doesNotMatch(swSource, /addEventListener\(\s*['"]fetch['"]/);
 }
 
 main().catch((error) => {

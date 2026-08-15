@@ -307,19 +307,26 @@ export async function getTotalUnreadCount(userId: string): Promise<number> {
   return data?.length ?? 0;
 }
 
+// Both types are always relevant to whoever owns the row: booking_request's
+// recipient is always the DJ, booking_update goes to whichever party the
+// action affects. getUnreadNotifications already scopes to this user's own
+// rows, so querying both for every role finds nothing for the type a given
+// role never receives -- it was never a role distinction worth making. A
+// prior version skipped this query entirely for role === "dj" (nothing in
+// the DJ nav bar reads badgeCounts.bookings, so it looked like a safe no-op),
+// which silently zeroed a DJ's unread booking_request/booking_update count --
+// invisible in the old DJ-only nav-badge use, but wrong the moment
+// badgeCounts.total started feeding the OS Home Screen badge too, since a DJ
+// getting a new booking request is exactly the case that badge must reflect.
 export async function getNavBadgeCounts(
   userId: string,
   role: UserRole | null,
 ): Promise<NavBadgeCounts> {
-  const bookingTypes: NotificationType[] = ["booking_update"];
-
-  if (role !== "dj") {
-    bookingTypes.unshift("booking_request");
-  }
+  const bookingTypes: NotificationType[] = ["booking_request", "booking_update"];
 
   const [inboxUnread, bookingNotifications] = await Promise.all([
     getInboxUnreadCounts(userId, role),
-    role === "dj" ? Promise.resolve([] as Notification[]) : getUnreadNotifications(userId, bookingTypes),
+    getUnreadNotifications(userId, bookingTypes),
   ]);
 
   const counts: NavBadgeCounts = {
