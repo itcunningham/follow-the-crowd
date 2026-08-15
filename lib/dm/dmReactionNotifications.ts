@@ -7,7 +7,7 @@ export function buildDmReactionNotificationBody(
   reactorDisplayName: string,
   emoji: string,
 ): string {
-  return `${reactorDisplayName} reacted ${emoji} to your message.`;
+  return `${reactorDisplayName} reacted ${emoji} to your message`;
 }
 
 /**

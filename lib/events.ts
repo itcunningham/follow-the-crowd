@@ -816,8 +816,8 @@ async function notifyCancelledBookingsFromEventCancellation(
         await createNotification(
           booking.recipient_id,
           "booking_update",
-          "Booking request cancelled",
-          `${booking.event_name} at ${booking.venue}`,
+          `${plannerName} · Booking cancelled`,
+          booking.event_name,
           `/dm/${booking.conversation_id}`,
         );
         console.log("[events] booking_update notification created");
