@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   detectNotificationState,
   enableNotifications,
@@ -9,6 +9,11 @@ import {
   type NotificationState,
   type PushDiagnostics,
 } from "@/lib/push/client";
+import {
+  readBadgeDiagnostics,
+  readServerBadgeDiagnosticsSnapshot,
+  subscribeBadgeDiagnostics,
+} from "@/lib/navigation/badgeDiagnostics";
 
 export default function PushNotificationsSection() {
   const [state, setState] = useState<NotificationState | null>(null);
@@ -17,6 +22,13 @@ export default function PushNotificationsSection() {
   const [disabling, setDisabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [diagnostics, setDiagnostics] = useState<PushDiagnostics | null>(null);
+  // getServerSnapshot must be the fixed SSR-equivalent snapshot, not
+  // readBadgeDiagnostics -- see readServerBadgeDiagnosticsSnapshot's comment.
+  const badgeDiagnostics = useSyncExternalStore(
+    subscribeBadgeDiagnostics,
+    readBadgeDiagnostics,
+    readServerBadgeDiagnosticsSnapshot,
+  );
 
   // Detect current state on mount and when window regains focus
   useEffect(() => {
@@ -254,6 +266,21 @@ export default function PushNotificationsSection() {
             <div>Origin: {diagnostics.origin}</div>
           </div>
         )}
+
+        {/* TEMPORARY — device diagnostics for the "Home Screen badge never
+            appears" investigation. Same safety rule as the panel above (no
+            endpoint/key/token values). Remove once the investigation
+            concludes. */}
+        <div className="mt-3 rounded-lg bg-ftc-surface px-3 py-2 text-xs font-mono text-ftc-text-muted space-y-1">
+          <p className="text-[10px] font-sans uppercase tracking-wide text-ftc-text-muted/70">
+            Badge diagnostics (temporary)
+          </p>
+          <div>Unread total: {badgeDiagnostics.unreadTotal ?? "not yet computed"}</div>
+          <div>Badging API supported: {String(badgeDiagnostics.badgingApiSupported)}</div>
+          <div>Last setAppBadge value: {badgeDiagnostics.lastSetValue ?? "none yet"}</div>
+          <div>Last badge result: {badgeDiagnostics.lastResult ?? "none yet"}</div>
+          <div>Standalone: {String(badgeDiagnostics.standalone)}</div>
+        </div>
       </div>
     </section>
   );

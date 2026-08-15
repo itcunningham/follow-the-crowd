@@ -532,7 +532,7 @@ function isIOS(): boolean {
 /**
  * Check if running as installed PWA
  */
-function isInstalledPWA(): boolean {
+export function isInstalledPWA(): boolean {
   if (typeof window === "undefined") return false;
 
   // Method 1: Check display-mode media query

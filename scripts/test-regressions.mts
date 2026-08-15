@@ -18519,6 +18519,7 @@ async function main() {
   testPushReconnectStateAndVapidKeyUrlSafeDecoding();
   testNotificationCopyPolishPass();
   testPushBadgeRunSheetWithdrawalRealDeviceFollowups();
+  testWithdrawalNotificationSoftFailsAndBadgeDiagnosticsWired();
   console.log("All regression checks passed.");
 }
 
@@ -20268,6 +20269,198 @@ function testPushBadgeRunSheetWithdrawalRealDeviceFollowups() {
   // "stuck" on old code via SW caching, ruling out that explanation.
   const swSource = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
   assert.doesNotMatch(swSource, /addEventListener\(\s*['"]fetch['"]/);
+}
+
+/**
+ * Third real-device Production QA round on the same three issues.
+ *
+ * Issue 3 (withdrawal push) got an actual code fix this round: tracing
+ * cancelBookingRequest found its createNotification call was the ONE call
+ * site in this file with no try/catch, unlike every sibling notification
+ * call. cancel_booking_request (the SQL RPC) had already committed by the
+ * time that call runs, so any failure there -- an auth/RLS edge case, a
+ * network blip, anything -- propagated uncaught through
+ * cancelAcceptedBookingRequest to the UI, which showed a generic "Failed to
+ * cancel" error for a cancellation that had, in fact, already succeeded --
+ * and skipped the DM system message insert and notifyBookingRequestsChanged
+ * below it, since neither ever ran. This is exactly the "planner receives
+ * no push, nothing else visibly wrong" shape reported from a real device.
+ * Fixed by wrapping it in try/catch, matching the established soft-fail
+ * pattern used everywhere else notifications are created in this file.
+ *
+ * Issues 1 (crew image push) and 2 (badge) had no NEW code-level bug found
+ * on this pass beyond what the previous round already fixed and shipped
+ * (the create_notification body-inclusive dedupe migration, and the
+ * DJ-role badge-count fix) -- both require a manual SQL migration run this
+ * sandbox has no way to confirm was applied. Issue 2 gets real-device
+ * diagnostics instead of a guessed fix: a new badgeDiagnostics module
+ * records the exact unread total, Badging API support, the last value
+ * passed to setAppBadge/clearAppBadge, and the last result (success or a
+ * safe error name), surfaced in Settings' existing temporary diagnostics
+ * panel -- in the exact shape requested -- so the next real test produces
+ * conclusive evidence instead of another guess.
+ */
+function testWithdrawalNotificationSoftFailsAndBadgeDiagnosticsWired() {
+  // --- Issue 3: withdrawal notification must soft-fail, never abort -------
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  const cancelFnBody = bookingRequestsSource.slice(
+    bookingRequestsSource.indexOf("export async function cancelBookingRequest("),
+    bookingRequestsSource.indexOf("export type CancelAcceptedBookingRequestResult"),
+  );
+  assert.ok(cancelFnBody.length > 0, "cancelBookingRequest must exist");
+
+  // Exactly one createNotification call in this function -- no duplicate
+  // second withdrawal/cancel push was introduced alongside the fix.
+  const createNotificationCallCount = (cancelFnBody.match(/await createNotification\(/g) ?? []).length;
+  assert.equal(
+    createNotificationCallCount,
+    1,
+    "cancelBookingRequest must create exactly one notification, not a duplicate",
+  );
+
+  assert.match(
+    cancelFnBody,
+    /try \{\s*\n\s*await createNotification\(\s*\n\s*notifyUserId,\s*\n\s*"booking_update",\s*\n\s*notificationTitle,/,
+    "the withdrawal/cancel notification call must be wrapped in try/catch, matching every other notification call site",
+  );
+  assert.match(
+    cancelFnBody,
+    /\} catch \(notificationError\) \{\s*\n\s*console\.error\(\s*\n\s*"\[bookingRequests\] Booking cancelled but notification failed:",/,
+    "a notification failure must be soft-caught and logged, not thrown",
+  );
+
+  // The catch block must close BEFORE the DM-insert try block and
+  // notifyBookingRequestsChanged() -- i.e. those must be unconditionally
+  // reachable regardless of whether the notification succeeded, not nested
+  // inside anything that would skip them on failure.
+  const afterNotificationCatch = cancelFnBody.slice(
+    cancelFnBody.indexOf('console.error(\n      "[bookingRequests] Booking cancelled but notification failed:"'),
+  );
+  assert.match(afterNotificationCatch, /await insertBookingCancelledDmMessageIfNeeded\(booking\)/);
+  assert.match(afterNotificationCatch, /notifyBookingRequestsChanged\(\);\s*\n\s*return booking;\s*\n\}/);
+
+  // Confirm insertBookingCancelledDmMessageIfNeeded itself never creates a
+  // second notification (it only inserts into `messages`) -- ruling out a
+  // duplicate push from that side effect.
+  const dmInsertFnBody = bookingRequestsSource.slice(
+    bookingRequestsSource.indexOf("async function insertBookingCancelledDmMessageIfNeeded("),
+    bookingRequestsSource.indexOf("export function formatRateProposedDmMessage("),
+  );
+  assert.ok(dmInsertFnBody.length > 0, "insertBookingCancelledDmMessageIfNeeded must exist");
+  assert.doesNotMatch(
+    dmInsertFnBody,
+    /createNotification\(/,
+    "the DM system-message insert must not itself create a notification",
+  );
+
+  // --- Issue 3: authorization SQL for the withdrawal direction is present -
+  const dedupeMigrationSource = readFileSync(
+    new URL(
+      "../supabase/migrations/20260816000000_notification_dedupe_includes_body.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  // The condition that authorizes a DJ (recipient) cancelling an accepted
+  // booking to notify the planner (sender) -- the exact direction a
+  // withdrawal needs. Present verbatim (copied from the live function).
+  assert.match(
+    dedupeMigrationSource,
+    /br\.recipient_id = v_sender_id\s*\n\s*and br\.sender_id = p_user_id\s*\n\s*and br\.status = 'cancelled'/,
+    "the booking_update authorization must allow a DJ (recipient) to notify the planner (sender) about a cancellation -- the withdrawal direction",
+  );
+
+  // --- Issue 2: badge diagnostics module exists in the requested shape ----
+  const badgeDiagnosticsSource = readFileSync(
+    new URL("../lib/navigation/badgeDiagnostics.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(badgeDiagnosticsSource, /unreadTotal: number \| null;/);
+  assert.match(badgeDiagnosticsSource, /badgingApiSupported: boolean;/);
+  assert.match(badgeDiagnosticsSource, /lastSetValue: number \| "cleared" \| null;/);
+  assert.match(badgeDiagnosticsSource, /lastResult: string \| null;/);
+  assert.match(badgeDiagnosticsSource, /standalone: boolean;/);
+  assert.match(badgeDiagnosticsSource, /export function recordBadgeSyncAttempt/);
+  assert.match(badgeDiagnosticsSource, /export function readBadgeDiagnostics/);
+  assert.match(badgeDiagnosticsSource, /export function subscribeBadgeDiagnostics/);
+  // No secrets -- only booleans/numbers/short safe names as actual fields,
+  // no endpoint/key/token property (the doc comment mentioning those words
+  // to disclaim them is fine; only a real field declaration would matter).
+  assert.doesNotMatch(badgeDiagnosticsSource, /\b(endpoint|p256dh|authKey|token)\s*:/);
+
+  // Fixed SSR-equivalent snapshot for useSyncExternalStore's getServerSnapshot
+  // -- must be the all-false/null defaults SSR always produces (navigator and
+  // window don't exist server-side), not a live reader of mutable state.
+  assert.match(
+    badgeDiagnosticsSource,
+    /export const SERVER_BADGE_DIAGNOSTICS_SNAPSHOT: BadgeDiagnostics = \{\s*\n\s*unreadTotal: null,\s*\n\s*badgingApiSupported: false,\s*\n\s*lastSetValue: null,\s*\n\s*lastResult: null,\s*\n\s*standalone: false,\s*\n\s*\};/,
+  );
+  assert.match(badgeDiagnosticsSource, /export function readServerBadgeDiagnosticsSnapshot/);
+
+  const navBadgeProviderSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(navBadgeProviderSource, /import \{ recordBadgeSyncAttempt \} from "@\/lib\/navigation\/badgeDiagnostics";/);
+  assert.match(navBadgeProviderSource, /recordBadgeSyncAttempt\(\{ badgingApiSupported: false \}\);/);
+  assert.match(navBadgeProviderSource, /recordBadgeSyncAttempt\(\{\s*\n\s*unreadTotal: total,\s*\n\s*lastSetValue: total > 0 \? total : "cleared",\s*\n\s*\}\);/);
+  assert.match(navBadgeProviderSource, /recordBadgeSyncAttempt\(\{ lastResult: "success" \}\)/);
+  assert.match(navBadgeProviderSource, /recordBadgeSyncAttempt\(\{ lastResult: safeBadgeErrorName\(badgeError\) \}\)/);
+  assert.match(
+    navBadgeProviderSource,
+    /function safeBadgeErrorName\(error: unknown\): string \{/,
+    "the error name helper must exist so a real rejection is captured without exposing message details",
+  );
+
+  const pushClientSource = readFileSync(
+    new URL("../lib/push/client.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    pushClientSource,
+    /export function isInstalledPWA\(\): boolean \{/,
+    "isInstalledPWA must be exported so the badge diagnostics module can report standalone status",
+  );
+
+  const settingsSource = readFileSync(
+    new URL("../app/components/settings/PushNotificationsSection.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    settingsSource,
+    /import \{\s*\n\s*readBadgeDiagnostics,\s*\n\s*readServerBadgeDiagnosticsSnapshot,\s*\n\s*subscribeBadgeDiagnostics,\s*\n\s*\} from "@\/lib\/navigation\/badgeDiagnostics";/,
+  );
+  // getServerSnapshot must be the fixed SSR-equivalent snapshot, not
+  // readBadgeDiagnostics again -- using the live reader for both arguments
+  // lets the server-rendered HTML (always the false/null defaults, since
+  // navigator/window don't exist during SSR) disagree with what a client
+  // render before hydration completes could already show, a real hydration
+  // mismatch risk QA caught on the first version of this panel.
+  assert.match(
+    settingsSource,
+    /useSyncExternalStore\(\s*\n\s*subscribeBadgeDiagnostics,\s*\n\s*readBadgeDiagnostics,\s*\n\s*readServerBadgeDiagnosticsSnapshot,\s*\n\s*\);/,
+    "getServerSnapshot must be the fixed snapshot, not the live reader, to avoid a hydration mismatch",
+  );
+  assert.match(settingsSource, /Badge diagnostics \(temporary\)/);
+  assert.match(settingsSource, /Unread total: \{badgeDiagnostics\.unreadTotal \?\? "not yet computed"\}/);
+  assert.match(settingsSource, /Badging API supported: \{String\(badgeDiagnostics\.badgingApiSupported\)\}/);
+  assert.match(settingsSource, /Last setAppBadge value: \{badgeDiagnostics\.lastSetValue \?\? "none yet"\}/);
+  assert.match(settingsSource, /Last badge result: \{badgeDiagnostics\.lastResult \?\? "none yet"\}/);
+  assert.match(settingsSource, /Standalone: \{String\(badgeDiagnostics\.standalone\)\}/);
+
+  // --- Scope discipline: the confirmed-working run-sheet path is untouched
+  const runSheetLibSource = readFileSync(
+    new URL("../lib/eventRunSheet.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    runSheetLibSource,
+    /const title = `\$\{eventName\} · Run sheet updated`;/,
+    "the run-sheet push, confirmed working last round, must be unchanged",
+  );
 }
 
 main().catch((error) => {
