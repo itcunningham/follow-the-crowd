@@ -18523,6 +18523,7 @@ async function main() {
   testMessageIdentityDedupeForAttachmentPushes();
   testOneMessageOnePushIdentityDedupe();
   testTemporaryDiagnosticsPanelsRemoved();
+  testCreateNotificationRpcPayloadIncludesMessageId();
   console.log("All regression checks passed.");
 }
 
@@ -20811,6 +20812,105 @@ function testTemporaryDiagnosticsPanelsRemoved() {
   assert.match(settingsSource, /detectNotificationState/);
   assert.match(settingsSource, /enableNotifications/);
   assert.match(settingsSource, /disableNotifications/);
+}
+
+/**
+ * Sixth real-device Production QA round: Production confirmed the SQL
+ * migration is live (both dedupe_includes_body and has_message_identity_param
+ * read true from pg_get_functiondef), yet recent public.notifications rows
+ * for image-only sends still showed message_id = NULL, so the second
+ * image-only message in a thread was falling back to content-based dedupe
+ * and colliding with the first's still-unread row -- no second push.
+ *
+ * The specific hypothesis handed down: createNotification()'s TypeScript
+ * signature might accept messageId as a parameter without the actual
+ * supabase.rpc(...) payload object ever including a p_message_id key at all
+ * (the object literal simply omitting it, independent of what the function
+ * signature promises).
+ *
+ * Re-inspected the actual current source at every layer asked about:
+ * createNotification()'s signature, the literal RPC payload object, every
+ * caller that passes messageId (both DM and crew attachment sends), and the
+ * TypeScript positional-argument-to-named-RPC-key mapping. All correct --
+ * the RPC payload literal does include `p_message_id: messageId ?? null`
+ * by name (confirmed by the existing assertion in
+ * testMessageIdentityDedupeForAttachmentPushes, which was already passing).
+ * No code bug found; nothing changed this round except locking the RPC
+ * payload's exact key set down with a stronger, whole-object assertion than
+ * before, per the explicit ask that a test "prove the RPC argument object
+ * itself contains p_message_id, not merely that callers pass a seventh
+ * argument." (Whether Production's deployed bundle and Supabase's PostgREST
+ * schema cache actually reflect this commit is outside what a source-level
+ * test can prove -- see the shipped report.)
+ */
+function testCreateNotificationRpcPayloadIncludesMessageId() {
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Exactly one call site in the whole repo constructs this payload --
+  // there is no second, divergent path that could omit the key.
+  const rpcCallMatches = [
+    ...notificationsSource.matchAll(/supabase\.rpc\("create_notification",/g),
+  ];
+  assert.equal(
+    rpcCallMatches.length,
+    1,
+    "exactly one call site must construct the create_notification RPC payload",
+  );
+
+  // Extract the full object literal passed to .rpc(...), not just a nearby
+  // line -- proves the ACTUAL PAYLOAD OBJECT contains every key, not merely
+  // that the word "p_message_id" appears somewhere in the file.
+  const rpcCallStart = notificationsSource.indexOf('supabase.rpc("create_notification", {');
+  assert.ok(rpcCallStart > -1, "the create_notification RPC call must exist");
+  const rpcCallEnd = notificationsSource.indexOf("});", rpcCallStart);
+  assert.ok(rpcCallEnd > rpcCallStart, "the RPC call's closing must be found");
+  const rpcPayloadBlock = notificationsSource.slice(rpcCallStart, rpcCallEnd);
+
+  const expectedKeys = [
+    "p_user_id",
+    "p_type",
+    "p_title",
+    "p_body",
+    "p_link",
+    "p_reaction_id",
+    "p_message_id",
+  ];
+
+  for (const key of expectedKeys) {
+    const keyPattern = new RegExp(`\\b${key}:`);
+    assert.match(
+      rpcPayloadBlock,
+      keyPattern,
+      `the RPC payload object literal itself must include the "${key}" key -- not merely accepted by the function signature`,
+    );
+    // Exactly once each -- catches an accidental duplicate/shadowed key.
+    const occurrences = (rpcPayloadBlock.match(new RegExp(`\\b${key}:`, "g")) ?? []).length;
+    assert.equal(occurrences, 1, `"${key}" must appear exactly once in the RPC payload`);
+  }
+
+  // The value assigned to p_message_id specifically, not just its presence.
+  assert.match(
+    rpcPayloadBlock,
+    /p_message_id: messageId \?\? null,/,
+    "p_message_id must be assigned messageId (falling back to null), not some other stale expression",
+  );
+
+  // messageId itself must be sourced from createNotification's own
+  // parameter list, not a closure variable or module-level value that could
+  // go stale between calls.
+  const createNotificationFnStart = notificationsSource.indexOf(
+    "export async function createNotification(",
+  );
+  assert.ok(createNotificationFnStart > -1 && createNotificationFnStart < rpcCallStart);
+  const fnSignatureAndBody = notificationsSource.slice(createNotificationFnStart, rpcCallEnd);
+  assert.match(
+    fnSignatureAndBody,
+    /messageId\?: string \| null,\s*\n\): Promise<string> \{/,
+    "messageId must be the function's own last parameter, in scope for the RPC call below it",
+  );
 }
 
 main().catch((error) => {
