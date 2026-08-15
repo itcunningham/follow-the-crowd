@@ -1,5 +1,30 @@
 # Current state (last updated: 2026-08-15)
 
+## Fourth real-device QA round: DM/crew image-only push fixed (`<pending>` on `main`, 2026-08-15)
+
+**Same sandbox limitation as every round below: no real Supabase project access, no real iPhone, no egress to the production app. This fix is code-level reasoning only, not live-verified. Real-device retest required.**
+
+**Symptom:** DM image-only and crew-chat image-only messages produced no push; text in the same conversations pushed fine.
+
+**Root cause:** DM push title is always exactly `"<sender>"`, crew push title always `"<sender> · <event>"` — constant per sender+thread regardless of content. Two image-only sends with no caption both render the identical generic body `"Sent a photo"`. The previous round's dedupe fix (`20260816000000`, body must also match) does NOT help here — title AND body AND link are all genuinely identical between two such sends, so the second one still collided with the first's still-unread `notifications` row, never inserted, and `push-send` (INSERT-only trigger) never fired for it.
+
+**Fix:** new migration `20260817000000_notification_message_identity_dedupe.sql` adds a nullable `message_id` column to `notifications` (mirroring the existing `reaction_id` pattern) and a new `create_notification` branch: when a caller supplies `p_message_id` (a real `messages.id`), dedupe is scoped to `(user_id, message_id)` only — idempotent for a genuine accidental double-call on the same message, but always inserts for a different message regardless of title/body/link similarity. Ordered after the reaction branch, before the existing content-based dedupe (which booking/event/run-sheet notifications and message-type calls with no real message row still use, unchanged). `createNotification()` (`lib/notifications.ts`) gained an optional `messageId` param, always sent to the RPC (never omitted, matching the existing `reactionId` convention — omitting either risks Postgres failing to resolve between overloads, a documented past incident here). Wired at exactly the two call sites where a real message row exists: DM attachment send (`lib/dm/resolveDmOtherUserId.ts` + the DM page's `sendAttachments`) and crew attachment send (`lib/groupChatAttachments.ts`). Text sends are deliberately untouched — not reported broken, and different text messages naturally have different bodies.
+
+**Not touched:** VAPID, webhook secret, pg_net trigger config, JWT, service-role grants, reaction notification dedupe, booking/event/run-sheet notification dedupe, the confirmed-working run-sheet and withdrawal pushes, and the Home Screen badge logic/diagnostics (explicitly off-limits this round).
+
+**Verified:** independent QA pass diffed the new migration's authorization branches against the live function clause-by-clause (byte-identical), hand-traced the exact collision scenario pre/post fix, confirmed text paths and badge/run-sheet/booking files have zero diff, confirmed the old 6-arg signature is dropped before the 7-arg replace (avoiding the ambiguous-overload failure this codebase hit once before) — no defects found. `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round.
+
+**SQL migration must be run manually in Supabase** (`20260817000000_notification_message_identity_dedupe.sql`) — not auto-applied. So must the prior round's `20260816000000` if it hasn't been already; this sandbox cannot confirm either has been applied to production. To check from the SQL Editor:
+```sql
+select
+  pg_get_functiondef(p.oid) ilike '%body is not distinct from p_body%' as dedupe_includes_body,
+  pg_get_functiondef(p.oid) ilike '%p_message_id%' as has_message_identity_param
+from pg_proc p
+join pg_namespace n on p.pronamespace = n.oid
+where n.nspname = 'public' and p.proname = 'create_notification';
+```
+Both columns must read `true` for both fixes to be live.
+
 ## Third real-device QA round: withdrawal push fixed, badge diagnostics added (`4b350ec5` on `main`, 2026-08-15)
 
 **IMPORTANT — sandbox limitation, read before the next round:** this Claude Code sandbox has NO real Supabase project access (`.env.local`'s `NEXT_PUBLIC_SUPABASE_URL` is a placeholder, `https://example.supabase.co`), no real iPhone, and no network egress to the production app. Every round's "root cause" for these three issues has come from code-level tracing only — genuine live verification requires an actual real-device retest by a human with dashboard/device access. Don't expect a future session in this environment to produce different evidence without that.
