@@ -1,6 +1,6 @@
 # Current state (last updated: 2026-08-15)
 
-## Fourth real-device QA round: DM/crew image-only push fixed (`<pending>` on `main`, 2026-08-15)
+## Fourth real-device QA round: DM/crew image-only push fixed (`ec16d342` on `main`, 2026-08-15)
 
 **Same sandbox limitation as every round below: no real Supabase project access, no real iPhone, no egress to the production app. This fix is code-level reasoning only, not live-verified. Real-device retest required.**
 
