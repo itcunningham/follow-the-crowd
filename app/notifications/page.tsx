@@ -7,6 +7,7 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { supabase } from "@/lib/supabaseClient";
 import {
+  buildNotificationTargetHref,
   getNotifications,
   markNotificationRead,
   notifyNavigationBadgesRefresh,
@@ -151,7 +152,7 @@ export default function NotificationsPage() {
       }
 
       if (notification.link) {
-        router.push(notification.link);
+        router.push(buildNotificationTargetHref(notification.link, notification.message_id));
       }
     } catch (clickError) {
       console.error("Failed to open notification:", clickError);
