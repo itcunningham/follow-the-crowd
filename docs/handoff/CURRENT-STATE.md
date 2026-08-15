@@ -1,6 +1,6 @@
 # Current state (last updated: 2026-08-15)
 
-## Push reconnect state + VAPID URL-safe decode fix (`<pending>` on `main`, 2026-08-15)
+## Push reconnect state + VAPID URL-safe decode fix (`1afd622b` on `main`, 2026-08-15)
 
 **Two bugs, reported together from real-device diagnostics on a supported small iPhone:** Service worker registered/activated/controlling the page, Notification permission granted, installed standalone — but Push subscription exists: **false**. Despite that, Settings said "Notifications enabled on this device" AND a red error "The string contains invalid characters." appeared.
 
