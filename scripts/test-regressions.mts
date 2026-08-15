@@ -20114,6 +20114,18 @@ function testPushBadgeRunSheetWithdrawalRealDeviceFollowups() {
     [{ bookingRequestId: "booking-a", changeSummary: "Your run sheet details were updated" }],
     "both fields changing at once uses the general fallback copy",
   );
+  // Multi-set DJ: two rows for the same booking. Only the first row's stage
+  // changed -- the copy must aggregate every current row's value (matching
+  // describeRunSheetBookingChange's convention), not just the last row, or a
+  // change on any row but the last would show a stale/wrong set's value.
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base({ id: "set-1", stage_area: "Front" }), base({ id: "set-2", sort_order: 1, stage_area: "Back2" })],
+      [base({ id: "set-1", stage_area: "VIP" }), base({ id: "set-2", sort_order: 1, stage_area: "Back2" })],
+    ),
+    [{ bookingRequestId: "booking-a", changeSummary: "Stage changed to VIP / Back2" }],
+    "multi-set stage change must aggregate all of this DJ's current rows, not just the last one",
+  );
   // Initial assignment: a brand-new row with real values must push once --
   // but a brand-new row that's still blank (draft/unassigned) must not.
   assert.deepEqual(

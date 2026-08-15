@@ -895,15 +895,24 @@ function describeRunSheetDjFacingChange(
     return "Your run sheet details were updated";
   }
 
-  const current = currentForBooking[currentForBooking.length - 1];
-
+  // Multi-set DJs can have more than one row for the same booking (see
+  // pairRunSheetRowsForBooking above) -- aggregate every current row's value
+  // rather than picking one arbitrarily, same as describeRunSheetBookingChange
+  // does for the crew-chat notice, so the copy can't show a stale/wrong set's
+  // value when the row that actually changed isn't the last one.
   if (timeChanged) {
-    const timeLabel = formatRunSheetSetTimeForDm(current.start_time, current.finish_time);
-    return timeLabel ? `Set time changed to ${timeLabel}` : "Your run sheet details were updated";
+    const times = currentForBooking
+      .map((row) => formatRunSheetSetTimeForDm(row.start_time, row.finish_time))
+      .filter(Boolean);
+    return times.length > 0
+      ? `Set time changed to ${times.join(" / ")}`
+      : "Your run sheet details were updated";
   }
 
-  const stageLabel = current.stage_area.trim();
-  return stageLabel ? `Stage changed to ${stageLabel}` : "Your run sheet details were updated";
+  const stages = currentForBooking.map((row) => row.stage_area.trim()).filter(Boolean);
+  return stages.length > 0
+    ? `Stage changed to ${stages.join(" / ")}`
+    : "Your run sheet details were updated";
 }
 
 /** Booking request ids + DJ-facing push copy for confirmed DJs who need a push after Save. */
