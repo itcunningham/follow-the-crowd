@@ -5,7 +5,10 @@ import {
 } from "@/lib/bookingRequests";
 import { clampDmMessageScrollTop } from "@/lib/dm/dmBookingCardExpandScroll";
 import { traceDmChatLayout } from "@/lib/navigation/dmChatLayoutTrace";
-import { CHAT_MESSAGE_ID_ATTR } from "@/lib/useChatScroll";
+import {
+  CHAT_MESSAGE_ID_ATTR,
+  syncPinnedToBottomRefAfterDirectScroll,
+} from "@/lib/useChatScroll";
 
 export const CHAT_BOOKING_REQUEST_ID_ATTR = "data-chat-booking-request-id";
 
@@ -86,6 +89,7 @@ type UseChatBookingTargetScrollOptions = {
   scrollRef: RefObject<HTMLDivElement | null>;
   highlightBookingFocus: (messageId: string) => void;
   suppressAutoScrollRef: MutableRefObject<boolean>;
+  pinnedToBottomRef: MutableRefObject<boolean>;
 };
 
 export function useChatBookingTargetScroll({
@@ -96,6 +100,7 @@ export function useChatBookingTargetScroll({
   scrollRef,
   highlightBookingFocus,
   suppressAutoScrollRef,
+  pinnedToBottomRef,
 }: UseChatBookingTargetScrollOptions) {
   const targetMessageId = useMemo(
     () =>
@@ -157,6 +162,7 @@ export function useChatBookingTargetScroll({
       });
 
       scrollChatBookingTargetIntoView(container, messageElement);
+      syncPinnedToBottomRefAfterDirectScroll(container, pinnedToBottomRef);
 
       traceDmChatLayout("booking-target-scroll:after", window.location.pathname + window.location.search, {
         targetMessageId,
@@ -209,6 +215,7 @@ export function useChatBookingTargetScroll({
     highlightBookingFocus,
     highlightTargetBookingRequestId,
     loading,
+    pinnedToBottomRef,
     scrollRef,
     scrollTargetBookingRequestId,
     suppressAutoScrollRef,
