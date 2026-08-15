@@ -258,6 +258,8 @@ export async function sendEventCrewChatMessageWithAttachments(input: {
                 title,
                 preview,
                 link,
+                null,
+                messageRow.id as string,
               );
             } catch (notificationError) {
               console.error(

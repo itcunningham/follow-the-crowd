@@ -113,6 +113,13 @@ export async function createNotification(
   body: string | null,
   link: string | null,
   reactionId?: string | null,
+  // The triggering chat message's own id, when one exists (a real DM/crew
+  // message, not a synthetic notification like a booking update). Lets the
+  // dedupe key be "this exact message" instead of a title/body/link content
+  // fingerprint -- two image-only sends with no caption both render the
+  // identical generic "Sent a photo" body, so without this a second one
+  // collided with the first's still-unread row and never pushed.
+  messageId?: string | null,
 ): Promise<string> {
   const context: NotificationCreateContext = {
     type,
@@ -127,9 +134,11 @@ export async function createNotification(
     p_title: title,
     p_body: body,
     p_link: link,
-    // Always send p_reaction_id (null for non-reactions). Omitting it makes
-    // Postgres fail when both the legacy 5-arg and 6-arg overloads exist.
+    // Always send p_reaction_id/p_message_id (null when not applicable).
+    // Omitting either makes Postgres fail to resolve the call when more than
+    // one create_notification overload exists in the DB at once.
     p_reaction_id: reactionId ?? null,
+    p_message_id: messageId ?? null,
   });
 
   if (error) {
