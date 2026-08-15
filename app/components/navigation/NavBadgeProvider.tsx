@@ -468,7 +468,9 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
     }
 
     if (!userId) {
-      void badgingNavigator.clearAppBadge().catch(() => {});
+      void badgingNavigator
+        .clearAppBadge()
+        .catch((badgeError) => console.error("[nav-badges] clearAppBadge failed:", badgeError));
       return;
     }
 
@@ -477,8 +479,11 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
     }
 
     const total = state.badgeCounts.total;
+    // Errors are logged, not swallowed -- a WebKit-level rejection here would
+    // otherwise look identical to "no unread items," and that ambiguity is
+    // exactly what made this hard to diagnose from a real-device report alone.
     void (total > 0 ? badgingNavigator.setAppBadge(total) : badgingNavigator.clearAppBadge()).catch(
-      () => {},
+      (badgeError) => console.error("[nav-badges] App badge sync failed:", badgeError),
     );
   }, [userId, state.badgesReady, state.badgeCounts.total]);
 
