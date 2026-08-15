@@ -122,6 +122,19 @@ export default function PushNotificationsSection() {
           </div>
         )}
 
+        {state === "unsupported_ios_version" && (
+          <div className="rounded-lg bg-ftc-surface px-3 py-2 text-sm text-ftc-text">
+            <p className="font-semibold text-ftc-primary mb-1">Push notifications unavailable</p>
+            <p className="text-ftc-text-muted">
+              Push notifications require iOS 16.4 or later. You can still use FTC normally, but this
+              device can&rsquo;t receive push notifications.
+            </p>
+            <p className="mt-2 text-xs text-ftc-text-muted">
+              If your iPhone supports a newer iOS version, update iOS to enable notifications.
+            </p>
+          </div>
+        )}
+
         {state === "ios_not_installed" && (
           <div className="space-y-3">
             <div className="rounded-lg bg-ftc-surface px-3 py-2 text-sm text-ftc-text">
