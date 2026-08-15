@@ -446,6 +446,11 @@ export async function sendEventCrewChatMessage(
     throw new Error("Crew chat is not available for this event yet");
   }
 
+  // .select("id").single() (not a bare insert) so the id can be threaded
+  // through as the notification's message identity below -- the exact same
+  // shape sendEventCrewChatMessageWithAttachments already uses successfully
+  // for every image send, so the sender's own RLS read-back of a row they
+  // just wrote is already proven to work on this table.
   const { data: messageRow, error: insertError } = await supabase
     .from("messages")
     .insert({
