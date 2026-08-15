@@ -14,6 +14,7 @@ import {
   notifyBookingRequestsChanged,
   subscribeToBookingRequestChanges,
 } from "@/lib/bookings/bookingRequestsSync";
+import { recordBadgeSyncAttempt } from "@/lib/navigation/badgeDiagnostics";
 import { isBookingAcceptanceDmSystemMessage, isEventCancellationDmActivityMessage } from "@/lib/dm/dmBookingSystemMessages";
 import { isOwnChatMessage } from "@/lib/messageReads";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
@@ -164,6 +165,15 @@ function applyBadgeState(
     authoritative: nextState.badgesReady,
   });
   return nextState;
+}
+
+/** DOMException/Error name only -- never the message, which can echo call context. */
+function safeBadgeErrorName(error: unknown): string {
+  if (error instanceof DOMException || error instanceof Error) {
+    return error.name || "UnknownError";
+  }
+
+  return "UnknownError";
 }
 
 export function NavBadgeProvider({ children }: { children: ReactNode }) {
@@ -464,13 +474,23 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
     };
 
     if (!badgingNavigator.setAppBadge || !badgingNavigator.clearAppBadge) {
+      // Every real-device report so far has come from a supported iOS
+      // version, so this branch existing (rather than actually firing) is
+      // itself diagnostic -- recorded so the panel can distinguish
+      // "unsupported here" from "supported but never got this far."
+      recordBadgeSyncAttempt({ badgingApiSupported: false });
       return;
     }
 
     if (!userId) {
+      recordBadgeSyncAttempt({ unreadTotal: null, lastSetValue: "cleared" });
       void badgingNavigator
         .clearAppBadge()
-        .catch((badgeError) => console.error("[nav-badges] clearAppBadge failed:", badgeError));
+        .then(() => recordBadgeSyncAttempt({ lastResult: "success" }))
+        .catch((badgeError) => {
+          console.error("[nav-badges] clearAppBadge failed:", badgeError);
+          recordBadgeSyncAttempt({ lastResult: safeBadgeErrorName(badgeError) });
+        });
       return;
     }
 
@@ -479,12 +499,19 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
     }
 
     const total = state.badgeCounts.total;
+    recordBadgeSyncAttempt({
+      unreadTotal: total,
+      lastSetValue: total > 0 ? total : "cleared",
+    });
     // Errors are logged, not swallowed -- a WebKit-level rejection here would
     // otherwise look identical to "no unread items," and that ambiguity is
     // exactly what made this hard to diagnose from a real-device report alone.
-    void (total > 0 ? badgingNavigator.setAppBadge(total) : badgingNavigator.clearAppBadge()).catch(
-      (badgeError) => console.error("[nav-badges] App badge sync failed:", badgeError),
-    );
+    void (total > 0 ? badgingNavigator.setAppBadge(total) : badgingNavigator.clearAppBadge())
+      .then(() => recordBadgeSyncAttempt({ lastResult: "success" }))
+      .catch((badgeError) => {
+        console.error("[nav-badges] App badge sync failed:", badgeError);
+        recordBadgeSyncAttempt({ lastResult: safeBadgeErrorName(badgeError) });
+      });
   }, [userId, state.badgesReady, state.badgeCounts.total]);
 
   return <NavBadgeContext.Provider value={state}>{children}</NavBadgeContext.Provider>;

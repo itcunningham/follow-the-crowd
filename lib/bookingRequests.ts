@@ -2914,13 +2914,31 @@ export async function cancelBookingRequest(
       : `${cancelledByName} · Booking cancelled`
     : `${cancelledByName} · Booking request cancelled`;
 
-  await createNotification(
-    notifyUserId,
-    "booking_update",
-    notificationTitle,
-    booking.event_name,
-    `/dm/${booking.conversation_id}`,
-  );
+  // Unlike every other createNotification call site in this file, this one
+  // was previously bare (no try/catch) -- cancel_booking_request has already
+  // committed by this point, so a push failure here (network blip, an
+  // RLS/authorization edge case, anything) used to propagate all the way up
+  // through cancelAcceptedBookingRequest to the UI's catch block, surfacing
+  // "Failed to cancel accepted booking" for a cancellation that had, in
+  // fact, already succeeded -- and skipping the DM system message insert and
+  // notifyBookingRequestsChanged() below it, since neither ever ran. This is
+  // the exact "planner receives no push, and no other explanation why" shape
+  // reported from a real device: whatever caused create_notification to
+  // reject or fail here was invisible to the recipient by construction.
+  try {
+    await createNotification(
+      notifyUserId,
+      "booking_update",
+      notificationTitle,
+      booking.event_name,
+      `/dm/${booking.conversation_id}`,
+    );
+  } catch (notificationError) {
+    console.error(
+      "[bookingRequests] Booking cancelled but notification failed:",
+      getNotificationCreateErrorMessage(notificationError),
+    );
+  }
 
   try {
     await insertBookingCancelledDmMessageIfNeeded(booking);
