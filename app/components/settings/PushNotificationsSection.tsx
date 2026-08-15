@@ -5,7 +5,9 @@ import {
   detectNotificationState,
   enableNotifications,
   disableNotifications,
+  getPushDiagnostics,
   type NotificationState,
+  type PushDiagnostics,
 } from "@/lib/push/client";
 
 export default function PushNotificationsSection() {
@@ -14,6 +16,7 @@ export default function PushNotificationsSection() {
   const [enabling, setEnabling] = useState(false);
   const [disabling, setDisabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<PushDiagnostics | null>(null);
 
   // Detect current state on mount and when window regains focus
   useEffect(() => {
@@ -28,6 +31,12 @@ export default function PushNotificationsSection() {
         setState("unsupported");
       } finally {
         setLoading(false);
+      }
+
+      try {
+        setDiagnostics(await getPushDiagnostics());
+      } catch (diagnosticsError) {
+        console.error("[push-settings] Failed to gather diagnostics:", diagnosticsError);
       }
     }
 
@@ -58,6 +67,12 @@ export default function PushNotificationsSection() {
       setState(newState);
     } finally {
       setEnabling(false);
+
+      try {
+        setDiagnostics(await getPushDiagnostics());
+      } catch (diagnosticsError) {
+        console.error("[push-settings] Failed to gather diagnostics:", diagnosticsError);
+      }
     }
   }
 
@@ -192,6 +207,26 @@ export default function PushNotificationsSection() {
         {error && (
           <div className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">
             {error}
+          </div>
+        )}
+
+        {/* TEMPORARY — device diagnostics for the "Apple accepted the push
+            but nothing displayed" investigation. Safe to leave visible to
+            any signed-in user (no endpoint/key/token values), but remove
+            once the investigation concludes. */}
+        {diagnostics && (
+          <div className="mt-3 rounded-lg bg-ftc-surface px-3 py-2 text-xs font-mono text-ftc-text-muted space-y-1">
+            <p className="text-[10px] font-sans uppercase tracking-wide text-ftc-text-muted/70">
+              Device diagnostics (temporary)
+            </p>
+            <div>Service worker registered: {String(diagnostics.serviceWorkerRegistered)}</div>
+            <div>Service worker state: {diagnostics.serviceWorkerState ?? "none"}</div>
+            <div>Service worker script: {diagnostics.serviceWorkerScriptUrl ?? "none"}</div>
+            <div>Page controlled by service worker: {String(diagnostics.pageControlledByServiceWorker)}</div>
+            <div>Push subscription exists: {String(diagnostics.pushSubscriptionExists)}</div>
+            <div>Notification permission: {diagnostics.notificationPermission}</div>
+            <div>Installed as standalone app: {String(diagnostics.isStandalonePwa)}</div>
+            <div>Origin: {diagnostics.origin}</div>
           </div>
         )}
       </div>

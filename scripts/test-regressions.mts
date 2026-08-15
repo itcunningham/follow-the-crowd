@@ -18513,6 +18513,7 @@ async function main() {
   testPlannerRosterMigrationGrantsTablePrivileges();
   testBetaPushFinalPassFourFixes();
   testSupabaseClientHasResilientAuthStorage();
+  testServiceWorkerPushHandlerAlwaysShowsANotification();
   console.log("All regression checks passed.");
 }
 
@@ -19507,6 +19508,50 @@ function testSupabaseClientHasResilientAuthStorage() {
   assert.doesNotMatch(diagnosticBlock, /access_token|refresh_token|authUser\.(?!$)/);
   assert.match(diagnosticBlock, /rawTokenFound: Boolean\(/);
   assert.match(diagnosticBlock, /getSessionFoundUser: Boolean\(/);
+}
+
+/**
+ * "Apple accepted the push, iPhone never displayed it" investigation.
+ * Confirmed root cause candidate: public/sw.js's `push` event handler had
+ * three early `return` statements (no event.data, JSON parse failure,
+ * missing payload.title) that skipped showNotification() entirely --
+ * Apple's 201 only confirms delivery to the device's push service, not
+ * that the service worker went on to display anything. A malformed or
+ * empty payload was therefore silently, undebuggably invisible.
+ *
+ * The fix makes every path reach showNotification(), with a generic
+ * fallback title/body/link when the real payload can't be used. This test
+ * pins that structural guarantee via source inspection (there is no DOM/
+ * ServiceWorkerGlobalScope available in this Node test runner to execute
+ * sw.js directly).
+ */
+function testServiceWorkerPushHandlerAlwaysShowsANotification() {
+  const swSource = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+
+  const pushHandlerSource = swSource.slice(
+    swSource.indexOf("addEventListener('push'"),
+    swSource.indexOf("addEventListener('notificationclick'"),
+  );
+
+  // None of the three failure paths may return before showNotification is
+  // reached -- i.e. there must be no `return;` inside the push handler at
+  // all (only inside the notificationclick handler, which is excluded by
+  // the slice above).
+  assert.doesNotMatch(
+    pushHandlerSource,
+    /return;/,
+    "push handler must not have any early return that skips showNotification()",
+  );
+
+  // showNotification must be reached unconditionally, still inside
+  // event.waitUntil() so the service worker isn't terminated mid-call.
+  assert.match(
+    pushHandlerSource,
+    /event\.waitUntil\(\s*self\.registration\.showNotification\(/,
+  );
+
+  // A malformed/missing title must fall back to a real string, not abort.
+  assert.match(pushHandlerSource, /title\.trim\(\)\s*\n?\s*\?\s*payload\.title\s*\n?\s*:\s*['"]Follow The Crowd['"]/);
 }
 
 main().catch((error) => {

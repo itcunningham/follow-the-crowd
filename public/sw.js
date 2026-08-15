@@ -20,42 +20,59 @@ self.addEventListener('activate', (event) => {
 
 /**
  * Push: receive and display notification
+ *
+ * By the time a `push` event fires, the push service has already delivered
+ * the message — there is no later chance to show it. Every code path below
+ * MUST reach showNotification(), even for an empty or malformed payload:
+ * silently returning here is indistinguishable, from the device, between
+ * "no push arrived" and "a push arrived but we dropped it," and cannot be
+ * debugged without a paired server-side log.
  */
 self.addEventListener('push', (event) => {
+  let payload = null;
+  let payloadError = null;
+
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (parseError) {
+      payloadError = parseError;
+    }
+  }
+
   if (!event.data) {
-    console.error('[sw] Received push with no data');
-    return;
+    console.warn('[sw] Push event had no data');
+  } else if (payloadError) {
+    console.warn('[sw] Failed to parse push payload:', payloadError);
+  } else if (!payload || typeof payload.title !== 'string' || !payload.title.trim()) {
+    console.warn('[sw] Push payload missing a usable title:', payload);
   }
 
-  let payload;
-  try {
-    payload = event.data.json();
-  } catch (parseError) {
-    console.error('[sw] Failed to parse push payload:', parseError);
-    return;
-  }
-
-  // Validate required fields
-  if (!payload.title) {
-    console.error('[sw] Push missing title:', payload);
-    return;
-  }
+  const title =
+    payload && typeof payload.title === 'string' && payload.title.trim()
+      ? payload.title
+      : 'Follow The Crowd';
+  const body = payload && typeof payload.body === 'string' ? payload.body : '';
+  const link = payload && typeof payload.link === 'string' ? payload.link : '/';
+  const notificationId = payload && typeof payload.notificationId === 'string'
+    ? payload.notificationId
+    : undefined;
 
   const options = {
-    body: payload.body || '',
+    body,
     badge: '/icon-192.png',
     icon: '/icon-192.png',
-    tag: payload.link || 'notification', // Tag prevents duplicates
+    tag: link || 'notification', // Tag prevents duplicates
     data: {
-      link: payload.link || '/', // Internal app link
-      notificationId: payload.notificationId,
+      link, // Internal app link
+      notificationId,
     },
     // Require user interaction (security: don't auto-open external URLs)
     requireInteraction: false,
   };
 
   event.waitUntil(
-    self.registration.showNotification(payload.title, options)
+    self.registration.showNotification(title, options)
       .catch((notificationError) => {
         console.error('[sw] Failed to show notification:', notificationError);
       })
