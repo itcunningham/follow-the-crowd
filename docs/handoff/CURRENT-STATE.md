@@ -1,5 +1,21 @@
 # Current state (last updated: 2026-08-15)
 
+## Fifth real-device QA round: universal one-message-one-push + diagnostics removed (`5782c0f7` on `main`, 2026-08-15)
+
+**Status: production confirmed both prior migrations (`20260816000000`, `20260817000000`) applied. A NEW, narrower real-device regression surfaced immediately after this round shipped — see the round above this one for the follow-up investigation. Read that first if debugging push delivery.**
+
+**Symptom this round fixed:** a message with both an image and a caption produced TWO pushes (one caption-shaped, one generic "Sent a photo"-shaped) instead of one.
+
+**Investigation:** traced every notification call site for DM/crew text and image sends. Both attachment paths already had exactly one `createNotification` call per message with caption-preferred body (`caption || genericBody`) — no second call site was found for this exact scenario despite exhaustive tracing (grepped for "Sent a photo"/"Sent N photos" repo-wide, checked every `postgres_changes` subscription on `messages` for a hidden second notify call). Rather than claim a fix for a mechanism that couldn't be pinpointed, extended the existing message-identity dedupe (idempotent per `(user_id, message_id)` at the RPC layer, added in the prior round for attachment sends only) to the DM and crew TEXT send paths too — making "same recipient + same message_id = same notification identity" a universal, DB-enforced guarantee for every real chat message, regardless of how many times or from where `createNotification` might ever be called for it.
+
+**Separate duplicate-push bug found and fixed while auditing per this round's explicit checklist:** whole-event cancellation (`lib/events.ts`, `notifyCancelledBookingsFromEventCancellation`) created a `booking_update` notification AND a near-identical `message`-type notification for the same recipient and same link — two push banners for one cancellation. Removed the redundant `message`-type call; kept the canonical `booking_update` one.
+
+**Temporary diagnostics removed:** both the "Device diagnostics" and "Badge diagnostics" panels in Settings, plus the diagnostics-gathering code they were the sole consumer of (`getPushDiagnostics`/`PushDiagnostics` from `lib/push/client.ts`, the entire `lib/navigation/badgeDiagnostics.ts` module). Production-safe `console.error` logging, the actual notification-state/badge-sync logic, unsupported-iOS messaging, and the reconnect flow are all unchanged.
+
+**Not touched:** VAPID, webhook secret, pg_net, JWT config, service-role grants, run-sheet/withdrawal notification code, badge-setting logic. No new SQL migration this round.
+
+**Verified:** two independent QA passes (traced all 4 message paths for exactly-once notification creation with real message ids threaded through; verified the event-cancellation fix doesn't orphan `formatEventCancelledInboxPreview`, still used elsewhere; confirmed badge-sync logic byte-identical minus diagnostics recording; one pass flagged a theoretical RLS read-back risk in the new text-send `.select("id").single()` calls, confirmed to be the same proven-safe pattern the image sends already use). Incidentally fixed two pre-existing, unrelated stale test assertions discovered only because isolating tests for verification bypasses an unrelated pre-existing failure that has always halted the full suite before reaching them. `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round.
+
 ## Fourth real-device QA round: DM/crew image-only push fixed (`ec16d342` on `main`, 2026-08-15)
 
 **Same sandbox limitation as every round below: no real Supabase project access, no real iPhone, no egress to the production app. This fix is code-level reasoning only, not live-verified. Real-device retest required.**
