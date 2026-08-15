@@ -5214,6 +5214,25 @@ async function testDmBookingReturnScroll() {
   await runDmBookingReturnScrollRuntimeTest();
 }
 
+/**
+ * Eighth real-device QA round: tapping a push's ?message=<id> deep link
+ * opened the right DM, but still landed at the bottom -- a prior
+ * source-level trace and an independent QA pass had both concluded the
+ * suppression logic was correct, and it wasn't. Runs the REAL
+ * useChatMessageTargetScroll hook against a happy-dom container with a
+ * fake, manually-triggerable ResizeObserver to prove the fix (syncing
+ * pinnedToBottomRef in the same tick as the direct scrollTop write, before
+ * releasing suppression) actually survives a post-scroll layout change --
+ * something no source-text regex assertion could ever catch, and which the
+ * prior round's tests all passed while this was still broken.
+ */
+async function testMessageTargetScrollPriority() {
+  const { runMessageTargetScrollPriorityTests } = await import(
+    "./test-message-target-scroll-priority.js"
+  );
+  await runMessageTargetScrollPriorityTests();
+}
+
 function testResolvePlannerHistoryHideEventIds() {
   const events = [
     {
@@ -18484,6 +18503,7 @@ async function main() {
   await testDmImageAttachmentDimensions();
   await testDmMessageOrderDeterminism();
   await testDmBookingReturnScroll();
+  await testMessageTargetScrollPriority();
   testCrewChatAttachmentRealtimeAndStateReconciliation();
   testCrewChatUnreadUsesTheSharedUnreadSystem();
   await testGroupInboxUnreadSurvivesOverlappingRefreshes();
@@ -18537,6 +18557,11 @@ async function main() {
   testDmPageWiresMessageTargetScroll();
   testCrewChatPageWiresMessageTargetScroll();
   testChatMessageTargetScrollSuppressionIsAsymmetric();
+  testPinnedToBottomRefWiredIntoBothScrollTargetFlows();
+  testActiveChatPresenceHookHeartbeatAndCleanup();
+  testDmAndCrewChatPagesWireActiveChatPresence();
+  testPushSendSuppressesActivePushForExactThread();
+  testActiveChatPresenceMigrationScopesAccessToOwnRow();
   console.log("All regression checks passed.");
 }
 
@@ -21205,6 +21230,256 @@ function testChatMessageTargetScrollSuppressionIsAsymmetric() {
     releaseIndex > -1,
     "releaseAutoScrollSuppression() must run before onTargetMissing() so the fallback's own scroll isn't self-suppressed",
   );
+}
+
+/**
+ * lib/useChatScroll.ts now exposes pinnedToBottomRef, and both
+ * scroll-to-specific-message flows (message target, booking target) sync it
+ * in the same tick as their direct container.scrollTop write, before
+ * releasing suppression -- see testMessageTargetScrollPriority (the real
+ * happy-dom proof) for why this matters. This test locks down that both call
+ * sites actually wire it, source-level, as a cheap early signal if either
+ * one regresses.
+ */
+function testPinnedToBottomRefWiredIntoBothScrollTargetFlows() {
+  const useChatScrollSource = readFileSync(
+    new URL("../lib/useChatScroll.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    useChatScrollSource,
+    /export function syncPinnedToBottomRefAfterDirectScroll\(/,
+    "useChatScroll.ts must export the shared sync helper",
+  );
+  assert.match(
+    useChatScrollSource,
+    /return \{[\s\S]*?pinnedToBottomRef,\s*\n\s*\};/,
+    "useChatScroll's returned object must expose pinnedToBottomRef for external scroll-target flows to correct",
+  );
+
+  const messageTargetSource = readFileSync(
+    new URL("../lib/chat/messageTargetScroll.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    messageTargetSource,
+    /syncPinnedToBottomRefAfterDirectScroll\(container, pinnedToBottomRef\);\s*\n\s*onTargetFound\(targetMessageId\);\s*\n\s*releaseAutoScrollSuppression\(\);/,
+    "useChatMessageTargetScroll must sync pinnedToBottomRef before releasing suppression, not after",
+  );
+
+  const bookingTargetSource = readFileSync(
+    new URL("../lib/dm/chatBookingTarget.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingTargetSource,
+    /scrollChatBookingTargetIntoView\(container, messageElement\);\s*\n\s*syncPinnedToBottomRefAfterDirectScroll\(container, pinnedToBottomRef\);/,
+    "useChatBookingTargetScroll (the pre-existing flow this bug class was copied from) must get the identical fix",
+  );
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmPageSource, /pinnedToBottomRef,\s*\n\s*\} = useChatScroll\(\{/);
+  assert.match(
+    dmPageSource,
+    /useChatBookingTargetScroll\(\{[\s\S]{0,300}?pinnedToBottomRef,\s*\n\s*\}\);/,
+  );
+  assert.match(
+    dmPageSource,
+    /useChatMessageTargetScroll\(\{[\s\S]{0,300}?pinnedToBottomRef,\s*\n\s*\}\);/,
+  );
+
+  const crewChatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(crewChatPageSource, /pinnedToBottomRef,\s*\n\s*\} = useChatScroll\(\{/);
+  assert.match(
+    crewChatPageSource,
+    /useChatMessageTargetScroll\(\{[\s\S]{0,300}?pinnedToBottomRef,\s*\n\s*\}\);/,
+  );
+}
+
+/**
+ * Issue 2: don't push a chat message to a recipient already looking at that
+ * exact thread. Locks down the client-side half -- a lightweight per-user
+ * presence row (lib/chat/useActiveChatPresence.ts), not a general presence
+ * system: heartbeat while visible, cleared on hide/unmount/close, no read
+ * access for anyone but the owning row (server-side TTL enforcement is
+ * covered by testPushSendSuppressesActivePushForExactThread below).
+ */
+function testActiveChatPresenceHookHeartbeatAndCleanup() {
+  const hookSource = readFileSync(
+    new URL("../lib/chat/useActiveChatPresence.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    hookSource,
+    /if \(!userId \|\| !threadLink\) \{\s*\n\s*return;\s*\n\s*\}/,
+    "must no-op entirely without a real user id and thread link -- never write a bogus presence row",
+  );
+
+  // Upsert must happen immediately on mount, not only on the first heartbeat.
+  assert.match(hookSource, /upsertPresence\(\);\s*\n\s*const intervalId = window\.setInterval\(upsertPresence,/);
+
+  assert.match(
+    hookSource,
+    /void supabase\.from\("active_chat_presence"\)\.upsert\(\s*\n\s*\{\s*\n\s*user_id: userId,\s*\n\s*thread_link: threadLink,\s*\n\s*updated_at: new Date\(\)\.toISOString\(\),\s*\n\s*\},\s*\n\s*\{ onConflict: "user_id" \},\s*\n\s*\);/,
+    "the upsert payload must carry a fresh client timestamp and upsert on user_id (one row per user)",
+  );
+
+  assert.match(
+    hookSource,
+    /if \(document\.visibilityState !== "visible"\) \{\s*\n\s*return;\s*\n\s*\}/,
+    "a heartbeat firing while backgrounded must not resurrect a stale-but-still-fresh presence row",
+  );
+
+  assert.match(
+    hookSource,
+    /void supabase\.from\("active_chat_presence"\)\.delete\(\)\.eq\("user_id", userId\);/,
+    "clearing presence must delete the row outright, not merely null a field",
+  );
+
+  // Every "the user might be leaving" signal must clear presence: tab hidden,
+  // the page closing, and unmount (navigating to a different thread/page).
+  assert.match(
+    hookSource,
+    /function handleVisibilityChange\(\) \{\s*\n\s*if \(document\.visibilityState === "visible"\) \{\s*\n\s*upsertPresence\(\);\s*\n\s*\} else \{\s*\n\s*clearPresence\(\);\s*\n\s*\}\s*\n\s*\}/,
+  );
+  assert.match(hookSource, /window\.addEventListener\("pagehide", clearPresence\);/);
+  assert.match(
+    hookSource,
+    /return \(\) => \{\s*\n\s*window\.clearInterval\(intervalId\);\s*\n\s*window\.removeEventListener\("visibilitychange", handleVisibilityChange\);\s*\n\s*window\.removeEventListener\("pagehide", clearPresence\);\s*\n\s*clearPresence\(\);\s*\n\s*\};/,
+    "unmount must stop the heartbeat, remove both listeners, and clear presence -- leaving any one out risks a stale row surviving a real navigation away",
+  );
+}
+
+function testDmAndCrewChatPagesWireActiveChatPresence() {
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmPageSource,
+    /useActiveChatPresence\(currentUserId, `\/dm\/\$\{conversationId\}`\);/,
+    "the DM page must report presence using the exact same bare link createNotification() is called with",
+  );
+
+  const crewChatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    crewChatPageSource,
+    /useActiveChatPresence\(currentUserId, getEventCrewChatLink\(eventId\)\);/,
+    "the crew chat page must report presence using the same getEventCrewChatLink(eventId) call createNotification() uses -- not a hand-rolled duplicate string that could drift",
+  );
+}
+
+/**
+ * Server-side half of Issue 2: push-send must skip delivery only when (a)
+ * it's a real chat message notification (never booking/reaction/system,
+ * even if one happens to share a link), (b) the recipient's presence row's
+ * thread_link exactly matches this notification's link, and (c) that row is
+ * still fresh under PRESENCE_TTL_MS. Any failure in the check itself must
+ * fall through to a normal send -- this must never be a way to accidentally
+ * black-hole real pushes.
+ */
+function testPushSendSuppressesActivePushForExactThread() {
+  const pushSendSource = readFileSync(
+    new URL("../supabase/functions/push-send/index.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pushSendSource, /const PRESENCE_TTL_MS = 45_000;/);
+
+  assert.match(
+    pushSendSource,
+    /if \(notification\.type === "message" && notification\.link\) \{/,
+    "the suppression check must be scoped to real chat-message notifications only",
+  );
+
+  assert.match(
+    pushSendSource,
+    /\.from\("active_chat_presence"\)\s*\n\s*\.select\("thread_link, updated_at"\)\s*\n\s*\.eq\("user_id", recipientUserId\)\s*\n\s*\.maybeSingle\(\);/,
+    "must look up presence by the recipient's own user id -- maybeSingle so a missing row is not an error",
+  );
+
+  assert.match(
+    pushSendSource,
+    /if \(presence && presence\.thread_link === notification\.link\) \{/,
+    "must compare the presence row's thread_link against notification.link by exact string equality -- not merely truthiness of any presence row",
+  );
+
+  assert.match(
+    pushSendSource,
+    /const ageMs = Date\.now\(\) - new Date\(presence\.updated_at\)\.getTime\(\);\s*\n\s*if \(ageMs <= PRESENCE_TTL_MS\) \{/,
+    "must enforce the TTL -- a stale presence row (backgrounded/closed app) must not suppress",
+  );
+
+  // Fail-open: any error in the presence check itself must not block the
+  // actual push send below it.
+  const tryStart = pushSendSource.indexOf("if (notification.type === \"message\" && notification.link) {");
+  assert.ok(tryStart > -1);
+  const tryBlock = pushSendSource.slice(tryStart, tryStart + 1200);
+  assert.match(tryBlock, /try \{/);
+  assert.match(
+    tryBlock,
+    /catch \(presenceError\) \{\s*\n\s*console\.error\("\[push-send\] Presence check failed, sending push anyway:", presenceError\);\s*\n\s*\}/,
+    "a presence-check failure must be caught and logged, falling through to a normal send -- never throw and drop the push",
+  );
+
+  // The suppression check must run before subscriptions are fetched (so a
+  // suppressed push also skips that work), and the response must still be a
+  // 200 (a suppressed push is not an error condition for the webhook caller).
+  const suppressIndex = pushSendSource.indexOf('"[push-send] Suppressing push:');
+  const subscriptionsIndex = pushSendSource.indexOf('.from("push_subscriptions")');
+  assert.ok(suppressIndex > -1 && subscriptionsIndex > -1);
+  assert.ok(
+    suppressIndex < subscriptionsIndex,
+    "the presence check must run before fetching push subscriptions, so a suppressed push also skips that work",
+  );
+
+  // Guard the explicit "do not touch push infrastructure" boundary again --
+  // VAPID/webhook/delivery code must still be present, unmodified in shape.
+  assert.match(pushSendSource, /const VAPID_PRIVATE_KEY = Deno\.env\.get\("VAPID_PRIVATE_KEY"\) \|\| "";/);
+  assert.match(pushSendSource, /const PUSH_WEBHOOK_SECRET = Deno\.env\.get\("PUSH_WEBHOOK_SECRET"\) \|\| "";/);
+  assert.match(pushSendSource, /await sendWebPush\(/);
+}
+
+/**
+ * Privacy scoping for the new table: nothing in the client ever needs to
+ * read another user's presence row (only push-send does, via the service
+ * role, which bypasses RLS) -- select must be scoped to own-row only, unlike
+ * public.users' blanket authenticated-read-all policy.
+ */
+function testActiveChatPresenceMigrationScopesAccessToOwnRow() {
+  const migrationSource = readFileSync(
+    new URL("../supabase/migrations/20260818000000_active_chat_presence.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    migrationSource,
+    /create table if not exists public\.active_chat_presence \(\s*\n\s*user_id uuid primary key references auth\.users\(id\) on delete cascade,/,
+  );
+  assert.match(migrationSource, /alter table public\.active_chat_presence enable row level security;/);
+
+  for (const action of ["select", "insert", "update", "delete"]) {
+    const policyPattern = new RegExp(
+      `create policy "active_chat_presence_${action}_own"\\s*\\n\\s*on public\\.active_chat_presence for ${action}\\s*\\n\\s*(using|with check) \\(user_id = auth\\.uid\\(\\)\\)`,
+    );
+    assert.match(
+      migrationSource,
+      policyPattern,
+      `the ${action} policy must scope to the row's own user_id -- no blanket read/write access`,
+    );
+  }
+
+  assert.match(migrationSource, /grant all on table public\.active_chat_presence to service_role;/);
 }
 
 main().catch((error) => {

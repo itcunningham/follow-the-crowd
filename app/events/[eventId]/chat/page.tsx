@@ -29,6 +29,7 @@ import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/app/components/skele
 import {
   getEventCrewChatAccess,
   getEventCrewChatBackHref,
+  getEventCrewChatLink,
   getEventCrewChatLoadErrorMessage,
   getEventCrewParticipantIds,
   listEventCrewChatMessages,
@@ -108,6 +109,7 @@ import {
   parseChatMessageTargetIdParam,
   useChatMessageTargetScroll,
 } from "@/lib/chat/messageTargetScroll";
+import { useActiveChatPresence } from "@/lib/chat/useActiveChatPresence";
 import {
   getCurrentUserId,
   getUserAvatarProfilesByIds,
@@ -504,6 +506,7 @@ export default function EventCrewChatPage() {
     scrollToBottomSmooth,
     markUserSentMessage,
     captureScrollBeforeIncomingInsert,
+    pinnedToBottomRef,
   } = useChatScroll({
     loading,
     messageIds,
@@ -539,7 +542,12 @@ export default function EventCrewChatPage() {
     onTargetFound: addHighlightedMessageId,
     onTargetMissing: scrollToBottomSmooth,
     suppressAutoScrollRef,
+    pinnedToBottomRef,
   });
+
+  // Same bare link createNotification() uses for this event's crew chat --
+  // lets push-send skip an external push while this exact thread is visible.
+  useActiveChatPresence(currentUserId, getEventCrewChatLink(eventId));
 
   const captureComposerFocusIntentForSend = useCallback(() => {
     keepComposerFocusedAfterSendRef.current = shouldKeepComposerFocusedAfterSend(

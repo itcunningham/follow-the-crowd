@@ -13,6 +13,14 @@ const PUSH_WEBHOOK_SECRET = Deno.env.get("PUSH_WEBHOOK_SECRET") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
+// A recipient's client refreshes its active_chat_presence row every 20s
+// while a thread is mounted and visible (see lib/chat/useActiveChatPresence.ts).
+// This must stay comfortably above that heartbeat so a genuinely-open thread
+// never goes stale between beats, while still being short enough that a
+// backgrounded/closed app (which can't reliably clear its own row on the way
+// out) stops suppressing pushes soon after.
+const PRESENCE_TTL_MS = 45_000;
+
 interface WebhookPayload {
   type: "INSERT" | "UPDATE" | "DELETE";
   record: {
@@ -131,6 +139,37 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Invalid notification user_id" }),
         { status: 400 }
       );
+    }
+
+    // Redundant to push a chat message the recipient is already looking at.
+    // Scoped to type "message" only (real DM/crew chat messages) -- never to
+    // booking/reaction/system notifications, even when one happens to share
+    // a message notification's link. Best-effort: any failure here must fall
+    // through to a normal send, never block delivery.
+    if (notification.type === "message" && notification.link) {
+      try {
+        const { data: presence } = await supabase
+          .from("active_chat_presence")
+          .select("thread_link, updated_at")
+          .eq("user_id", recipientUserId)
+          .maybeSingle();
+
+        if (presence && presence.thread_link === notification.link) {
+          const ageMs = Date.now() - new Date(presence.updated_at).getTime();
+          if (ageMs <= PRESENCE_TTL_MS) {
+            console.log(
+              "[push-send] Suppressing push: recipient actively viewing",
+              notification.link
+            );
+            return new Response(
+              JSON.stringify({ message: "Suppressed: recipient active in thread" }),
+              { status: 200 }
+            );
+          }
+        }
+      } catch (presenceError) {
+        console.error("[push-send] Presence check failed, sending push anyway:", presenceError);
+      }
     }
 
     // Fetch active subscriptions for this user

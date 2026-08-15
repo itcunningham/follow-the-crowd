@@ -32,6 +32,24 @@ export function shouldKeepChatPinnedAfterLayoutChange(
 }
 
 /**
+ * A caller that sets container.scrollTop directly (a scroll-to-specific-
+ * message flow, rather than this hook's own scrollToBottom) bypasses
+ * pinnedToBottomRef entirely -- left stale, the ResizeObserver/append
+ * effects above have no way to know the deliberate scroll wasn't a
+ * bottom-pin, and can silently snap back to the bottom on the next layout
+ * change (e.g. an attachment image finishing decode). Call this in the same
+ * synchronous tick as the direct write, before releasing whatever
+ * suppression flag gated it, so there's no window where the two disagree.
+ */
+export function syncPinnedToBottomRefAfterDirectScroll(
+  container: HTMLElement,
+  pinnedToBottomRef: MutableRefObject<boolean>,
+): void {
+  const distanceFromBottom = getChatMaxScrollTop(container) - container.scrollTop;
+  pinnedToBottomRef.current = distanceFromBottom <= CHAT_NEAR_BOTTOM_THRESHOLD_PX;
+}
+
+/**
  * scrollTop that keeps the reader visually still when a layout change resizes
  * the scroll container itself (rather than its content) — e.g. a panel above
  * the chat expanding, which shrinks the scroller's clientHeight and pushes its
@@ -522,5 +540,13 @@ export function useChatScroll({
     scrollToBottomSmooth,
     markUserSentMessage,
     captureScrollBeforeIncomingInsert,
+    // Exposed so a caller that writes container.scrollTop directly (bypassing
+    // scrollToBottom -- e.g. a scroll-to-specific-message flow) can correct
+    // this ref in the same synchronous tick. Left stale, a later layout
+    // change (an image finishing decode, a new message) reads it via the
+    // ResizeObserver/append effects above and can silently snap back to the
+    // bottom, since those effects have no other way to know the deliberate
+    // scroll wasn't a bottom-pin.
+    pinnedToBottomRef,
   };
 }

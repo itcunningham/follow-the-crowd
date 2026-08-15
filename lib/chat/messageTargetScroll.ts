@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, type MutableRefObject, type RefObject } from "react";
-import { CHAT_MESSAGE_ID_ATTR } from "@/lib/useChatScroll";
+import {
+  CHAT_MESSAGE_ID_ATTR,
+  syncPinnedToBottomRefAfterDirectScroll,
+} from "@/lib/useChatScroll";
 import { computeChatMessageCenterScrollTop } from "@/lib/dm/chatBookingTarget";
 
 export const CHAT_MESSAGE_TARGET_PARAM = "message";
@@ -40,6 +43,7 @@ type UseChatMessageTargetScrollOptions = {
    * this to fall back to opening the conversation normally. */
   onTargetMissing?: () => void;
   suppressAutoScrollRef: MutableRefObject<boolean>;
+  pinnedToBottomRef: MutableRefObject<boolean>;
 };
 
 /**
@@ -60,6 +64,7 @@ export function useChatMessageTargetScroll({
   onTargetFound,
   onTargetMissing,
   suppressAutoScrollRef,
+  pinnedToBottomRef,
 }: UseChatMessageTargetScrollOptions) {
   const scrollAttemptRef = useRef(0);
   const completedRef = useRef(false);
@@ -119,6 +124,13 @@ export function useChatMessageTargetScroll({
 
       container.scrollTop = computeChatMessageCenterScrollTop(container, messageElement);
       clampChatScrollTop(container);
+      // Must run before releaseAutoScrollSuppression -- see
+      // syncPinnedToBottomRefAfterDirectScroll's doc comment. Without this,
+      // pinnedToBottomRef stays stale `true` from mount, and the next layout
+      // change (e.g. an attachment image finishing decode) reads it via
+      // useChatScroll's ResizeObserver effect and silently snaps back to the
+      // bottom once suppression drops.
+      syncPinnedToBottomRefAfterDirectScroll(container, pinnedToBottomRef);
       onTargetFound(targetMessageId);
       releaseAutoScrollSuppression();
       return true;
@@ -161,5 +173,13 @@ export function useChatMessageTargetScroll({
         window.clearTimeout(retryTimeoutId);
       }
     };
-  }, [targetMessageId, loading, scrollRef, onTargetFound, onTargetMissing, suppressAutoScrollRef]);
+  }, [
+    targetMessageId,
+    loading,
+    scrollRef,
+    onTargetFound,
+    onTargetMissing,
+    suppressAutoScrollRef,
+    pinnedToBottomRef,
+  ]);
 }

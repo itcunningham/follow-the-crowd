@@ -134,6 +134,7 @@ import {
   parseChatMessageTargetIdParam,
   useChatMessageTargetScroll,
 } from "@/lib/chat/messageTargetScroll";
+import { useActiveChatPresence } from "@/lib/chat/useActiveChatPresence";
 import {
   resolveDmBookingTarget,
   useChatBookingTargetScroll,
@@ -396,6 +397,7 @@ export default function DmChatPage() {
     scrollToBottomSmooth,
     markUserSentMessage,
     captureScrollBeforeIncomingInsert,
+    pinnedToBottomRef,
   } = useChatScroll({
     loading,
     messageIds,
@@ -494,6 +496,7 @@ export default function DmChatPage() {
     scrollRef,
     highlightBookingFocus,
     suppressAutoScrollRef,
+    pinnedToBottomRef,
   });
 
   useChatMessageTargetScroll({
@@ -503,7 +506,12 @@ export default function DmChatPage() {
     onTargetFound: addHighlightedMessageId,
     onTargetMissing: scrollToBottomSmooth,
     suppressAutoScrollRef,
+    pinnedToBottomRef,
   });
+
+  // Same bare link createNotification() uses for this conversation -- lets
+  // push-send skip an external push while this exact thread is visible here.
+  useActiveChatPresence(currentUserId, `/dm/${conversationId}`);
 
   useEffect(() => {
     if (loading) {
