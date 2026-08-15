@@ -130,6 +130,11 @@ import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/c
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
 import {
+  CHAT_MESSAGE_TARGET_PARAM,
+  parseChatMessageTargetIdParam,
+  useChatMessageTargetScroll,
+} from "@/lib/chat/messageTargetScroll";
+import {
   resolveDmBookingTarget,
   useChatBookingTargetScroll,
   CHAT_BOOKING_REQUEST_ID_ATTR,
@@ -309,8 +314,17 @@ export default function DmChatPage() {
           highlightTargetBookingRequestId: null,
           bookingFocusMode: "scroll-and-highlight" as const,
         };
+  // A push notification's message deep link (?message=<messages.id>). Nulled
+  // out under the same precedence as the booking-card target above -- these
+  // triggers come from different links and are never meant to fire together.
+  const messageTargetId =
+    hasPendingPreciseScrollRestore || scrollTargetBookingRequestId
+      ? null
+      : parseChatMessageTargetIdParam(searchParams.get(CHAT_MESSAGE_TARGET_PARAM));
   const suppressAutoScrollRef = useRef(
-    Boolean(scrollTargetBookingRequestId) || hasPendingPreciseScrollRestore,
+    Boolean(scrollTargetBookingRequestId) ||
+      hasPendingPreciseScrollRestore ||
+      Boolean(messageTargetId),
   );
   const fixedChatRouteKey = `${pathname}?${searchParams.toString()}`;
 
@@ -479,6 +493,15 @@ export default function DmChatPage() {
     messages,
     scrollRef,
     highlightBookingFocus,
+    suppressAutoScrollRef,
+  });
+
+  useChatMessageTargetScroll({
+    targetMessageId: messageTargetId,
+    loading,
+    scrollRef,
+    onTargetFound: addHighlightedMessageId,
+    onTargetMissing: scrollToBottomSmooth,
     suppressAutoScrollRef,
   });
 

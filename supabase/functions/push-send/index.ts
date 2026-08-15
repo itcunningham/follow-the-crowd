@@ -35,6 +35,7 @@ interface Notification {
   title: string;
   body?: string;
   link?: string;
+  message_id?: string;
 }
 
 interface PushSubscription {
@@ -158,11 +159,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Deep-link straight to the triggering chat message when one exists.
+    // The stored notification.link stays a bare path (an exact-match lookup
+    // elsewhere depends on that), so the message id is appended only here,
+    // in the outbound push payload.
+    const baseLink = notification.link || "/";
+    const link = notification.message_id
+      ? `${baseLink}${baseLink.includes("?") ? "&" : "?"}message=${encodeURIComponent(notification.message_id)}`
+      : baseLink;
+
     // Build push payload
     const pushPayload = {
       title: notification.title,
       body: notification.body || "",
-      link: notification.link || "/",
+      link,
       notificationId: notification.id,
     };
 

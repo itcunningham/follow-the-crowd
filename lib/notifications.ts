@@ -13,7 +13,26 @@ export type Notification = {
   body: string | null;
   link: string | null;
   read: boolean;
+  message_id: string | null;
 };
+
+/**
+ * The notification's stored `link` column stays a bare path
+ * (`markNotificationsReadForLink` does an exact-string match against it), so
+ * the message-id query param used to deep-link into the exact chat message is
+ * appended only at the point of navigation, never persisted.
+ */
+export function buildNotificationTargetHref(
+  link: string,
+  messageId?: string | null,
+): string {
+  if (!messageId) {
+    return link;
+  }
+
+  const separator = link.includes("?") ? "&" : "?";
+  return `${link}${separator}message=${encodeURIComponent(messageId)}`;
+}
 
 export type NavBadgeCounts = {
   messages: number;

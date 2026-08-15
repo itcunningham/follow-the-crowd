@@ -97,6 +97,11 @@ import {
 import { CHAT_NEAR_BOTTOM_THRESHOLD_PX } from "../lib/useChatScroll";
 import { computeChatMessageCenterScrollTop } from "../lib/dm/chatBookingTarget";
 import {
+  CHAT_MESSAGE_TARGET_PARAM,
+  parseChatMessageTargetIdParam,
+} from "../lib/chat/messageTargetScroll";
+import { buildNotificationTargetHref } from "../lib/notifications";
+import {
   applyManualMessageListScrollDelta,
   computeManualMessageListScrollTop,
   isPinnedToNewestMessages,
@@ -18524,6 +18529,14 @@ async function main() {
   testOneMessageOnePushIdentityDedupe();
   testTemporaryDiagnosticsPanelsRemoved();
   testCreateNotificationRpcPayloadIncludesMessageId();
+  testChatMessageTargetParamParsing();
+  testBuildNotificationTargetHrefAppendsMessageParam();
+  testNotificationLinkColumnStaysBareForReadTracking();
+  testNotificationTypeAndNotificationsPageUseMessageId();
+  testPushSendForwardsMessageIdIntoLink();
+  testDmPageWiresMessageTargetScroll();
+  testCrewChatPageWiresMessageTargetScroll();
+  testChatMessageTargetScrollSuppressionIsAsymmetric();
   console.log("All regression checks passed.");
 }
 
@@ -20910,6 +20923,287 @@ function testCreateNotificationRpcPayloadIncludesMessageId() {
     fnSignatureAndBody,
     /messageId\?: string \| null,\s*\n\): Promise<string> \{/,
     "messageId must be the function's own last parameter, in scope for the RPC call below it",
+  );
+}
+
+/**
+ * Seventh real-device QA round: tapping an older DM/crew push always landed
+ * at the bottom of the chat instead of the exact message that generated it.
+ * Fixed by threading notifications.message_id through to a `?message=<id>`
+ * query param on the notification's link, read by both chat pages to scroll
+ * to and briefly highlight that message on load.
+ */
+
+function testChatMessageTargetParamParsing() {
+  assert.equal(CHAT_MESSAGE_TARGET_PARAM, "message");
+  assert.equal(parseChatMessageTargetIdParam(" abc-123 "), "abc-123");
+  assert.equal(parseChatMessageTargetIdParam(null), null);
+  assert.equal(parseChatMessageTargetIdParam(undefined), null);
+  assert.equal(parseChatMessageTargetIdParam(""), null);
+  assert.equal(parseChatMessageTargetIdParam("   "), null);
+}
+
+function testBuildNotificationTargetHrefAppendsMessageParam() {
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123", "msg-1"),
+    "/dm/abc-123?message=msg-1",
+    "a message id must be appended as a query param",
+  );
+  assert.equal(
+    buildNotificationTargetHref("/events/abc-123/chat", "msg-1"),
+    "/events/abc-123/chat?message=msg-1",
+  );
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123", null),
+    "/dm/abc-123",
+    "a missing message id (legacy notification) must return the link unchanged",
+  );
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123", undefined),
+    "/dm/abc-123",
+  );
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123?from=profile", "msg-1"),
+    "/dm/abc-123?from=profile&message=msg-1",
+    "an existing query string must be extended with '&', not overwritten",
+  );
+  // Message ids are UUIDs (no characters requiring percent-encoding), but the
+  // helper must still be safe if that ever changes.
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123", "a b"),
+    "/dm/abc-123?message=a%20b",
+  );
+}
+
+/**
+ * notifications.link is matched with an exact `.eq("link", link)` by
+ * markNotificationsReadForLink (lib/notifications.ts) -- baking the message
+ * id into the *stored* link would silently break that lookup for every
+ * future message in the same conversation. The message id must only ever be
+ * appended at the point of navigation (push payload, in-app list), never
+ * written into the column callers pass to createNotification().
+ */
+function testNotificationLinkColumnStaysBareForReadTracking() {
+  const dmSource = readFileSync(
+    new URL("../lib/dm/resolveDmOtherUserId.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmSource,
+    /createNotification\(\s*\n\s*recipientId,\s*\n\s*"message",\s*\n\s*senderName,\s*\n\s*formatNotificationPreview\(body\),\s*\n\s*`\/dm\/\$\{conversationId\}`,/,
+    "the DM notification's stored link must stay the bare conversation path",
+  );
+
+  const crewSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    crewSource,
+    /const link = getEventCrewChatLink\(eventId\);/,
+    "the crew chat message notification's stored link must stay the bare getEventCrewChatLink(eventId) call, with no options appended",
+  );
+
+  const groupAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    groupAttachmentsSource,
+    /getEventCrewChatLink\(input\.eventId\)/,
+    "the crew chat attachment notification's stored link must stay bare too",
+  );
+}
+
+function testNotificationTypeAndNotificationsPageUseMessageId() {
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    notificationsSource,
+    /export type Notification = \{[\s\S]*?message_id: string \| null;[\s\S]*?\};/,
+    "the Notification type must declare message_id so callers get it typed, not just present at runtime",
+  );
+  assert.match(
+    notificationsSource,
+    /export function buildNotificationTargetHref\(/,
+    "buildNotificationTargetHref must be exported for reuse by the in-app notifications list",
+  );
+
+  const notificationsPageSource = readFileSync(
+    new URL("../app/notifications/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    notificationsPageSource,
+    /buildNotificationTargetHref,/,
+    "the notifications page must import buildNotificationTargetHref",
+  );
+  assert.match(
+    notificationsPageSource,
+    /router\.push\(buildNotificationTargetHref\(notification\.link, notification\.message_id\)\);/,
+    "clicking a notification row must navigate through buildNotificationTargetHref, not a raw notification.link push",
+  );
+}
+
+/**
+ * The push-delivery edge function is a separate Deno deployable that can't
+ * import lib/notifications.ts, so it re-derives the same '?message=<id>'
+ * link shape locally. This only checks the message-id-forwarding addition;
+ * it deliberately does not touch (and this test does not re-verify) VAPID
+ * signing, webhook secret validation, or the pg_net delivery loop.
+ */
+function testPushSendForwardsMessageIdIntoLink() {
+  const pushSendSource = readFileSync(
+    new URL("../supabase/functions/push-send/index.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    pushSendSource,
+    /interface Notification \{[\s\S]*?message_id\?: string;[\s\S]*?\}/,
+    "the edge function's Notification interface must declare message_id",
+  );
+  assert.match(
+    pushSendSource,
+    /const link = notification\.message_id\s*\n\s*\? `\$\{baseLink\}\$\{baseLink\.includes\("\?"\)\s*\?\s*"&"\s*:\s*"\?"\}message=\$\{encodeURIComponent\(notification\.message_id\)\}`\s*\n\s*: baseLink;/,
+    "the outbound push payload's link must append '?message=<id>' (or '&message=' if the base link already has a query string) whenever message_id is present",
+  );
+  assert.match(
+    pushSendSource,
+    /const pushPayload = \{\s*\n\s*title: notification\.title,\s*\n\s*body: notification\.body \|\| "",\s*\n\s*link,\s*\n\s*notificationId: notification\.id,\s*\n\s*\};/,
+    "the payload's link field must use the derived link (with message id appended), not notification.link directly",
+  );
+
+  // Guard the explicit "do not touch push infrastructure" boundary: the
+  // delivery mechanism itself (VAPID signing, webhook secret check, the
+  // per-subscription send loop) must still be present, unmodified in shape.
+  assert.match(pushSendSource, /const VAPID_PRIVATE_KEY = Deno\.env\.get\("VAPID_PRIVATE_KEY"\) \|\| "";/);
+  assert.match(pushSendSource, /const PUSH_WEBHOOK_SECRET = Deno\.env\.get\("PUSH_WEBHOOK_SECRET"\) \|\| "";/);
+  assert.match(pushSendSource, /await sendWebPush\(/);
+}
+
+/**
+ * DM page wiring: a `message` query param must resolve to a target id that
+ * is (a) mutually exclusive with the pre-existing booking-target and
+ * precise-scroll-restore flows (same precedence pattern those two already
+ * use against each other), (b) folded into the initial suppressAutoScrollRef
+ * value so the very first render doesn't race the normal scroll-to-bottom
+ * effect, and (c) wired to the shared hook using the DM page's own
+ * already-instantiated highlight/scroll-to-bottom callbacks -- not new ones.
+ */
+function testDmPageWiresMessageTargetScroll() {
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    dmPageSource,
+    /import \{\s*\n\s*CHAT_MESSAGE_TARGET_PARAM,\s*\n\s*parseChatMessageTargetIdParam,\s*\n\s*useChatMessageTargetScroll,\s*\n\s*\} from "@\/lib\/chat\/messageTargetScroll";/,
+    "the DM page must import the shared message-target-scroll hook",
+  );
+
+  assert.match(
+    dmPageSource,
+    /const messageTargetId =\s*\n\s*hasPendingPreciseScrollRestore \|\| scrollTargetBookingRequestId\s*\n\s*\? null\s*\n\s*: parseChatMessageTargetIdParam\(searchParams\.get\(CHAT_MESSAGE_TARGET_PARAM\)\);/,
+    "messageTargetId must be nulled out whenever a precise-scroll-restore or booking target is already active this navigation",
+  );
+
+  assert.match(
+    dmPageSource,
+    /const suppressAutoScrollRef = useRef\(\s*\n\s*Boolean\(scrollTargetBookingRequestId\) \|\|\s*\n\s*hasPendingPreciseScrollRestore \|\|\s*\n\s*Boolean\(messageTargetId\),\s*\n\s*\);/,
+    "the initial suppressAutoScrollRef value must account for a pending message target too, or the first paint's scroll-to-bottom effect races it",
+  );
+
+  assert.match(
+    dmPageSource,
+    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*\}\);/,
+    "the DM page must wire the hook to its own already-instantiated addHighlightedMessageId/scrollToBottomSmooth, not new bespoke callbacks",
+  );
+
+  // Must be declared after useChatBookingTargetScroll so that on a genuine
+  // booking-target navigation (messageTargetId null), the booking hook's own
+  // reset effect -- which still runs unconditionally -- can't be clobbered by
+  // ours running first and being overwritten second.
+  const bookingHookCallIndex = dmPageSource.indexOf("useChatBookingTargetScroll({");
+  const messageHookCallIndex = dmPageSource.indexOf("useChatMessageTargetScroll({");
+  assert.ok(bookingHookCallIndex > -1 && messageHookCallIndex > -1);
+  assert.ok(
+    messageHookCallIndex > bookingHookCallIndex,
+    "useChatMessageTargetScroll must be called after useChatBookingTargetScroll (see comment above)",
+  );
+}
+
+function testCrewChatPageWiresMessageTargetScroll() {
+  const crewChatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /import \{\s*\n\s*CHAT_MESSAGE_TARGET_PARAM,\s*\n\s*parseChatMessageTargetIdParam,\s*\n\s*useChatMessageTargetScroll,\s*\n\s*\} from "@\/lib\/chat\/messageTargetScroll";/,
+    "the crew chat page must import the shared message-target-scroll hook",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /const messageTargetId = parseChatMessageTargetIdParam\(\s*\n\s*searchParams\.get\(CHAT_MESSAGE_TARGET_PARAM\),\s*\n\s*\);/,
+    "the crew chat page must parse the message target id (it has no competing scroll-target flow, unlike DM)",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /const suppressAutoScrollRef = useRef\(Boolean\(messageTargetId\)\);/,
+    "suppressAutoScrollRef must be seeded from messageTargetId on first render",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /suppressAutoScrollRef,\s*\n\s*\}\);/,
+    "useChatScroll must now receive suppressAutoScrollRef (previously omitted) so the target-scroll flow can suppress the initial auto-scroll-to-bottom",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*\}\);/,
+    "the crew chat page must wire the hook to its own already-instantiated addHighlightedMessageId/scrollToBottomSmooth",
+  );
+}
+
+/**
+ * The shared hook's suppression handshake must be asymmetric: claim
+ * suppression when this flow has a real target, but never unconditionally
+ * write `false` just because it doesn't -- the DM page shares this ref with
+ * the pre-existing booking-target flow, and an unconditional write would
+ * race whichever hook's reset effect happens to run last. Also: releasing
+ * suppression must happen *before* the onTargetMissing fallback runs, or the
+ * fallback's own scroll-to-bottom call would see suppression still active
+ * and silently no-op.
+ */
+function testChatMessageTargetScrollSuppressionIsAsymmetric() {
+  const hookSource = readFileSync(
+    new URL("../lib/chat/messageTargetScroll.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    hookSource,
+    /if \(targetMessageId\) \{\s*\n\s*suppressAutoScrollRef\.current = true;\s*\n\s*\}/,
+    "the reset effect must only ever write `true`, guarded behind a truthy target check",
+  );
+  assert.doesNotMatch(
+    hookSource,
+    /suppressAutoScrollRef\.current = Boolean\(targetMessageId\);/,
+    "an unconditional write (including false) would race and clobber a sibling scroll-target hook's suppression",
+  );
+
+  const releaseIndex = hookSource.indexOf("releaseAutoScrollSuppression();\n        onTargetMissing?.();");
+  assert.ok(
+    releaseIndex > -1,
+    "releaseAutoScrollSuppression() must run before onTargetMissing() so the fallback's own scroll isn't self-suppressed",
   );
 }
 
