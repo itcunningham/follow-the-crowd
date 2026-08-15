@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type MutableRefObject, type RefObject } from "react";
 import { CHAT_MESSAGE_ID_ATTR } from "@/lib/useChatScroll";
+import { computeChatMessageCenterScrollTop } from "@/lib/dm/chatBookingTarget";
 
 export const CHAT_MESSAGE_TARGET_PARAM = "message";
 
@@ -14,20 +15,6 @@ export function parseChatMessageTargetIdParam(
   const trimmed = value?.trim();
 
   return trimmed ? trimmed : null;
-}
-
-function computeChatMessageCenterScrollTop(
-  container: HTMLElement,
-  messageElement: HTMLElement,
-): number {
-  const containerRect = container.getBoundingClientRect();
-  const messageRect = messageElement.getBoundingClientRect();
-  const messageCenter = messageRect.top + messageRect.height / 2;
-  const containerCenter = containerRect.top + container.clientHeight / 2;
-  const delta = messageCenter - containerCenter;
-  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
-
-  return Math.max(0, Math.min(maxScrollTop, container.scrollTop + delta));
 }
 
 function clampChatScrollTop(container: HTMLElement): void {
