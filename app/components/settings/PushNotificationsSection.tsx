@@ -51,16 +51,26 @@ export default function PushNotificationsSection() {
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
-  async function handleEnable() {
+  async function handleEnable(isReconnect: boolean) {
     setEnabling(true);
     setError(null);
 
     try {
       await enableNotifications();
-      setState("granted");
+      // Re-derive state rather than assuming "granted" -- the whole point
+      // of the reconnect flow is to never claim enabled without checking
+      // both the real browser subscription and the FTC-side row.
+      const freshState = await detectNotificationState();
+      setState(freshState);
     } catch (enableError) {
       console.error("[push-settings] Failed to enable:", enableError);
-      const errorMsg = enableError instanceof Error ? enableError.message : "Failed to enable notifications";
+      // Reconnect failures show friendly copy, never the raw browser/DOM
+      // error text -- the raw error is still logged above for diagnosis.
+      const errorMsg = isReconnect
+        ? "Couldn't reconnect notifications\nTry again or restart FTC"
+        : enableError instanceof Error
+          ? enableError.message
+          : "Failed to enable notifications";
       setError(errorMsg);
       // Re-check state in case permission was denied
       const newState = await detectNotificationState();
@@ -125,12 +135,12 @@ export default function PushNotificationsSection() {
         {state === "unsupported_ios_version" && (
           <div className="rounded-lg bg-ftc-surface px-3 py-2 text-sm text-ftc-text">
             <p className="font-semibold text-ftc-primary mb-1">Push notifications unavailable</p>
+            <p className="text-ftc-text-muted">Push notifications require iOS 16.4 or later</p>
             <p className="text-ftc-text-muted">
-              Push notifications require iOS 16.4 or later. You can still use FTC normally, but this
-              device can&rsquo;t receive push notifications.
+              You can still use FTC normally, but this device can&rsquo;t receive push notifications
             </p>
             <p className="mt-2 text-xs text-ftc-text-muted">
-              If your iPhone supports a newer iOS version, update iOS to enable notifications.
+              If your iPhone supports a newer iOS version, update iOS to enable notifications
             </p>
           </div>
         )}
@@ -174,7 +184,7 @@ export default function PushNotificationsSection() {
             </p>
             <button
               type="button"
-              onClick={() => void handleEnable()}
+              onClick={() => void handleEnable(false)}
               disabled={enabling}
               className="rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-sm font-semibold text-ftc-primary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -183,19 +193,21 @@ export default function PushNotificationsSection() {
           </div>
         )}
 
-        {state === "granted_not_subscribed" && (
+        {state === "reconnect" && (
           <div className="space-y-3">
-            <p className="text-sm text-ftc-text-muted">
-              This device has notification permission, but isn't set up to receive Follow The Crowd
-              notifications for this account yet. Tap below to finish setup.
-            </p>
+            <div>
+              <p className="font-semibold text-ftc-primary mb-1">Reconnect notifications</p>
+              <p className="text-sm text-ftc-text-muted">
+                Notifications need to be reconnected on this device
+              </p>
+            </div>
             <button
               type="button"
-              onClick={() => void handleEnable()}
+              onClick={() => void handleEnable(true)}
               disabled={enabling}
               className="rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-sm font-semibold text-ftc-primary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {enabling ? "Enabling..." : "Enable notifications"}
+              {enabling ? "Reconnecting..." : "Reconnect notifications"}
             </button>
           </div>
         )}
@@ -218,7 +230,7 @@ export default function PushNotificationsSection() {
         )}
 
         {error && (
-          <div className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <div className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300 whitespace-pre-line">
             {error}
           </div>
         )}
