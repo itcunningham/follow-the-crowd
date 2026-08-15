@@ -1462,11 +1462,20 @@ export default function DmChatPage() {
 
     const userId = await getCurrentUserId();
 
-    const { error: insertError } = await supabase.from("messages").insert({
-      conversation_id: conversationId,
-      user_id: userId,
-      text,
-    });
+    // .select("id").single() (not a bare insert) so the id can be threaded
+    // through as the notification's message identity below -- the exact
+    // same shape sendDmMessageWithAttachments already uses successfully for
+    // every image send, so the sender's own RLS read-back of a row they just
+    // wrote is already proven to work on this table.
+    const { data: insertedMessage, error: insertError } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        user_id: userId,
+        text,
+      })
+      .select("id")
+      .single();
 
     if (insertError) {
       setInput(text);
@@ -1481,6 +1490,7 @@ export default function DmChatPage() {
       senderUserId: userId,
       otherUserId,
       body: text,
+      messageId: insertedMessage?.id as string | undefined,
     });
     if (recipientId && recipientId !== otherUserId) {
       setOtherUserId(recipientId);

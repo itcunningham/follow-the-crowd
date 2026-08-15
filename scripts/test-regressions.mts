@@ -18519,8 +18519,10 @@ async function main() {
   testPushReconnectStateAndVapidKeyUrlSafeDecoding();
   testNotificationCopyPolishPass();
   testPushBadgeRunSheetWithdrawalRealDeviceFollowups();
-  testWithdrawalNotificationSoftFailsAndBadgeDiagnosticsWired();
+  testWithdrawalNotificationSoftFails();
   testMessageIdentityDedupeForAttachmentPushes();
+  testOneMessageOnePushIdentityDedupe();
+  testTemporaryDiagnosticsPanelsRemoved();
   console.log("All regression checks passed.");
 }
 
@@ -19588,10 +19590,16 @@ function testUnsupportedIosPushStateDoesNotSuggestInstalling() {
   );
 
   // Unchanged: FTC's own subscription state, not Notification.permission
-  // alone, is still authoritative for the granted case.
+  // alone, is still authoritative for the granted case. Bound widened from
+  // an original 600 (already too tight for the explanatory comment above
+  // this check even before this round's changes -- a pre-existing gap in
+  // this assertion, unrelated to this round's fix, only surfaced now
+  // because verifying this test in isolation bypasses the earlier
+  // pre-existing failure that has always halted the suite before reaching
+  // this one).
   assert.match(
     clientSource,
-    /Notification\.permission === "granted"\)[\s\S]{0,600}hasActivePushSubscriptionForCurrentUser/,
+    /Notification\.permission === "granted"\)[\s\S]{0,1200}hasActivePushSubscriptionForCurrentUser/,
   );
 
   const uiSource = readFileSync(
@@ -19606,9 +19614,15 @@ function testUnsupportedIosPushStateDoesNotSuggestInstalling() {
     uiSource.indexOf('state === "ios_not_installed"'),
   );
   assert.match(unsupportedIosBlock, /Push notifications unavailable/);
+  // Copy is three separate lines with no trailing periods (fixed in a later
+  // round) -- this assertion was stale (checked for an old combined-sentence
+  // wording with periods that no longer exists), only surfaced now because
+  // isolating this test bypasses the earlier pre-existing failure that has
+  // always halted the suite before reaching it.
+  assert.match(unsupportedIosBlock, /Push notifications require iOS 16\.4 or later<\/p>/);
   assert.match(
     unsupportedIosBlock,
-    /Push notifications require iOS 16\.4 or later\. You can still use FTC normally, but this\s+device can&rsquo;t receive push notifications\./,
+    /You can still use FTC normally, but this device can&rsquo;t receive push notifications/,
   );
   assert.match(unsupportedIosBlock, /update iOS to enable notifications/);
   assert.doesNotMatch(unsupportedIosBlock, /Enable notifications/);
@@ -19638,10 +19652,10 @@ function testUnsupportedIosPushStateDoesNotSuggestInstalling() {
   const grantedBlock = uiSource.slice(uiSource.indexOf('state === "granted"'), uiSource.indexOf("{error &&"));
   assert.match(grantedBlock, /Notifications enabled on this device/);
 
-  // Temporary device diagnostics panel must still be present -- this task
-  // explicitly keeps it, the small-iPhone stale-subscription investigation
-  // isn't finished yet.
-  assert.match(uiSource, /Device diagnostics \(temporary\)/);
+  // The temporary device diagnostics panel was removed once the
+  // investigation concluded (real-device data confirmed the badge/reconnect
+  // fixes work) -- see testTemporaryDiagnosticsPanelsRemoved.
+  assert.doesNotMatch(uiSource, /Device diagnostics \(temporary\)/);
 }
 
 /**
@@ -20273,35 +20287,27 @@ function testPushBadgeRunSheetWithdrawalRealDeviceFollowups() {
 }
 
 /**
- * Third real-device Production QA round on the same three issues.
+ * Third real-device Production QA round: withdrawal push got an actual code
+ * fix. Tracing cancelBookingRequest found its createNotification call was
+ * the ONE call site in this file with no try/catch, unlike every sibling
+ * notification call. cancel_booking_request (the SQL RPC) had already
+ * committed by the time that call runs, so any failure there -- an
+ * auth/RLS edge case, a network blip, anything -- propagated uncaught
+ * through cancelAcceptedBookingRequest to the UI, which showed a generic
+ * "Failed to cancel" error for a cancellation that had, in fact, already
+ * succeeded -- and skipped the DM system message insert and
+ * notifyBookingRequestsChanged below it, since neither ever ran. This is
+ * exactly the "planner receives no push, nothing else visibly wrong" shape
+ * reported from a real device. Fixed by wrapping it in try/catch, matching
+ * the established soft-fail pattern used everywhere else notifications are
+ * created in this file.
  *
- * Issue 3 (withdrawal push) got an actual code fix this round: tracing
- * cancelBookingRequest found its createNotification call was the ONE call
- * site in this file with no try/catch, unlike every sibling notification
- * call. cancel_booking_request (the SQL RPC) had already committed by the
- * time that call runs, so any failure there -- an auth/RLS edge case, a
- * network blip, anything -- propagated uncaught through
- * cancelAcceptedBookingRequest to the UI, which showed a generic "Failed to
- * cancel" error for a cancellation that had, in fact, already succeeded --
- * and skipped the DM system message insert and notifyBookingRequestsChanged
- * below it, since neither ever ran. This is exactly the "planner receives
- * no push, nothing else visibly wrong" shape reported from a real device.
- * Fixed by wrapping it in try/catch, matching the established soft-fail
- * pattern used everywhere else notifications are created in this file.
- *
- * Issues 1 (crew image push) and 2 (badge) had no NEW code-level bug found
- * on this pass beyond what the previous round already fixed and shipped
- * (the create_notification body-inclusive dedupe migration, and the
- * DJ-role badge-count fix) -- both require a manual SQL migration run this
- * sandbox has no way to confirm was applied. Issue 2 gets real-device
- * diagnostics instead of a guessed fix: a new badgeDiagnostics module
- * records the exact unread total, Badging API support, the last value
- * passed to setAppBadge/clearAppBadge, and the last result (success or a
- * safe error name), surfaced in Settings' existing temporary diagnostics
- * panel -- in the exact shape requested -- so the next real test produces
- * conclusive evidence instead of another guess.
+ * (That round's badge diagnostics panel -- and the Device diagnostics panel
+ * before it -- were both temporary investigation aids, removed once
+ * real-device data confirmed the underlying fixes work; see
+ * testTemporaryDiagnosticsPanelsRemoved.)
  */
-function testWithdrawalNotificationSoftFailsAndBadgeDiagnosticsWired() {
+function testWithdrawalNotificationSoftFails() {
   // --- Issue 3: withdrawal notification must soft-fail, never abort -------
   const bookingRequestsSource = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),
@@ -20373,84 +20379,6 @@ function testWithdrawalNotificationSoftFailsAndBadgeDiagnosticsWired() {
     /br\.recipient_id = v_sender_id\s*\n\s*and br\.sender_id = p_user_id\s*\n\s*and br\.status = 'cancelled'/,
     "the booking_update authorization must allow a DJ (recipient) to notify the planner (sender) about a cancellation -- the withdrawal direction",
   );
-
-  // --- Issue 2: badge diagnostics module exists in the requested shape ----
-  const badgeDiagnosticsSource = readFileSync(
-    new URL("../lib/navigation/badgeDiagnostics.ts", import.meta.url),
-    "utf8",
-  );
-  assert.match(badgeDiagnosticsSource, /unreadTotal: number \| null;/);
-  assert.match(badgeDiagnosticsSource, /badgingApiSupported: boolean;/);
-  assert.match(badgeDiagnosticsSource, /lastSetValue: number \| "cleared" \| null;/);
-  assert.match(badgeDiagnosticsSource, /lastResult: string \| null;/);
-  assert.match(badgeDiagnosticsSource, /standalone: boolean;/);
-  assert.match(badgeDiagnosticsSource, /export function recordBadgeSyncAttempt/);
-  assert.match(badgeDiagnosticsSource, /export function readBadgeDiagnostics/);
-  assert.match(badgeDiagnosticsSource, /export function subscribeBadgeDiagnostics/);
-  // No secrets -- only booleans/numbers/short safe names as actual fields,
-  // no endpoint/key/token property (the doc comment mentioning those words
-  // to disclaim them is fine; only a real field declaration would matter).
-  assert.doesNotMatch(badgeDiagnosticsSource, /\b(endpoint|p256dh|authKey|token)\s*:/);
-
-  // Fixed SSR-equivalent snapshot for useSyncExternalStore's getServerSnapshot
-  // -- must be the all-false/null defaults SSR always produces (navigator and
-  // window don't exist server-side), not a live reader of mutable state.
-  assert.match(
-    badgeDiagnosticsSource,
-    /export const SERVER_BADGE_DIAGNOSTICS_SNAPSHOT: BadgeDiagnostics = \{\s*\n\s*unreadTotal: null,\s*\n\s*badgingApiSupported: false,\s*\n\s*lastSetValue: null,\s*\n\s*lastResult: null,\s*\n\s*standalone: false,\s*\n\s*\};/,
-  );
-  assert.match(badgeDiagnosticsSource, /export function readServerBadgeDiagnosticsSnapshot/);
-
-  const navBadgeProviderSource = readFileSync(
-    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
-    "utf8",
-  );
-  assert.match(navBadgeProviderSource, /import \{ recordBadgeSyncAttempt \} from "@\/lib\/navigation\/badgeDiagnostics";/);
-  assert.match(navBadgeProviderSource, /recordBadgeSyncAttempt\(\{ badgingApiSupported: false \}\);/);
-  assert.match(navBadgeProviderSource, /recordBadgeSyncAttempt\(\{\s*\n\s*unreadTotal: total,\s*\n\s*lastSetValue: total > 0 \? total : "cleared",\s*\n\s*\}\);/);
-  assert.match(navBadgeProviderSource, /recordBadgeSyncAttempt\(\{ lastResult: "success" \}\)/);
-  assert.match(navBadgeProviderSource, /recordBadgeSyncAttempt\(\{ lastResult: safeBadgeErrorName\(badgeError\) \}\)/);
-  assert.match(
-    navBadgeProviderSource,
-    /function safeBadgeErrorName\(error: unknown\): string \{/,
-    "the error name helper must exist so a real rejection is captured without exposing message details",
-  );
-
-  const pushClientSource = readFileSync(
-    new URL("../lib/push/client.ts", import.meta.url),
-    "utf8",
-  );
-  assert.match(
-    pushClientSource,
-    /export function isInstalledPWA\(\): boolean \{/,
-    "isInstalledPWA must be exported so the badge diagnostics module can report standalone status",
-  );
-
-  const settingsSource = readFileSync(
-    new URL("../app/components/settings/PushNotificationsSection.tsx", import.meta.url),
-    "utf8",
-  );
-  assert.match(
-    settingsSource,
-    /import \{\s*\n\s*readBadgeDiagnostics,\s*\n\s*readServerBadgeDiagnosticsSnapshot,\s*\n\s*subscribeBadgeDiagnostics,\s*\n\s*\} from "@\/lib\/navigation\/badgeDiagnostics";/,
-  );
-  // getServerSnapshot must be the fixed SSR-equivalent snapshot, not
-  // readBadgeDiagnostics again -- using the live reader for both arguments
-  // lets the server-rendered HTML (always the false/null defaults, since
-  // navigator/window don't exist during SSR) disagree with what a client
-  // render before hydration completes could already show, a real hydration
-  // mismatch risk QA caught on the first version of this panel.
-  assert.match(
-    settingsSource,
-    /useSyncExternalStore\(\s*\n\s*subscribeBadgeDiagnostics,\s*\n\s*readBadgeDiagnostics,\s*\n\s*readServerBadgeDiagnosticsSnapshot,\s*\n\s*\);/,
-    "getServerSnapshot must be the fixed snapshot, not the live reader, to avoid a hydration mismatch",
-  );
-  assert.match(settingsSource, /Badge diagnostics \(temporary\)/);
-  assert.match(settingsSource, /Unread total: \{badgeDiagnostics\.unreadTotal \?\? "not yet computed"\}/);
-  assert.match(settingsSource, /Badging API supported: \{String\(badgeDiagnostics\.badgingApiSupported\)\}/);
-  assert.match(settingsSource, /Last setAppBadge value: \{badgeDiagnostics\.lastSetValue \?\? "none yet"\}/);
-  assert.match(settingsSource, /Last badge result: \{badgeDiagnostics\.lastResult \?\? "none yet"\}/);
-  assert.match(settingsSource, /Standalone: \{String\(badgeDiagnostics\.standalone\)\}/);
 
   // --- Scope discipline: the confirmed-working run-sheet path is untouched
   const runSheetLibSource = readFileSync(
@@ -20541,19 +20469,18 @@ function testMessageIdentityDedupeForAttachmentPushes() {
     "the crew image push must pass its own message's id through",
   );
 
-  // --- Text sends stay untouched: no messageId wiring introduced ----------
+  // Text sends were deliberately left off messageId in THIS round (image-
+  // only was the reported bug) -- a later round (see
+  // testOneMessageOnePushIdentityDedupe) extended it to text too, making the
+  // identity-based invariant universal. This just confirms crew text send
+  // still exists and creates exactly one notification per participant; it no
+  // longer asserts messageId is absent, since that assertion became false by
+  // design in the later round.
   const eventCrewChatSource = readFileSync(
     new URL("../lib/eventCrewChat.ts", import.meta.url),
     "utf8",
   );
-  const crewTextSendBlock = eventCrewChatSource.slice(
-    eventCrewChatSource.indexOf("export async function sendEventCrewChatMessage("),
-  );
-  assert.doesNotMatch(
-    crewTextSendBlock.slice(0, crewTextSendBlock.indexOf("\n}\n")),
-    /messageRow\.id|messageId/,
-    "crew text send is confirmed working and must not be touched by this fix",
-  );
+  assert.match(eventCrewChatSource, /export async function sendEventCrewChatMessage\(/);
 
   // --- SQL migration correctness -------------------------------------------
   const migrationSource = readFileSync(
@@ -20624,6 +20551,266 @@ function testMessageIdentityDedupeForAttachmentPushes() {
     migrationSource,
     /grant execute on function public\.create_notification\(text, text, text, text, text, uuid, uuid\) to authenticated;/,
   );
+}
+
+/**
+ * Fifth real-device Production QA round: a message with BOTH an image and a
+ * caption produced TWO pushes (one caption-shaped, one generic "Sent a
+ * photo"-shaped) instead of one. Traced every notification call site for
+ * DM/crew text and image sends: both attachment paths already preferred the
+ * caption over the generic body in a single createNotification call (no
+ * second call site found for that exact scenario despite exhaustive
+ * tracing -- see the shipped report for the full investigation). Rather
+ * than leave the one-message-one-push invariant proven only for the two
+ * attachment paths from a prior round, this extends message-identity dedupe
+ * to the text send paths too (previously deliberately left off, since text
+ * wasn't the reported bug) -- making "same recipient + same message_id =
+ * same notification identity" a universal guarantee at the RPC layer
+ * regardless of how many times or from where createNotification might ever
+ * be called for a given message, present or future. This is the "the
+ * database/RPC should safely return the same notification id" requirement,
+ * applied everywhere a real message row exists, not just attachments.
+ *
+ * Also found and fixed a genuine, unrelated duplicate-push case while
+ * auditing per this round's explicit ask: whole-event cancellation
+ * (lib/events.ts, notifyCancelledBookingsFromEventCancellation) created a
+ * booking_update notification AND a near-identical "message"-type
+ * notification for the SAME recipient and SAME link -- two push banners
+ * telling the DJ their booking was cancelled, worded two different ways.
+ * The redundant message-type call was removed; the booking_update one (the
+ * canonical shape matching every other booking status change) stays.
+ */
+function testOneMessageOnePushIdentityDedupe() {
+  // --- DM: both text and image sends now pass a real message identity ----
+  const resolveDmOtherUserIdSource = readFileSync(
+    new URL("../lib/dm/resolveDmOtherUserId.ts", import.meta.url),
+    "utf8",
+  );
+  // Exactly one createNotification call inside notifyDmPeerOfMessage --
+  // whichever send path calls it (text or image), it fires once per message.
+  const dmNotifyFnBody = resolveDmOtherUserIdSource.slice(
+    resolveDmOtherUserIdSource.indexOf("export async function notifyDmPeerOfMessage("),
+  );
+  assert.equal(
+    (dmNotifyFnBody.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "notifyDmPeerOfMessage must create exactly one notification per call",
+  );
+  assert.match(dmNotifyFnBody, /messageId,\s*\n\s*\);/, "the message id must be threaded through to createNotification");
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  // Text send: the insert now fetches its own id back and passes it through.
+  const dmTextSendBlock = dmPageSource.slice(
+    dmPageSource.indexOf("async function sendMessage() {"),
+    dmPageSource.indexOf("async function sendAttachments("),
+  );
+  assert.match(
+    dmTextSendBlock,
+    /\.select\("id"\)\s*\n\s*\.single\(\);/,
+    "DM text send must fetch the inserted message's id",
+  );
+  assert.match(
+    dmTextSendBlock,
+    /messageId: insertedMessage\?\.id as string \| undefined,/,
+    "DM text send must pass its message id through to notifyDmPeerOfMessage",
+  );
+  // Image send: exactly one notify call, caption wins, message id threaded.
+  const dmAttachmentSendBlock = dmPageSource.slice(
+    dmPageSource.indexOf("async function sendAttachments("),
+  );
+  const dmAttachmentSendBody = dmAttachmentSendBlock.slice(0, dmAttachmentSendBlock.indexOf("\n  }\n"));
+  assert.equal(
+    (dmAttachmentSendBody.match(/notifyDmPeerOfMessage\(/g) ?? []).length,
+    1,
+    "the DM attachment send path must call notifyDmPeerOfMessage exactly once per message, even when a caption is present",
+  );
+  assert.match(
+    dmAttachmentSendBody,
+    /body: caption \|\| getDmAttachmentNotificationBody\(sentAttachments\[0\], sentAttachments\.length\),/,
+    "caption must win over the generic photo body in the single notify call",
+  );
+  assert.match(dmAttachmentSendBody, /messageId,\s*\n\s*\}\);/);
+
+  // --- Crew: both text and image sends now pass a real message identity --
+  const eventCrewChatSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const crewTextSendFn = eventCrewChatSource.slice(
+    eventCrewChatSource.indexOf("export async function sendEventCrewChatMessage("),
+  );
+  const crewTextSendBody = crewTextSendFn.slice(0, crewTextSendFn.indexOf("\n}\n"));
+  assert.match(
+    crewTextSendBody,
+    /const \{ data: messageRow, error: insertError \} = await supabase\s*\n\s*\.from\("messages"\)\s*\n\s*\.insert\(\{/,
+    "crew text send must fetch the inserted message's id",
+  );
+  assert.equal(
+    (crewTextSendBody.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "crew text send's notify loop must call createNotification exactly once per participant per message",
+  );
+  assert.match(
+    crewTextSendBody,
+    /createNotification\(\s*\n\s*participantId,\s*\n\s*"message",\s*\n\s*title,\s*\n\s*preview,\s*\n\s*link,\s*\n\s*null,\s*\n\s*messageRow\?\.id as string \| undefined,\s*\n\s*\);/,
+    "crew text push must pass its own message's id through",
+  );
+
+  const groupChatAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  const crewAttachmentNotifyBlock = groupChatAttachmentsSource.slice(
+    groupChatAttachmentsSource.indexOf("if (input.notifyParticipants !== false) {"),
+    groupChatAttachmentsSource.indexOf("return {\n    messageId: messageRow.id"),
+  );
+  assert.equal(
+    (crewAttachmentNotifyBlock.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "the crew attachment send path must call createNotification exactly once per participant per message, even when a caption is present",
+  );
+  assert.match(
+    crewAttachmentNotifyBlock,
+    /const preview = formatNotificationPreview\(text \|\| genericPhotoPreview\);/,
+    "caption must win over the generic photo body in the single notify call",
+  );
+  assert.match(
+    crewAttachmentNotifyBlock,
+    /messageRow\.id as string,\s*\n\s*\);/,
+  );
+
+  // --- Message-identity dedupe is still exactly one call site's worth of
+  // logic in the SQL, unaffected by extending it to more callers -----------
+  const migrationSource = readFileSync(
+    new URL(
+      "../supabase/migrations/20260817000000_notification_message_identity_dedupe.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(
+    migrationSource,
+    /where n\.user_id = p_user_id\s*\n\s*and n\.message_id = p_message_id/,
+    "idempotency is keyed on (user_id, message_id) only -- content-blind by design, so different messages with identical rendered text still both push",
+  );
+
+  // --- Duplicate event-cancellation push removed ---------------------------
+  const eventsSource = readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8");
+  const cancelNotifyFnBody = eventsSource.slice(
+    eventsSource.indexOf("async function notifyCancelledBookingsFromEventCancellation("),
+    eventsSource.indexOf("export async function cancelEvent("),
+  );
+  assert.ok(cancelNotifyFnBody.length > 0, "notifyCancelledBookingsFromEventCancellation must exist");
+  assert.equal(
+    (cancelNotifyFnBody.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "whole-event cancellation must create exactly one notification per affected DJ -- the redundant message-type duplicate must be gone",
+  );
+  assert.match(
+    cancelNotifyFnBody,
+    /"booking_update",\s*\n\s*`\$\{plannerName\} · Booking cancelled`,\s*\n\s*booking\.event_name,/,
+    "the surviving notification must be the canonical booking_update one, unchanged in copy",
+  );
+  assert.doesNotMatch(
+    cancelNotifyFnBody,
+    /"message",\s*\n\s*plannerName,/,
+    "the redundant message-type duplicate (title = plannerName alone) must not exist anymore",
+  );
+  // formatEventCancelledInboxPreview/formatNotificationPreview were only
+  // used by the removed call -- confirm they're no longer imported here
+  // (still defined/used elsewhere for the DM inbox preview pipeline).
+  assert.doesNotMatch(eventsSource, /formatEventCancelledInboxPreview/);
+  assert.doesNotMatch(eventsSource, /formatNotificationPreview/);
+
+  // --- Existing booking/run-sheet/event pushes unchanged -------------------
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{djName\} · Booking accepted`,\s*\n\s*booking\.event_name,/,
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Withdrew from event`/,
+  );
+  const runSheetLibSource = readFileSync(
+    new URL("../lib/eventRunSheet.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(runSheetLibSource, /const title = `\$\{eventName\} · Run sheet updated`;/);
+  assert.match(eventCrewChatSource, /`\$\{eventName\} · Crew chat ready`,\s*\n\s*"Your event crew chat is now available",/);
+  const eventGroupChatUpdateSource = readFileSync(
+    new URL("../lib/events/eventGroupChatUpdate.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventGroupChatUpdateSource, /const title = `\$\{eventName\} · Event updated`;/);
+}
+
+/**
+ * Temporary user-visible diagnostics panels (Device diagnostics, Badge
+ * diagnostics) are removed now that real-device data has confirmed the
+ * underlying push/badge fixes work. Production-safe console.error logging
+ * and the actual notification-state/badge-sync logic stay -- only the
+ * developer-facing panels and the now-dead diagnostics-gathering code they
+ * were the sole consumer of are gone. Unsupported-iOS messaging, the
+ * reconnect flow, and badge behaviour are all confirmed unchanged.
+ */
+function testTemporaryDiagnosticsPanelsRemoved() {
+  const settingsSource = readFileSync(
+    new URL("../app/components/settings/PushNotificationsSection.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(settingsSource, /Device diagnostics \(temporary\)/);
+  assert.doesNotMatch(settingsSource, /Badge diagnostics \(temporary\)/);
+  assert.doesNotMatch(settingsSource, /getPushDiagnostics/);
+  assert.doesNotMatch(settingsSource, /badgeDiagnostics/);
+  assert.doesNotMatch(settingsSource, /useSyncExternalStore/);
+
+  // The diagnostics-gathering code these panels were the only consumer of is
+  // gone too -- not just hidden, actually removed, per "do not expose
+  // developer diagnostics to beta users."
+  assert.ok(
+    !existsSync(new URL("../lib/navigation/badgeDiagnostics.ts", import.meta.url)),
+    "the temporary badge diagnostics module must be deleted, not just unused",
+  );
+  const pushClientSource = readFileSync(new URL("../lib/push/client.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(pushClientSource, /getPushDiagnostics|PushDiagnostics/);
+
+  const navBadgeProviderSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(navBadgeProviderSource, /recordBadgeSyncAttempt|badgeDiagnostics|safeBadgeErrorName/);
+  // Production-safe logging kept, and the actual badge-sync behaviour
+  // (setAppBadge/clearAppBadge driven by the real unread total) is
+  // unchanged -- "keep badge behaviour as-is."
+  assert.match(navBadgeProviderSource, /console\.error\("\[nav-badges\] clearAppBadge failed:"/);
+  assert.match(navBadgeProviderSource, /console\.error\("\[nav-badges\] App badge sync failed:"/);
+  assert.match(
+    navBadgeProviderSource,
+    /badgingNavigator\.setAppBadge\(total\) : badgingNavigator\.clearAppBadge\(\)/,
+  );
+  assert.match(
+    navBadgeProviderSource,
+    /if \(!state\.badgesReady\) \{\s*\n\s*return;/,
+    "badge must still only sync once the real count has loaded",
+  );
+
+  // Unsupported-iOS messaging, reconnect flow, and friendly reconnect
+  // errors are all untouched by this cleanup.
+  assert.match(settingsSource, /Push notifications unavailable/);
+  assert.match(settingsSource, /Push notifications require iOS 16\.4 or later/);
+  assert.match(settingsSource, /Reconnect notifications/);
+  assert.match(settingsSource, /Notifications need to be reconnected on this device/);
+  assert.match(settingsSource, /Couldn't reconnect notifications\\nTry again or restart FTC/);
+  assert.match(settingsSource, /detectNotificationState/);
+  assert.match(settingsSource, /enableNotifications/);
+  assert.match(settingsSource, /disableNotifications/);
 }
 
 main().catch((error) => {

@@ -7,7 +7,6 @@ import {
 } from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import {
-  formatEventCancelledInboxPreview,
   getActiveEventLineupStats,
   insertEventCancellationActivityMessagesIfNeeded,
   listBookingRequestsForEvent,
@@ -18,7 +17,7 @@ import {
 } from "@/lib/bookingRequests";
 import { notifyBookingRequestsChanged } from "@/lib/bookings/bookingRequestsSync";
 import { normalizeStoredRate } from "@/lib/bookingRate";
-import { createNotification, formatNotificationPreview } from "@/lib/notifications";
+import { createNotification } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import {
   assertEventFormTextFieldLimits,
@@ -811,6 +810,15 @@ async function notifyCancelledBookingsFromEventCancellation(
         return;
       }
 
+      // A second "message"-type notification with near-identical copy used to
+      // fire here alongside this one -- same recipient, same link, telling
+      // the DJ the exact same thing twice ("<planner> · Booking cancelled" /
+      // event name, then "<planner>" / "Event cancelled · event name") --
+      // producing two push banners for one cancellation. This booking_update
+      // notification is the canonical one (matches every other booking
+      // status change's shape); the redundant message-type duplicate was
+      // removed rather than deduped, since it was pure copy of this one, not
+      // a materially different notice.
       try {
         console.log("[events] Creating booking_update notification");
         await createNotification(
@@ -826,25 +834,6 @@ async function notifyCancelledBookingsFromEventCancellation(
           "[events] Failed to notify DJ of event cancellation:",
           booking.id,
           notificationError,
-        );
-      }
-
-      try {
-        const eventCancellationPreview = formatEventCancelledInboxPreview(booking.event_name);
-        console.log("[events] Creating message notification with text:", eventCancellationPreview);
-        await createNotification(
-          booking.recipient_id,
-          "message",
-          plannerName,
-          formatNotificationPreview(eventCancellationPreview),
-          `/dm/${booking.conversation_id}`,
-        );
-        console.log("[events] message notification created");
-      } catch (messageNotificationError) {
-        console.error(
-          "[events] Failed to send message notification for event cancellation:",
-          booking.id,
-          messageNotificationError,
         );
       }
     }),
