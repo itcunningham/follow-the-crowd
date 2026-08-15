@@ -27,17 +27,32 @@ export type NotificationState =
   | "granted_not_subscribed"
   | "prompt"
   | "unsupported"
+  | "unsupported_ios_version"
   | "ios_not_installed";
 
 export async function detectNotificationState(): Promise<NotificationState> {
+  // Capability detection FIRST, before any install-flow guidance — no
+  // amount of "Add to Home Screen" can fix a genuinely unsupported
+  // browser/OS. iOS Web Push (the Notification/ServiceWorker/PushManager
+  // APIs used here) only exists from iOS 16.4 onward; on an older iOS
+  // (any browser — all iOS browsers are WebKit under Apple's rules) these
+  // APIs are absent from the global scope entirely, in Safari tabs and
+  // standalone alike, so this alone reliably identifies the case with no
+  // user-agent version parsing needed.
+  if (
+    typeof Notification === "undefined" ||
+    !("serviceWorker" in navigator) ||
+    !("PushManager" in window)
+  ) {
+    // isIOS() only picks the more specific copy ("update iOS") over the
+    // generic unsupported-browser copy — it doesn't change the detection
+    // itself, which is capability-based above.
+    return isIOS() ? "unsupported_ios_version" : "unsupported";
+  }
+
   // Check iOS without Home Screen install
   if (isIOS() && !isInstalledPWA()) {
     return "ios_not_installed";
-  }
-
-  // Check browser support
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    return "unsupported";
   }
 
   // Check permission
@@ -97,6 +112,10 @@ export async function enableNotifications(): Promise<boolean> {
 
   if (state === "unsupported") {
     throw new Error("Push notifications not supported on this device");
+  }
+
+  if (state === "unsupported_ios_version") {
+    throw new Error("Push notifications require iOS 16.4 or later on this device");
   }
 
   if (state === "ios_not_installed") {

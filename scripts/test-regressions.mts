@@ -18514,6 +18514,7 @@ async function main() {
   testBetaPushFinalPassFourFixes();
   testSupabaseClientHasResilientAuthStorage();
   testServiceWorkerPushHandlerAlwaysShowsANotification();
+  testUnsupportedIosPushStateDoesNotSuggestInstalling();
   console.log("All regression checks passed.");
 }
 
@@ -19552,6 +19553,91 @@ function testServiceWorkerPushHandlerAlwaysShowsANotification() {
 
   // A malformed/missing title must fall back to a real string, not abort.
   assert.match(pushHandlerSource, /title\.trim\(\)\s*\n?\s*\?\s*payload\.title\s*\n?\s*:\s*['"]Follow The Crowd['"]/);
+}
+
+/**
+ * Unsupported-push-capability UI. Root bug: the "iOS but not installed to
+ * Home Screen" check ran BEFORE any capability check, so a device where
+ * the Push API genuinely doesn't exist (iOS < 16.4, on any browser -- all
+ * iOS browsers are WebKit) was told to Add to Home Screen, wasting the
+ * user's effort on steps that could never work. Capability detection must
+ * run first; isIOS() only selects which copy to show afterward.
+ */
+function testUnsupportedIosPushStateDoesNotSuggestInstalling() {
+  const clientSource = readFileSync(new URL("../lib/push/client.ts", import.meta.url), "utf8");
+
+  const capabilityCheckIndex = clientSource.indexOf('typeof Notification === "undefined"');
+  const notInstalledCheckIndex = clientSource.indexOf("isIOS() && !isInstalledPWA()");
+  assert.ok(capabilityCheckIndex > -1 && notInstalledCheckIndex > -1);
+  assert.ok(
+    capabilityCheckIndex < notInstalledCheckIndex,
+    "capability detection must run before the install-guidance (ios_not_installed) check",
+  );
+
+  const capabilityBlock = clientSource.slice(capabilityCheckIndex, notInstalledCheckIndex);
+  assert.match(
+    capabilityBlock,
+    /return isIOS\(\) \? "unsupported_ios_version" : "unsupported";/,
+    "iOS gets specific copy, everything else gets the generic unsupported state",
+  );
+
+  // Unchanged: FTC's own subscription state, not Notification.permission
+  // alone, is still authoritative for the granted case.
+  assert.match(
+    clientSource,
+    /Notification\.permission === "granted"\)[\s\S]{0,600}hasActivePushSubscriptionForCurrentUser/,
+  );
+
+  const uiSource = readFileSync(
+    new URL("../app/components/settings/PushNotificationsSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // 1. iOS < 16.4 -> unsupported copy, no enable button, no Add to Home
+  // Screen guidance (that would be actively misleading here).
+  const unsupportedIosBlock = uiSource.slice(
+    uiSource.indexOf('state === "unsupported_ios_version"'),
+    uiSource.indexOf('state === "ios_not_installed"'),
+  );
+  assert.match(unsupportedIosBlock, /Push notifications unavailable/);
+  assert.match(
+    unsupportedIosBlock,
+    /Push notifications require iOS 16\.4 or later\. You can still use FTC normally, but this\s+device can&rsquo;t receive push notifications\./,
+  );
+  assert.match(unsupportedIosBlock, /update iOS to enable notifications/);
+  assert.doesNotMatch(unsupportedIosBlock, /Enable notifications/);
+  assert.doesNotMatch(unsupportedIosBlock, /Add to Home Screen/);
+  assert.doesNotMatch(unsupportedIosBlock, /handleEnable/);
+
+  // 2. Supported iOS/browser, not yet installed as standalone -> install
+  // guidance retained, unaffected by the new state above it.
+  const iosNotInstalledBlock = uiSource.slice(
+    uiSource.indexOf('state === "ios_not_installed"'),
+    uiSource.indexOf('state === "denied"'),
+  );
+  assert.match(iosNotInstalledBlock, /Add Follow The Crowd to your Home Screen/);
+  assert.match(iosNotInstalledBlock, /Add to Home Screen/);
+  assert.doesNotMatch(iosNotInstalledBlock, /Push notifications unavailable/);
+
+  // 3. Supported + installed + permission not yet requested -> normal
+  // enable flow, unaffected.
+  const promptBlock = uiSource.slice(
+    uiSource.indexOf('state === "prompt"'),
+    uiSource.indexOf('state === "granted_not_subscribed"'),
+  );
+  assert.match(promptBlock, /handleEnable/);
+  assert.match(promptBlock, /Enable notifications/);
+
+  // 4. Supported + subscribed -> existing enabled state, unaffected.
+  // (`'state === "granted"'` with its closing quote does not match inside
+  // `'state === "granted_not_subscribed"'`, so this is the right block.)
+  const grantedBlock = uiSource.slice(uiSource.indexOf('state === "granted"'), uiSource.indexOf("{error &&"));
+  assert.match(grantedBlock, /Notifications enabled on this device/);
+
+  // Temporary device diagnostics panel must still be present -- this task
+  // explicitly keeps it, the small-iPhone stale-subscription investigation
+  // isn't finished yet.
+  assert.match(uiSource, /Device diagnostics \(temporary\)/);
 }
 
 main().catch((error) => {
