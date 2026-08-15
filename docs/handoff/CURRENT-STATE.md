@@ -1,5 +1,23 @@
 # Current state (last updated: 2026-08-14)
 
+## DJ push notifications silently not displaying — sw.js fix shipped, awaiting device confirmation (`e97a86d2` on `main`, 2026-08-14)
+
+**Status: fix shipped, root cause NOT yet confirmed on-device — do not treat as closed.**
+
+**Bug:** Planner pushes worked; DJ pushes did not display at all, across every DJ-facing notification type. Traced one specific failing case (notification `56290bca-09a3-4711-9e65-a7e9ca255881`, recipient `c8bb1f0f-7248-4257-bf52-b7f04fcae3da`) through the full production pipeline: notification row correct, active `push_subscriptions` row correct, `push-send` delivered 1/1, Apple Web Push returned `success:true, status:201`. The iPhone never showed it — so the failure boundary is strictly client-side, after Apple already accepted delivery.
+
+**Confirmed code-level defect (real, but not yet proven to be THE cause of this exact case):** `public/sw.js`'s `push` handler had three early `return` statements — no `event.data`, `event.data.json()` throwing, or a falsy `payload.title` — each of which skipped `self.registration.showNotification()` entirely. Apple's 201 only confirms the push service queued the payload for the device; it says nothing about whether the service worker went on to display anything. Any of those three conditions reproduces exactly the observed symptom, with no server-side signal surviving past the point Apple accepts it — undebuggable from the DB/Edge Function side alone.
+
+**Fix:** the push handler now has zero early returns — every path falls through to a defined `title`/`body`/`link` (falling back to `"Follow The Crowd"` / empty body / `/` when the real payload can't be used) and unconditionally reaches `showNotification()` inside the existing `event.waitUntil()`. No role/DJ-specific logic existed or was added.
+
+**Two possibilities this fix cannot address in code**, flagged for on-device confirmation: (1) the DJ's Home Screen icon may have been added from a stale/preview deployment origin (`middleware.ts` redirects `follow-the-crowd-<hash>-itcunninghams-projects.vercel.app` to canonical, but a service worker/push subscription created under that origin before the redirect, or under a since-decommissioned preview URL, is tied to THAT origin's own separate service worker — a fix to the canonical production `sw.js` never reaches it); (2) iOS system-level notification settings for the installed PWA could be off even though `Notification.permission === "granted"` at the web layer (this is an OS setting outside the web app's control entirely).
+
+**Diagnostics added (temporary, keep until confirmed resolved):** `getPushDiagnostics()` (`lib/push/client.ts`) and an always-visible "Device diagnostics (temporary)" block in Settings → Notifications (`PushNotificationsSection.tsx`) showing: service worker registered/state/script URL, whether the current page is service-worker-controlled, whether a push subscription exists (boolean only), `Notification.permission`, standalone-install state, and `window.location.origin`. No endpoint/key/token ever read or shown.
+
+**Not touched:** notification creation, `push-send`'s recipient lookup, pg_net, VAPID, webhook auth, service-role grants, DB subscription selection — none of that was implicated by the trace, none of it changed.
+
+**Next step:** retrigger a push to the same DJ (or the same recipient `c8bb1f0f-...`) and check the Device Diagnostics panel on that exact phone — specifically `Origin` (must read `https://follow-the-crowd.vercel.app`) and `Service worker script`. If origin is wrong, the only fix is deleting and re-adding the Home Screen icon from the canonical URL — no code change can reach a service worker registered under a different origin.
+
 ## iOS Home Screen PWA session loss on reopen — fixed (`673d23ff` on `main`, 2026-08-14)
 
 **Bug:** Log in on iPhone Safari, Add to Home Screen, open the installed app — works. Fully close it (swipe away) and reopen from the Home Screen icon — bounced back to `/login`, even though the session was still valid. Reported on a small/older iPhone with a fresh account.
