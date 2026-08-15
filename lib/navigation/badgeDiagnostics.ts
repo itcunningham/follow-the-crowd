@@ -55,3 +55,26 @@ export function subscribeBadgeDiagnostics(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+
+/**
+ * Fixed, browser-API-free snapshot for useSyncExternalStore's getServerSnapshot.
+ * `current`'s initial value depends on navigator/window, which don't exist
+ * during SSR -- reusing readBadgeDiagnostics for both the server and client
+ * snapshot let the two sides disagree (SSR always sees the false/null
+ * defaults, but a client render before hydration finishes could already
+ * reflect a real navigator), producing a hydration mismatch. This constant
+ * matches exactly what SSR always produces, so the first client render
+ * agrees with it by construction; the real values still take over the
+ * instant hydration completes and any onStoreChange fires.
+ */
+export const SERVER_BADGE_DIAGNOSTICS_SNAPSHOT: BadgeDiagnostics = {
+  unreadTotal: null,
+  badgingApiSupported: false,
+  lastSetValue: null,
+  lastResult: null,
+  standalone: false,
+};
+
+export function readServerBadgeDiagnosticsSnapshot(): BadgeDiagnostics {
+  return SERVER_BADGE_DIAGNOSTICS_SNAPSHOT;
+}

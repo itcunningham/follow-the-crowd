@@ -20391,6 +20391,15 @@ function testWithdrawalNotificationSoftFailsAndBadgeDiagnosticsWired() {
   // to disclaim them is fine; only a real field declaration would matter).
   assert.doesNotMatch(badgeDiagnosticsSource, /\b(endpoint|p256dh|authKey|token)\s*:/);
 
+  // Fixed SSR-equivalent snapshot for useSyncExternalStore's getServerSnapshot
+  // -- must be the all-false/null defaults SSR always produces (navigator and
+  // window don't exist server-side), not a live reader of mutable state.
+  assert.match(
+    badgeDiagnosticsSource,
+    /export const SERVER_BADGE_DIAGNOSTICS_SNAPSHOT: BadgeDiagnostics = \{\s*\n\s*unreadTotal: null,\s*\n\s*badgingApiSupported: false,\s*\n\s*lastSetValue: null,\s*\n\s*lastResult: null,\s*\n\s*standalone: false,\s*\n\s*\};/,
+  );
+  assert.match(badgeDiagnosticsSource, /export function readServerBadgeDiagnosticsSnapshot/);
+
   const navBadgeProviderSource = readFileSync(
     new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
     "utf8",
@@ -20422,7 +20431,18 @@ function testWithdrawalNotificationSoftFailsAndBadgeDiagnosticsWired() {
   );
   assert.match(
     settingsSource,
-    /import \{ readBadgeDiagnostics, subscribeBadgeDiagnostics \} from "@\/lib\/navigation\/badgeDiagnostics";/,
+    /import \{\s*\n\s*readBadgeDiagnostics,\s*\n\s*readServerBadgeDiagnosticsSnapshot,\s*\n\s*subscribeBadgeDiagnostics,\s*\n\s*\} from "@\/lib\/navigation\/badgeDiagnostics";/,
+  );
+  // getServerSnapshot must be the fixed SSR-equivalent snapshot, not
+  // readBadgeDiagnostics again -- using the live reader for both arguments
+  // lets the server-rendered HTML (always the false/null defaults, since
+  // navigator/window don't exist during SSR) disagree with what a client
+  // render before hydration completes could already show, a real hydration
+  // mismatch risk QA caught on the first version of this panel.
+  assert.match(
+    settingsSource,
+    /useSyncExternalStore\(\s*\n\s*subscribeBadgeDiagnostics,\s*\n\s*readBadgeDiagnostics,\s*\n\s*readServerBadgeDiagnosticsSnapshot,\s*\n\s*\);/,
+    "getServerSnapshot must be the fixed snapshot, not the live reader, to avoid a hydration mismatch",
   );
   assert.match(settingsSource, /Badge diagnostics \(temporary\)/);
   assert.match(settingsSource, /Unread total: \{badgeDiagnostics\.unreadTotal \?\? "not yet computed"\}/);

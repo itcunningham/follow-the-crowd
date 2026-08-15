@@ -9,7 +9,11 @@ import {
   type NotificationState,
   type PushDiagnostics,
 } from "@/lib/push/client";
-import { readBadgeDiagnostics, subscribeBadgeDiagnostics } from "@/lib/navigation/badgeDiagnostics";
+import {
+  readBadgeDiagnostics,
+  readServerBadgeDiagnosticsSnapshot,
+  subscribeBadgeDiagnostics,
+} from "@/lib/navigation/badgeDiagnostics";
 
 export default function PushNotificationsSection() {
   const [state, setState] = useState<NotificationState | null>(null);
@@ -18,10 +22,12 @@ export default function PushNotificationsSection() {
   const [disabling, setDisabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [diagnostics, setDiagnostics] = useState<PushDiagnostics | null>(null);
+  // getServerSnapshot must be the fixed SSR-equivalent snapshot, not
+  // readBadgeDiagnostics -- see readServerBadgeDiagnosticsSnapshot's comment.
   const badgeDiagnostics = useSyncExternalStore(
     subscribeBadgeDiagnostics,
     readBadgeDiagnostics,
-    readBadgeDiagnostics,
+    readServerBadgeDiagnosticsSnapshot,
   );
 
   // Detect current state on mount and when window regains focus
