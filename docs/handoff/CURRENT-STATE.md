@@ -1,5 +1,15 @@
 # Current state (last updated: 2026-08-14)
 
+## Unsupported-iOS push state added (`40412f7a` on `main`, 2026-08-14)
+
+**Confirmed:** an iPhone on iOS 16.1.2 cannot use FTC Web Push at all — Apple requires iOS 16.4+ for Home Screen PWA Web Push. Before this change, `detectNotificationState()` (`lib/push/client.ts`) checked "is this iOS but not installed to Home Screen?" BEFORE checking whether the Push API even exists. Since the Push API (`Notification`/`ServiceWorker`/`PushManager`) genuinely doesn't exist in WebKit pre-16.4 — Safari tabs or standalone alike, since every iOS browser is WebKit under Apple's rules — a user on an unsupported iOS version who hadn't installed FTC yet was told to "Add Follow The Crowd to your Home Screen to receive push notifications," advice that could never work regardless of install state.
+
+**Fix:** capability detection now runs first. `isIOS()` only picks which copy to show when capability is missing (new `"unsupported_ios_version"` state with iOS-specific copy, vs. the existing generic `"unsupported"` state) — it never changes whether the branch is entered, so non-iOS unsupported browsers are unaffected, and devices with full capability reach the unchanged install-guidance/permission checks exactly as before.
+
+**New Settings UI state** (Notifications section): title "Push notifications unavailable", body "Push notifications require iOS 16.4 or later. You can still use FTC normally, but this device can't receive push notifications.", secondary line "If your iPhone supports a newer iOS version, update iOS to enable notifications." — no enable button, no Add to Home Screen instructions. `ios_not_installed`/`prompt`/`granted_not_subscribed`/`granted` states unchanged; FTC's own subscription state remains authoritative over raw `Notification.permission`, unchanged from the prior round. Also added a defense-in-depth guard in `enableNotifications()` for the new state (currently unreachable via the UI, but throws a clean error rather than falling through if ever called directly).
+
+Purely informational — no change to login, bookings, DMs, crew chat, or in-app notifications. No SMS/email/native-app/alternate-provider/preferences work, per beta scope. Temporary Device diagnostics panel (from the prior DJ-push-display investigation) kept, not removed.
+
 ## DJ push notifications silently not displaying — sw.js fix shipped, awaiting device confirmation (`e97a86d2` on `main`, 2026-08-14)
 
 **Status: fix shipped, root cause NOT yet confirmed on-device — do not treat as closed.**
