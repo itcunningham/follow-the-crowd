@@ -18679,6 +18679,7 @@ async function main() {
   testBookingRequestPushDeepLinksToTheBookingCard();
   testBookingLifecyclePushesCarryAMessageTarget();
   testDeepLinkTargetsSurviveImagesAndHiddenNotices();
+  await testBookingCancellationNoticesAreUniquePerBookingAndAction();
   testDmPageWiresMessageTargetScroll();
   testCrewChatPageWiresMessageTargetScroll();
   testChatMessageTargetScrollSuppressionIsAsymmetric();
@@ -21275,6 +21276,88 @@ function testNotificationTypeAndNotificationsPageUseMessageId() {
  *    Production as found=false / atBottom=true. The booking id is already in
  *    the notice text, so it now falls back to that booking's visible card.
  */
+/**
+ * Round 19: withdrawals targeted the WRONG message and often produced no push
+ * at all. Measured in production: a 2026-08-16 withdrawal whose notification
+ * carried message_id 854c47f5, a "Booking cancelled" row from 2026-08-14.
+ *
+ * The cancellation notice text was a bare conversation-wide constant, so
+ * insertBookingCancelledDmMessageIfNeeded's dedupe matched the FIRST such row
+ * ever written in the thread and returned its id. create_notification then
+ * deduped on (user_id, message_id) against that same stale id, so a second
+ * withdrawal created no notification and no push.
+ */
+async function testBookingCancellationNoticesAreUniquePerBookingAndAction() {
+  const source = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Distinct wording per action, both carrying event name + booking id.
+  assert.match(
+    source,
+    /const label = withdrawnByDj \? "Booking withdrawn" : "Booking cancelled";/,
+    "DJ withdrawal and planner cancellation must produce distinct notice text",
+  );
+  assert.match(
+    source,
+    /return `\$\{label\} · \$\{booking\.event_name\} · \$\{booking\.id\}`;/,
+    "the notice must embed the booking id, or every action in a thread collapses onto one row",
+  );
+
+  // Dedupe must be exact-text, never satisfied by a legacy generic row.
+  const helper = source.slice(
+    source.indexOf("async function insertBookingCancelledDmMessageIfNeeded("),
+    source.indexOf("export function formatRateProposedDmMessage("),
+  );
+  assert.ok(helper.length > 0);
+  assert.doesNotMatch(
+    helper,
+    /\.in\("text",/,
+    "dedupe must not match a set including the legacy generic notice -- that is the bug",
+  );
+  assert.equal(
+    (helper.match(/\.eq\("text", messageText\)/g) ?? []).length,
+    2,
+    "both dedupe queries must be scoped to this exact notice",
+  );
+  assert.doesNotMatch(
+    helper,
+    /\.like\("text", `\$\{BOOKING_CANCELLED_DM_PREFIX\}%`\)/,
+    "the window dedupe must not prefix-match every cancellation in the thread",
+  );
+
+  // Legacy rows must still render/classify.
+  assert.match(
+    source,
+    /trimmed === LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE/,
+    "legacy 'Booking request cancelled by planner.' rows must still be recognised",
+  );
+  assert.match(
+    source,
+    /export function isVersionedBookingCancelledDmMessage\(/,
+    "a new-format-only recogniser must exist so dedupe and display can differ",
+  );
+
+  // The new formats must be parseable by the hidden-notice fallback.
+  const { parseDmBookingTimelineBookingId } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const bookingId = "14f0aedb-46bd-424d-b140-67f4ee614e26";
+  for (const label of ["Booking withdrawn", "Booking cancelled", "Booking confirmed"]) {
+    assert.equal(
+      parseDmBookingTimelineBookingId(`${label} · Club 53 · ${bookingId}`),
+      bookingId,
+      `${label} notices must expose their booking id for the card fallback`,
+    );
+  }
+  assert.equal(
+    parseDmBookingTimelineBookingId("Booking cancelled"),
+    null,
+    "a legacy generic notice has no booking id and must not fabricate one",
+  );
+}
+
 function testDeepLinkTargetsSurviveImagesAndHiddenNotices() {
   const dimensions = readFileSync(
     new URL("../lib/dm/dmImageAttachmentDimensions.ts", import.meta.url),

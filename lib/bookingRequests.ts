@@ -1226,14 +1226,42 @@ async function insertBookingCancellationActivityMessageIfNeeded(
   }
 }
 
-export function formatBookingCancelledDmMessage(_booking: BookingRequest): string {
-  return DM_BOOKING_CANCELLED_MESSAGE;
+/**
+ * Per-booking, per-action cancellation notice.
+ *
+ * The old text was a bare, conversation-wide constant ("Booking cancelled"),
+ * which broke two things at once once notifications started carrying a
+ * message_id: insertBookingCancelledDmMessageIfNeeded deduped every future
+ * withdrawal onto the FIRST such row ever written in that thread (measured in
+ * production: a 2026-08-16 withdrawal whose notification pointed at a
+ * 2026-08-14 message), and create_notification's (user_id, message_id) dedupe
+ * then collapsed the second withdrawal entirely -- no new notification, no
+ * push.
+ *
+ * Embedding the event name and booking id makes each action's notice a
+ * genuinely distinct row, and makes the booking id parseable so a superseded
+ * notice can still fall back to its booking card. Same shape the confirmation
+ * notice already uses.
+ */
+export function formatBookingCancelledDmMessage(booking: BookingRequest): string {
+  const withdrawnByDj = booking.cancelled_by === booking.recipient_id;
+  const label = withdrawnByDj ? "Booking withdrawn" : "Booking cancelled";
+
+  return `${label} · ${booking.event_name} · ${booking.id}`;
 }
 
+/** New-format notices only -- used for dedupe, which must never be satisfied
+ *  by a legacy generic row. */
+export function isVersionedBookingCancelledDmMessage(text: string): boolean {
+  return /^Booking (?:withdrawn|cancelled) · .+ · [0-9a-fA-F-]{36}$/.test(text.trim());
+}
+
+/** Display/classification: legacy rows must keep rendering safely. */
 export function isBookingCancelledDmMessage(text: string): boolean {
   const trimmed = text.trim();
 
   return (
+    isVersionedBookingCancelledDmMessage(trimmed) ||
     trimmed === DM_BOOKING_CANCELLED_MESSAGE ||
     trimmed === "Booking request cancelled." ||
     trimmed.startsWith(BOOKING_CANCELLED_DM_PREFIX) ||
@@ -1258,10 +1286,12 @@ async function insertBookingCancelledDmMessageIfNeeded(
     .from("messages")
     .select("id, created_at")
     .eq("conversation_id", booking.conversation_id)
-    .in("text", [
-      messageText,
-      LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
-    ])
+    // Exact new-format text only. A legacy generic "Booking cancelled" row
+    // must NOT satisfy dedupe for a new action -- that is precisely what made
+    // every withdrawal reuse the first such row in the thread. Since the text
+    // now embeds the booking id and the action, this matches only a genuine
+    // retry of this same action.
+    .eq("text", messageText)
     .order("created_at", { ascending: false })
     .limit(1);
 
@@ -1279,7 +1309,10 @@ async function insertBookingCancelledDmMessageIfNeeded(
       .from("messages")
       .select("id")
       .eq("conversation_id", booking.conversation_id)
-      .like("text", `${BOOKING_CANCELLED_DM_PREFIX}%`)
+      // Also scoped to this exact notice. The old prefix match spanned every
+      // cancellation in the thread, so an unrelated booking's notice inside
+      // the window suppressed this one.
+      .eq("text", messageText)
       .gte("created_at", windowStart)
       .lte("created_at", windowEnd)
       .limit(1);
