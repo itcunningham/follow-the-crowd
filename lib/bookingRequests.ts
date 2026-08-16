@@ -1243,11 +1243,11 @@ export function isBookingCancelledDmMessage(text: string): boolean {
 
 async function insertBookingCancelledDmMessageIfNeeded(
   booking: BookingRequest,
-): Promise<{ inserted: boolean; messageText: string }> {
+): Promise<{ inserted: boolean; messageText: string; messageId: string | null }> {
   const messageText = formatBookingCancelledDmMessage(booking);
 
   if (!booking.conversation_id || !booking.cancelled_by) {
-    return { inserted: false, messageText };
+    return { inserted: false, messageText, messageId: null };
   }
 
   const cancelledAtMs = booking.cancelled_at
@@ -1268,7 +1268,7 @@ async function insertBookingCancelledDmMessageIfNeeded(
   if (existingError) {
     console.error("[bookings] Failed to check booking-cancelled DM duplicate:", existingError);
   } else if (existingRows?.[0]) {
-    return { inserted: false, messageText };
+    return { inserted: false, messageText, messageId: existingRows[0].id as string };
   }
 
   if (cancelledAtMs != null) {
@@ -1290,22 +1290,26 @@ async function insertBookingCancelledDmMessageIfNeeded(
         windowError,
       );
     } else if (windowRows?.[0]) {
-      return { inserted: false, messageText };
+      return { inserted: false, messageText, messageId: windowRows[0].id as string };
     }
   }
 
-  const { error: insertError } = await supabase.from("messages").insert({
-    conversation_id: booking.conversation_id,
-    user_id: booking.cancelled_by,
-    text: messageText,
-  });
+  const { data: insertedRow, error: insertError } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: booking.conversation_id,
+      user_id: booking.cancelled_by,
+      text: messageText,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     console.error("[bookings] Failed to insert booking-cancelled DM notice:", insertError);
-    return { inserted: false, messageText };
+    return { inserted: false, messageText, messageId: null };
   }
 
-  return { inserted: true, messageText };
+  return { inserted: true, messageText, messageId: (insertedRow?.id as string) ?? null };
 }
 
 export function formatRateProposedDmMessage(
@@ -1373,7 +1377,7 @@ async function insertRateProposedDmMessageIfNeeded(
 
 async function insertBookingAcceptedDmMessageIfNeeded(
   booking: BookingRequest,
-): Promise<{ inserted: boolean; messageText: string }> {
+): Promise<{ inserted: boolean; messageText: string; messageId: string | null }> {
   // Per-booking text: event name alone still collided (same-named re-invite, or
   // a legacy "Booking accepted · <event>" row in the thread), so the insert
   // skipped, the invite stayed latest, and the planner never got unread/badge.
@@ -1382,7 +1386,7 @@ async function insertBookingAcceptedDmMessageIfNeeded(
   const messageText = formatBookingConfirmedDmMessage(booking.event_name, booking.id);
 
   if (!booking.conversation_id) {
-    return { inserted: false, messageText };
+    return { inserted: false, messageText, messageId: null };
   }
 
   const { data: existingRows, error: existingError } = await supabase
@@ -1398,21 +1402,27 @@ async function insertBookingAcceptedDmMessageIfNeeded(
       existingError,
     );
   } else if (existingRows?.[0]) {
-    return { inserted: false, messageText };
+    // Deduped: the confirmation row already exists, and it is still the right
+    // deep-link target for the notification.
+    return { inserted: false, messageText, messageId: existingRows[0].id as string };
   }
 
-  const { error: insertError } = await supabase.from("messages").insert({
-    conversation_id: booking.conversation_id,
-    user_id: booking.recipient_id,
-    text: messageText,
-  });
+  const { data: insertedRow, error: insertError } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: booking.conversation_id,
+      user_id: booking.recipient_id,
+      text: messageText,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     console.error("[bookings] Failed to insert booking-confirmed DM message:", insertError);
-    return { inserted: false, messageText };
+    return { inserted: false, messageText, messageId: null };
   }
 
-  return { inserted: true, messageText };
+  return { inserted: true, messageText, messageId: (insertedRow?.id as string) ?? null };
 }
 
 export const RATE_PROPOSAL_DECLINED_DM_PREFIX = LEGACY_RATE_PROPOSAL_DECLINED_DM_PREFIX;
@@ -2930,6 +2940,15 @@ export async function cancelBookingRequest(
       : `${cancelledByName} · Booking cancelled`
     : `${cancelledByName} · Booking request cancelled`;
 
+  let cancelledDm: { inserted: boolean; messageText: string; messageId: string | null } | null =
+    null;
+
+  try {
+    cancelledDm = await insertBookingCancelledDmMessageIfNeeded(booking);
+  } catch (cancelMessageError) {
+    console.error("[bookingRequests] Failed to insert booking-cancelled DM message:", cancelMessageError);
+  }
+
   // Unlike every other createNotification call site in this file, this one
   // was previously bare (no try/catch) -- cancel_booking_request has already
   // committed by this point, so a push failure here (network blip, an
@@ -2948,18 +2967,19 @@ export async function cancelBookingRequest(
       notificationTitle,
       booking.event_name,
       `/dm/${booking.conversation_id}`,
+      null,
+      // Deep-links the withdrawal/cancellation push to the DM notice itself.
+      // This is why the insert above now runs BEFORE the notification: the
+      // notice's message id does not exist until it has been written. Both
+      // blocks are independently try/catch-wrapped, so neither can skip the
+      // other -- the ordering swap is safe in both directions.
+      cancelledDm?.messageId ?? undefined,
     );
   } catch (notificationError) {
     console.error(
       "[bookingRequests] Booking cancelled but notification failed:",
       getNotificationCreateErrorMessage(notificationError),
     );
-  }
-
-  try {
-    await insertBookingCancelledDmMessageIfNeeded(booking);
-  } catch (cancelMessageError) {
-    console.error("[bookingRequests] Failed to insert booking-cancelled DM message:", cancelMessageError);
   }
 
   notifyBookingRequestsChanged();
@@ -3441,7 +3461,7 @@ export async function updateBookingRequestStatus(
   }
 
   if (status === "accepted") {
-    await insertBookingAcceptedDmMessageIfNeeded(booking);
+    const acceptedDm = await insertBookingAcceptedDmMessageIfNeeded(booking);
 
     // Mirrors the decline path below: acceptance is a booking outcome, so the
     // planner gets a `booking_update` rather than a generic "New message". It is
@@ -3457,6 +3477,11 @@ export async function updateBookingRequestStatus(
         `${djName} · Booking accepted`,
         booking.event_name,
         booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+        null,
+        // Deep-links the planner's push to the confirmation message instead of
+        // the bottom of the DM. Reuses the hardened `?message=` path -- push-send
+        // appends it whenever message_id is set, regardless of notification type.
+        acceptedDm.messageId ?? undefined,
       );
     } catch (notificationError) {
       console.error(

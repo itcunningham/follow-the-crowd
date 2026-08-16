@@ -18677,6 +18677,7 @@ async function main() {
   testNotificationTypeAndNotificationsPageUseMessageId();
   testPushSendForwardsMessageIdIntoLink();
   testBookingRequestPushDeepLinksToTheBookingCard();
+  testBookingLifecyclePushesCarryAMessageTarget();
   testDmPageWiresMessageTargetScroll();
   testCrewChatPageWiresMessageTargetScroll();
   testChatMessageTargetScrollSuppressionIsAsymmetric();
@@ -20519,14 +20520,25 @@ function testWithdrawalNotificationSoftFails() {
     "a notification failure must be soft-caught and logged, not thrown",
   );
 
-  // The catch block must close BEFORE the DM-insert try block and
-  // notifyBookingRequestsChanged() -- i.e. those must be unconditionally
-  // reachable regardless of whether the notification succeeded, not nested
-  // inside anything that would skip them on failure.
+  // The property this guards: the DM system-message insert and
+  // notifyBookingRequestsChanged() must both be unconditionally reachable,
+  // never skippable by a notification failure.
+  //
+  // The insert now runs BEFORE the notification (its message id is the
+  // notification's deep-link target, and does not exist until it is written),
+  // so this is no longer expressed as "appears after the catch". It is
+  // strictly stronger now: the insert sits in its own try/catch ahead of the
+  // notification, so a notification failure cannot reach it at all.
+  assert.match(
+    cancelFnBody,
+    /try \{\s*\n\s*cancelledDm = await insertBookingCancelledDmMessageIfNeeded\(booking\);\s*\n\s*\} catch \(cancelMessageError\) \{/,
+    "the DM system-message insert must sit in its own try/catch so neither it nor the " +
+      "notification can skip the other",
+  );
+
   const afterNotificationCatch = cancelFnBody.slice(
     cancelFnBody.indexOf('console.error(\n      "[bookingRequests] Booking cancelled but notification failed:"'),
   );
-  assert.match(afterNotificationCatch, /await insertBookingCancelledDmMessageIfNeeded\(booking\)/);
   assert.match(afterNotificationCatch, /notifyBookingRequestsChanged\(\);\s*\n\s*return booking;\s*\n\}/);
 
   // Confirm insertBookingCancelledDmMessageIfNeeded itself never creates a
@@ -21235,6 +21247,92 @@ function testNotificationTypeAndNotificationsPageUseMessageId() {
  * booking_request exactly as it does for chat messages -- which also keeps
  * one booking request to exactly one notification.
  */
+/**
+ * Round 17: the planner's "DJ accepted" and "DJ withdrew" pushes opened the
+ * DM at the bottom instead of the relevant message. Same root cause as the
+ * booking-request one: the DM system message was written without its id being
+ * read back, and createNotification was called with only five arguments, so
+ * notifications.message_id stayed NULL and push-send had nothing to append.
+ *
+ * Both helpers now return the id -- including on their dedupe paths, where the
+ * already-existing row is still the correct target -- and both call sites
+ * thread it through. The cancel/withdraw path additionally had to be
+ * REORDERED: it created the notification before inserting the DM notice, so
+ * the id did not exist yet.
+ */
+function testBookingLifecyclePushesCarryAMessageTarget() {
+  const source = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+
+  // --- accepted -----------------------------------------------------------
+  assert.match(
+    source,
+    /async function insertBookingAcceptedDmMessageIfNeeded\([\s\S]{0,200}?Promise<\{ inserted: boolean; messageText: string; messageId: string \| null \}>/,
+    "the accepted DM helper must return the message id",
+  );
+  assert.match(
+    source,
+    /const acceptedDm = await insertBookingAcceptedDmMessageIfNeeded\(booking\);/,
+    "the acceptance path must capture the inserted DM message",
+  );
+  assert.match(
+    source,
+    /`\$\{djName\} · Booking accepted`,[\s\S]{0,400}?acceptedDm\.messageId \?\? undefined,/,
+    "the 'Booking accepted' notification must carry the confirmation message id",
+  );
+
+  // --- withdrawn / cancelled ---------------------------------------------
+  assert.match(
+    source,
+    /async function insertBookingCancelledDmMessageIfNeeded\([\s\S]{0,200}?Promise<\{ inserted: boolean; messageText: string; messageId: string \| null \}>/,
+    "the cancelled DM helper must return the message id",
+  );
+  assert.match(
+    source,
+    /cancelledDm = await insertBookingCancelledDmMessageIfNeeded\(booking\);/,
+    "the cancel/withdraw path must capture the inserted DM notice",
+  );
+  assert.match(
+    source,
+    /notificationTitle,[\s\S]{0,500}?cancelledDm\?\.messageId \?\? undefined,/,
+    "the withdrawal/cancellation notification must carry the DM notice's message id",
+  );
+
+  // Ordering is load-bearing: the notice must be written before the
+  // notification, or there is no id to thread.
+  const insertAt = source.indexOf("cancelledDm = await insertBookingCancelledDmMessageIfNeeded(booking);");
+  const notifyAt = source.indexOf("cancelledDm?.messageId ?? undefined,");
+  assert.ok(insertAt > -1 && notifyAt > -1);
+  assert.ok(
+    insertAt < notifyAt,
+    "the cancelled DM insert must run BEFORE createNotification -- reversing them silently " +
+      "restores the NULL message_id bug",
+  );
+
+  // --- dedupe paths must still yield a target ------------------------------
+  // A repeat call reuses the existing row's id, so create_notification's
+  // (user_id, message_id) dedupe collapses it -- one action, one push.
+  assert.match(
+    source,
+    /return \{ inserted: false, messageText, messageId: existingRows\[0\]\.id as string \};/,
+    "the accepted/cancelled dedupe paths must return the existing row's id, not null, or a " +
+      "repeat action would create an untargeted second notification",
+  );
+
+  // --- declined is deliberately different ---------------------------------
+  // It writes no DM system message and points at the Gigs list, so there is
+  // nothing to target. Pinned so that changing the destination is a conscious
+  // decision rather than an accident.
+  assert.match(
+    source,
+    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,\s*\n\s*"\/bookings",\s*\n\s*\);/,
+    "declined still links to /bookings with no message target -- if this changes, the " +
+      "deep-link behaviour needs re-reasoning, not just a message id",
+  );
+}
+
 function testBookingRequestPushDeepLinksToTheBookingCard() {
   const source = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),

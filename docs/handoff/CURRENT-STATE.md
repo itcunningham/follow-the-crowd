@@ -1,5 +1,27 @@
 # Current state (last updated: 2026-08-16)
 
+## Booking lifecycle pushes now deep-link to their own message (2026-08-16)
+
+**Report:** the planner taps a fresh "DJ accepted" or "DJ withdrew" push, the right DM opens, but it lands on the latest message instead of the relevant one.
+
+**Same root cause as the booking-request fix, in two more places.** A survey of every `createNotification` call in `lib/bookingRequests.ts` found only the booking-request one (fixed last round) passing a messageId — **every other booking notification passed 5 arguments**, so `notifications.message_id` was NULL and push-send had nothing to append `?message=` from.
+
+**Accepted.** `insertBookingAcceptedDmMessageIfNeeded` writes a real confirmation DM message but discarded its id (`.insert()` with no `.select("id")`), and returned only `{ inserted, messageText }`. The helper now returns `messageId` and the call site threads it through.
+
+**Withdrawn / cancelled.** Same missing id, **plus an ordering problem**: `cancelAcceptedBookingRequest` created the notification *before* calling `insertBookingCancelledDmMessageIfNeeded`, so the target message did not exist yet. The insert now runs first. Both blocks were already independently try/catch-wrapped, so the swap is safe in both directions — and it is strictly more robust than before, since a notification failure can no longer reach the insert at all. (One withdrawal title, `"<name> · Withdrew from event"`, and the cancellation titles all come from this single call site, so both report cases are covered by one fix.)
+
+**Dedupe paths matter too.** Both helpers skip the insert when the row already exists. They now return that **existing row's id** rather than null, so a repeat action still produces a targeted notification — and `create_notification`'s `(user_id, message_id)` dedupe collapses it to the same row. **One action, one notification, one push.**
+
+**Declined is deliberately different and was left alone.** It writes **no DM system message at all** and its notification links to `/bookings` (the Gigs list), not the DM — so there is nothing to target and the defect is not a missing message id. The booking card in the DM does get its text updated in place, so a target could exist, but pointing the push at the DM instead of Gigs is a destination change, not a targeting fix. Pinned with an assertion so changing it becomes a conscious decision. **Say the word if you want declined redirected to the DM card.**
+
+**Also still untargeted, same class, not in this round's scope:** the four rate-proposal notifications (`Proposed rate accepted`, `Rate declined` / `Original offer kept`, and the two `type: "message"` proposal DMs). They have real DM messages and would take the same treatment.
+
+**Deep-link format (unchanged, reused):** `/dm/<conversationId>?message=<messages.id>` — no new scroll system, and the target inherits the settle lease.
+
+**No push-send change → no Edge Function redeploy.** `?message=` appending is gated on `message_id` presence, not notification type.
+
+**Tests:** `testBookingLifecyclePushesCarryAMessageTarget` pins both helper return types, both call sites, **the insert-before-notification ordering** (reversing it silently restores the NULL bug), the dedupe-path ids, and declined's `/bookings` destination. **Mutation-tested three ways** — dropping either messageId argument, and nulling the dedupe id — all caught. One pre-existing test, `testWithdrawalNotificationSoftFails`, asserted the *old* ordering positionally; rewritten to assert the underlying property (both blocks unconditionally reachable, neither able to skip the other) and mutation-tested by removing the insert's try/catch. Anchoring after settling is already covered by the existing happy-dom booking tests. `npm run test:regressions` → **All regression checks passed**. `npm run build` passes.
+
 ## Booking Accept/Decline no longer jumps the DM to the bottom (2026-08-16)
 
 **Report:** the DJ taps Accept on a booking request card up in the DM history and is immediately scrolled to the bottom. Not a push/deep-link issue — the deep link now lands correctly.
