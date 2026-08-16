@@ -129,7 +129,11 @@ import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
-import { parseDmBookingTimelineBookingId } from "@/lib/dm/dmBookingSystemMessages";
+import {
+  DM_BOOKING_LIFECYCLE_TOAST_MS,
+  formatDmBookingLifecycleToast,
+  parseDmBookingTimelineBookingId,
+} from "@/lib/dm/dmBookingSystemMessages";
 import {
   CHAT_MESSAGE_TARGET_PARAM,
   parseChatMessageTargetIdParam,
@@ -598,6 +602,82 @@ export default function DmChatPage() {
       cancelled = true;
     };
   }, [bookings]);
+
+  /**
+   * Temporary in-DM toast on a booking lifecycle transition.
+   *
+   * The lifecycle rows are hidden from the timeline now, so a reader already
+   * sitting in the thread would otherwise watch the card mutate in silence.
+   *
+   * No new realtime system: this reads `bookings`, which the EXISTING
+   * `booking_requests` subscription refreshes via reloadConversationBookings().
+   * Driving it off the resulting state (rather than the subscription callback)
+   * also covers the other reload entry point, `ftc-notifications-updated`.
+   *
+   * The signature map is what makes it a *transition* rather than a state
+   * check: the first snapshot only seeds it, an id seen for the first time is
+   * skipped, and an unrelated column change leaves the signature identical.
+   * formatDmBookingLifecycleToast then drops anything the current user did
+   * themselves.
+   */
+  const bookingLifecycleSignatureRef = useRef<Map<string, string> | null>(null);
+  const bookingLifecycleToastTimeoutRef = useRef<number | undefined>(undefined);
+
+  useEffect(
+    () => () => {
+      if (bookingLifecycleToastTimeoutRef.current !== undefined) {
+        window.clearTimeout(bookingLifecycleToastTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const previousSignatures = bookingLifecycleSignatureRef.current;
+    const nextSignatures = new Map(
+      bookings.map((booking) => [
+        booking.id,
+        `${booking.status}:${booking.cancelled_by ?? ""}`,
+      ]),
+    );
+
+    bookingLifecycleSignatureRef.current = nextSignatures;
+
+    if (!previousSignatures || !currentUserId) {
+      return;
+    }
+
+    for (const booking of bookings) {
+      const previousSignature = previousSignatures.get(booking.id);
+
+      if (
+        previousSignature === undefined ||
+        previousSignature === nextSignatures.get(booking.id)
+      ) {
+        continue;
+      }
+
+      const toast = formatDmBookingLifecycleToast(booking, currentUserId, otherUserLabel);
+
+      if (!toast) {
+        continue;
+      }
+
+      setNotice(toast);
+
+      if (bookingLifecycleToastTimeoutRef.current !== undefined) {
+        window.clearTimeout(bookingLifecycleToastTimeoutRef.current);
+      }
+
+      // Only clear our own toast -- a booking warning set in the meantime by
+      // one of the action handlers must survive this timer.
+      bookingLifecycleToastTimeoutRef.current = window.setTimeout(() => {
+        setNotice((current) => (current === toast ? null : current));
+      }, DM_BOOKING_LIFECYCLE_TOAST_MS);
+
+      break;
+    }
+  }, [bookings, currentUserId, otherUserLabel]);
 
   const blockBannerMessage = useMemo(
     () => getDmBlockBannerMessage(blockStatus, otherUserLabel),

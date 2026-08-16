@@ -1,5 +1,82 @@
 # Current state (last updated: 2026-08-16)
 
+## The booking card is now the ONE visible source of truth (2026-08-16)
+
+**Booking lifecycle "audit" lines no longer appear as visible chat.** The three versioned rows —
+`Booking confirmed | withdrawn | cancelled · <event> · <bookingId>` — are hidden from the DM
+timeline. The card carries the state; the rows carry the plumbing.
+
+**Hidden VISUALLY, never logically — this was the whole risk.** CURRENT-STATE already records what
+happens when a lifecycle row is suppressed at the *data* level: "the invite stayed latest, and the
+planner never got unread/badge". So nothing was deleted, skipped or filtered out of `messages`.
+One line in `classifyDmConversationMessageKind` returns `"hidden"`; the DM page already drops
+`"hidden"`. Everything downstream of the row is untouched:
+
+| Path | Reads | Affected? |
+|---|---|---|
+| `getUnreadConversationIds` / `lib/inboxUnread.ts` | raw newest `messages` row per conversation | **no** — never knew about message kinds, and a test now fails if it learns |
+| `pickDmInboxPreviewMessage` | newest row → supplies `latestActivityAt`, `latestPreview`, `latestMessageUserId` | **no** — deliberately still returns the lifecycle row. Skipping it here would have demoted the conversation to the *previous* message's timestamp, which is the exact regression above |
+| `applyDmInboxRealtimeMessage` / inbox unread on INSERT | author id vs current user | **no** |
+| `notifications.message_id` / `?message=` deep links | the row's id | **no** |
+
+**Verified on a real device rather than argued.** WebKit against the production database, QA DJ
+account. Before: the Messages row read
+`Booking withdrawn · Club · a73127e1-137d-44c7-b516-9ee3b262917e` — **a raw booking UUID in the
+user's face** — and the timeline rendered the notices. After: the row reads `Booking withdrawn`,
+the conversation is still first in the inbox at the lifecycle row's own timestamp, and no UUID
+appears anywhere. **60/60 checks at 1280 / 390 / 375 / 320.**
+
+**The UUID fix is one branch, not three.** `formatDmBookingSystemMessageDisplay` now returns the
+bare label for any versioned lifecycle row. `confirmed` and `cancelled` already displayed
+correctly by accident (they matched other branches); **`withdrawn` fell through to `return trimmed`
+and leaked the id**. Handling all three in one place means a future fourth verb cannot leak by
+being forgotten.
+
+**Push targeting survives the hiding, and this was measured.** The DM page derives
+`fallbackTargetSelector` from `parseDmBookingTimelineBookingId(targetMessage.text)` where
+`targetMessage` comes from the **loaded `messages` array, not the DOM** — so a row that is never
+rendered still resolves to `[data-chat-booking-request-id="<id>"]`. On device the target row is
+confirmed absent from the DOM (`targetInDom: false`) while the card lands centred, **2658px /
+432px from the bottom** at 390px. No new scroll system; `useChatMessageTargetScroll`'s existing
+`fallbackTargetSelector` did all of it.
+
+**Temporary in-DM toast.** A reader already in the thread would otherwise watch the card mutate in
+silence. It reuses the page's existing `notice` state and styling and the **existing**
+`booking_requests` realtime subscription — no second realtime system, no new component, and it
+adds no `messages` row. Copy: `"<DJ> accepted your booking"`, `"<DJ> withdrew from <event>"`,
+`"<Planner> cancelled your booking"`. Attribution comes from `otherUserLabel`, which in a 1:1 DM
+*is* the actor. It fires on a **transition** (a signature map seeded on first render), never on a
+state check, and never for the user who acted. `declined` stays silent by decision.
+
+**Toast verified live**: flipping `booking_requests.cancelled_by` on a QA booking produced
+"Planner1 cancelled your booking" **508ms** later via the existing subscription, cleared itself
+after 5s, and added no chat line. Both negative controls also verified live — an already-cancelled
+booking on first load produced nothing, and the acting user got nothing. The booking's original
+value was restored.
+
+**Legacy rows are safe.** Only the versioned three-segment form is hidden. `Booking confirmed`,
+`Booking accepted · <event>`, `Booking cancelled · <event>` and
+`Booking request cancelled by planner.` still render as timeline notices in historical threads, and
+a chat message that merely happens to end in a UUID still renders as chat.
+
+**Tests:** five new regressions plus a behavioural happy-dom case. **Nine mutations, nine caught** —
+disabling the hide, disabling the UUID strip, adding a lifecycle skip to `pickDmInboxPreviewMessage`
+(the trap), removing the toast's actor gate, turning the transition guard into a state check,
+dropping `fallbackTargetSelector` from the DM page, deriving the fallback from the DOM, removing
+the fallback lookup from the hook, and widening the lifecycle regex to swallow legacy rows. The
+happy-dom test carries its own control: the same hidden target **with no fallback selector** must
+still fall to the bottom, so the test cannot pass vacuously.
+`npm run test:regressions` → **All regression checks passed**. `npm run build` passes.
+
+**Not touched:** `push-send` (no Edge Function redeploy), RLS, `create_notification` dedupe,
+`message_id` plumbing, booking card design, `active_chat_presence`, and every lifecycle DB row.
+**No SQL.**
+
+**Known nit, not fixed:** the toast renders in the notice line's existing `--ftc-color-warning`
+colour, which reads oddly for "accepted". Reusing the existing surface was the explicit instruction;
+a success/neutral variant is a follow-up. The new effect also adds one instance of
+`react-hooks/set-state-in-effect`, a rule the same file already violates three times.
+
 ## Booking lifecycle pushes now deep-link to their own message (2026-08-16)
 
 **Report:** the planner taps a fresh "DJ accepted" or "DJ withdrew" push, the right DM opens, but it lands on the latest message instead of the relevant one.
