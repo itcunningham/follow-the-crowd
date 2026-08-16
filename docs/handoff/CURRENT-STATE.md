@@ -1,5 +1,37 @@
 # Current state (last updated: 2026-08-16)
 
+## Fourteenth QA round: active-chat push suppression finally works (2026-08-16)
+
+**Report:** a recipient sitting inside the exact DM/crew thread still received an external push. The feature had been inert since it shipped.
+
+**Exact cause — `void` on a thenable.** `useActiveChatPresence` did `void supabase.from("active_chat_presence").upsert(...)`. Supabase's `PostgrestBuilder` is a **thenable, not a promise**: it only issues its HTTP request when `.then()` is invoked. `void builder` constructs the query and discards it, so **the request was never sent**. Both the heartbeat upsert and the cleanup delete were silent no-ops — zero network calls, zero rows, no error — while RLS, grants, schema and a manual upsert all tested perfectly. That combination is exactly why five rounds of inspection kept clearing the wrong layer.
+
+**Proven two ways before touching code:**
+1. Watching Production network traffic with a DM open: **0 requests** to `active_chat_presence` in 8s, while a direct `fetch` upsert using the page's own session returned **201**.
+2. A Node repro against the live table: `void builder` wrote **0 rows**; the identical call with `.then()` invoked wrote **1**.
+
+**Fix:** both queries go through a small `dispatch()` helper that invokes `.then()` and logs failures instead of letting them vanish. Client-only — `push-send` untouched, **no Edge Function redeploy**.
+
+**Live Production evidence after deploy** (presence row observed directly, and push-send's exact suppression predicate replayed against it):
+
+| Scenario | Row | Suppressed? | Wanted |
+|---|---|---|---|
+| A DM open, foregrounded | `/dm/1561d6de…` age 5s | **true** | true |
+| heartbeat after 20s | `updated_at` advanced | — | advances |
+| B crew chat open | `/events/1c09887e…` age 4s | **true** for crew, **false** for the DM | correct |
+| C in a different DM | `/dm/10d2842f…` | **false** for the original DM | false |
+| D navigated away in-app | **NO ROW** | false | false |
+| E backgrounded | **NO ROW** | false | false |
+| F app closed | **NO ROW** | false | false |
+
+**One measurement caveat worth recording:** scenario D initially looked broken because the test used `page.goto` — a *hard* navigation, which destroys the document before React cleanup can dispatch the delete. Re-tested with a real in-app soft navigation (clicking a nav link), the row clears immediately. So: in-app navigation clears instantly; a hard reload or force-quit relies on push-send's 45s TTL, which stays authoritative by design.
+
+**G — non-message notifications are never suppressed:** `push-send` gates the whole presence check on `notification.type === "message"`, so booking/run-sheet/event notifications always deliver regardless of presence. Unchanged this round.
+
+**Guard added:** `testActiveChatPresenceActuallyDispatchesItsQueries` fails on any `void supabase.…` in that file, requires the builders to be dispatched via `.then()`, and asserts the heartbeat stays under push-send's 45s TTL. **Mutation-tested** — restoring the `void` fails it.
+
+`npm run build` passes; relevant tests green.
+
 ## Thirteenth QA round: the last of the deep-link target drift (2026-08-16)
 
 **Report:** target lands correctly, no bottom snap — but ~1s later the viewport drifts down a little.
@@ -1412,6 +1444,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `1b0198d2` — fix(presence): actually dispatch the active-chat heartbeat queries
 - `4e24ff1c` — chat: hold the deep-link target through the whole settle burst
 - `b1f58ca4` — fix(dm): stop the booking card panning the chat sideways below 390px
 - `dba69b37` — chat: hold the deep-link target while layout settles
