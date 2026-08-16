@@ -5248,6 +5248,44 @@ async function testServiceWorkerNotificationClickKeepsTheTarget() {
   await run();
 }
 
+/**
+ * Round 11: the small-iPhone chat panned sideways. BookingCardFocusRing wraps
+ * every DM booking card and sat in a `flex flex-col items-start` column, where
+ * a child is sized to fit-content and NOT clamped to the column width. Its
+ * child card is `w-full max-w-xs` (a fixed 320px), so the wrapper took 320px
+ * inside a ~271px column and pushed the chat's scrollWidth past the viewport.
+ * Invisible at 390px (row starts at x=64; 64 + 320 = 384 < 390) and only
+ * overflowing below that -- which is why every 390px parity check passed.
+ */
+function testBookingCardFocusRingCannotOverflowItsColumn() {
+  const source = readFileSync(
+    new URL("../app/components/dm/BookingCardFocusRing.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /className=\{`relative max-w-full \$\{roundedClassName\}`\}/,
+    "BookingCardFocusRing's wrapper must keep max-w-full -- without it the fixed max-w-xs card " +
+      "escapes its bubble column and makes the whole chat scroll horizontally on any viewport " +
+      "narrower than 390px",
+  );
+
+  const layout = readFileSync(
+    new URL("../app/components/booking/DmBookingCardLayout.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // If the card ever stops being a fixed width, the cap above is still correct
+  // but this test's rationale changes -- fail loudly so it gets re-reasoned.
+  assert.match(
+    layout,
+    /DM_BOOKING_CARD_MAX_WIDTH_CLASS = "max-w-xs"/,
+    "the booking card is still expected to be a fixed max-w-xs; if this changed, re-check " +
+      "whether BookingCardFocusRing still needs its max-w-full cap",
+  );
+}
+
 function testResolvePlannerHistoryHideEventIds() {
   const events = [
     {
@@ -18520,6 +18558,7 @@ async function main() {
   await testDmBookingReturnScroll();
   await testMessageTargetScrollPriority();
   await testServiceWorkerNotificationClickKeepsTheTarget();
+  testBookingCardFocusRingCannotOverflowItsColumn();
   testCrewChatAttachmentRealtimeAndStateReconciliation();
   testCrewChatUnreadUsesTheSharedUnreadSystem();
   await testGroupInboxUnreadSurvivesOverlappingRefreshes();
