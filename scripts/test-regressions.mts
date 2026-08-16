@@ -18680,6 +18680,7 @@ async function main() {
   testBookingLifecyclePushesCarryAMessageTarget();
   testDeepLinkTargetsSurviveImagesAndHiddenNotices();
   await testBookingCancellationNoticesAreUniquePerBookingAndAction();
+  await testVersionedLifecycleNoticesNeverRenderAsChat();
   testDmPageWiresMessageTargetScroll();
   testCrewChatPageWiresMessageTargetScroll();
   testChatMessageTargetScrollSuppressionIsAsymmetric();
@@ -21287,6 +21288,33 @@ function testNotificationTypeAndNotificationsPageUseMessageId() {
  * deduped on (user_id, message_id) against that same stale id, so a second
  * withdrawal created no notification and no push.
  */
+/**
+ * "Booking withdrawn · <event> · <bookingId>" was introduced in dbe763a1 but
+ * not added to isDmBookingSystemMessage, so it rendered as an ORDINARY chat
+ * message -- leaking a raw booking UUID into the DM timeline and the Messages
+ * inbox preview. Confirmed/cancelled were recognised; withdrawn was not.
+ */
+async function testVersionedLifecycleNoticesNeverRenderAsChat() {
+  const { isDmBookingSystemMessage } = await import("../lib/dm/dmBookingSystemMessages.js");
+  const id = "7c691536-1ff0-4e1e-bd0e-959bea7ad9be";
+
+  for (const label of ["Booking confirmed", "Booking withdrawn", "Booking cancelled"]) {
+    const text = `${label} · Club 53 · ${id}`;
+    assert.equal(
+      isDmBookingSystemMessage(text),
+      true,
+      `${label} must be treated as a booking system message, or it renders as chat and exposes ` +
+        `the raw booking id to the user`,
+    );
+  }
+
+  // Legacy rows stay recognised.
+  assert.equal(isDmBookingSystemMessage("Booking cancelled"), true);
+  // Real conversation must not be swept up.
+  assert.equal(isDmBookingSystemMessage("Hey are you free Friday?"), false);
+  assert.equal(isDmBookingSystemMessage("Booking confirmed by phone earlier"), false);
+}
+
 async function testBookingCancellationNoticesAreUniquePerBookingAndAction() {
   const source = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),

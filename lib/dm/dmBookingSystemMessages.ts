@@ -212,6 +212,12 @@ function isCanonicalDmBookingSystemMessage(text: string): boolean {
   );
 }
 
+/** The versioned per-booking lifecycle notices, all of which carry a trailing
+ *  booking id and must never render as ordinary chat. */
+export function isVersionedBookingLifecycleDmMessage(text: string): boolean {
+  return /^Booking (?:confirmed|withdrawn|cancelled) · .+ · [0-9a-fA-F-]{36}$/.test(text.trim());
+}
+
 export function isDmBookingSystemMessage(text: string): boolean {
   const trimmed = text.trim();
 
@@ -225,6 +231,12 @@ export function isDmBookingSystemMessage(text: string): boolean {
 
   return (
     isCanonicalDmBookingSystemMessage(trimmed) ||
+    // "Booking withdrawn · <event> · <bookingId>" is the DJ-withdrawal
+    // counterpart of the confirmed/cancelled notices. Without this it is not
+    // treated as a system message at all, so it renders as ordinary chat and
+    // leaks the raw booking UUID into both the DM timeline and the Messages
+    // inbox preview.
+    isVersionedBookingLifecycleDmMessage(trimmed) ||
     isLegacyRateProposalDeclinedDmMessage(trimmed) ||
     isLegacyBookingCancelledDmMessage(trimmed) ||
     isLegacyBookingAcceptedDmMessage(trimmed) ||
