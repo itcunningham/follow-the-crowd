@@ -1,5 +1,32 @@
 # Current state (last updated: 2026-08-16)
 
+## Thirteenth QA round: the last of the deep-link target drift (2026-08-16)
+
+**Report:** target lands correctly, no bottom snap — but ~1s later the viewport drifts down a little.
+
+**Measured, not inferred.** Traced Production at 320px and 375px, sampling scrollTop / scrollHeight / clientHeight / target rect every 100ms for 6.5s. Crew @320 was the clearest:
+
+```
+t=1849  top=581  sh=1497         rectTop=268  centreDelta=   0   <- landed, centred
+t=2057  top=581  sh=1296 (-201)  rectTop=105  centreDelta=-163
+t=2160  top=418 (-163)           rectTop=268  centreDelta=   0   <- lease re-asserted
+t=3616  top=418  sh=1334 (+38)   rectTop=268  centreDelta=   0
+t=3721  top=418  sh=1416 (+82)   rectTop=350  centreDelta= +82   <- NO re-assert
+t=3826  top=418  sh=1497 (+81)   rectTop=431  centreDelta=+163   <- NO re-assert
+```
+
+**Root cause — the lease ended too early (diagnosis A: the observer stops).** Content settles in *bursts*: ~2.06s, then a **1.46s gap**, then ~3.62/3.72/3.83s, then ~4.6–5.3s, as avatars and attachment images decode. The 400ms quiet window expired inside that 1.46s gap, so every later change ran unguarded.
+
+Note the mechanism: **`scrollTop` never moved** (418 throughout). Because the container is `[overflow-anchor:none]`, content growing *above* the target does not shift scrollTop — it slides the target **down the viewport**. That is why this read as a small "scroll down" rather than a jump. Measured drift: **+163px** (crew @320), **−83px** (DM image @320), **+17px** (DM image @375).
+
+**Fix:** quiet window **400ms → 1800ms** (bridges the largest observed gap of 1.46s) and hard budget **4s → 8s** (outlasts the last observed change at 5.33s). Both numbers come from the trace, not from rounding up. Also re-assert on `window resize` and `visualViewport` resize/scroll — on iOS the viewport itself settles as the PWA resumes, moving the target without resizing anything a container `ResizeObserver` watches. That last part is **guarded by signal, not by evidence**: it is not reproducible headless.
+
+**The test was rewritten to be faithful.** The first attempt passed against the *un*fixed code — the harness could not express "content above the target grew", so it proved nothing. It now raises ten 80px messages above the target to 120px after the old window would have closed, and asserts the target's **rect top is unchanged within 4px** rather than merely "still visible". **Mutation-tested**: reverting the quiet window reproduces a **400px** drift and fails the test.
+
+**Production verification after deploy** — same tracer, same viewports: settled drift **0px, +1px, +1px** (320px) and **0px, 0px, −1px** (375px), across DM text, DM image, and crew targets. `npm run build` passes; 11/11 relevant tests including the sibling scroll flows.
+
+**Not touched:** push-send, service worker navigation, subscriptions, `message_id` plumbing, `active_chat_presence`, and the horizontal-overflow fix.
+
 ## Twelfth QA round: DM chat panned sideways below 390px (2026-08-16)
 
 **Report:** on the small iPhone, entering a chat via a push deep link let the conversation pan left/right as well as vertically.
@@ -1385,6 +1412,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `4e24ff1c` — chat: hold the deep-link target through the whole settle burst
 - `b1f58ca4` — fix(dm): stop the booking card panning the chat sideways below 390px
 - `dba69b37` — chat: hold the deep-link target while layout settles
 - `c197aa1f` — sw: navigate the existing window on notification click
