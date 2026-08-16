@@ -636,6 +636,128 @@ export async function testUserTakeoverCancelsTheLongerLease(): Promise<void> {
   });
 }
 
+/**
+ * Round 16: tapping Accept on a booking request card scrolled the DM straight
+ * to the bottom. Accepting inserts a "booking accepted" DM message SERVER-side
+ * under the responder's own user id, so it arrives through the messages
+ * realtime INSERT handler with isFromCurrentUser === true --
+ * captureScrollBeforeIncomingInsert then pinned to bottom unconditionally,
+ * and the append effect's own-message branch scrolled there.
+ *
+ * A: booking card sits above later messages. B: the user acts on it.
+ * C/D: a message attributed to that same user is appended. E: the viewport
+ * must still hold the card.
+ */
+async function actOnBookingCardWhileReadingHistory(fromCurrentUser: boolean) {
+  let heldRectTop = 0;
+  let endedAtBottom = false;
+
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages = makeMessages();
+    const bookingId = "msg-4"; // well above the fold
+
+    await render({ loading: true, messages: [], targetMessageId: null });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1600, clientHeight: 600 });
+
+    await render({ loading: false, messages, targetMessageId: null });
+    mockMessageRects(scroller, new Map(messages.map((m) => [m.id, 80])));
+    doubles.flushAllRaf();
+
+    // A: the reader scrolls up to the booking card and parks there.
+    await act(async () => {
+      (scroller as unknown as { scrollTo: (o: { top: number }) => void }).scrollTo({ top: 320 });
+    });
+    doubles.flushAllRaf();
+
+    const card = scroller.querySelector(
+      `[${CHAT_MESSAGE_ID_ATTR}="${bookingId}"]`,
+    ) as HTMLElement;
+    const beforeRectTop = card.getBoundingClientRect().top;
+
+    // B + C: they accept; the server inserts a DM message under their own id,
+    // which reaches the client through the realtime INSERT path.
+    await act(async () => {
+      apiRef.current!.captureScrollBeforeIncomingInsert(fromCurrentUser);
+    });
+
+    const withAccepted = [
+      ...messages,
+      {
+        id: "msg-accepted",
+        text: "Booking accepted",
+        user_id: fromCurrentUser ? "current-user" : "them",
+        created_at: "2026-01-01T02:00:00Z",
+      },
+    ];
+    metrics.setScrollHeight(1680);
+    await render({ loading: false, messages: withAccepted, targetMessageId: null });
+    mockMessageRects(scroller, new Map(withAccepted.map((m) => [m.id, 80])));
+    doubles.triggerAllResizeCallbacks();
+    doubles.flushAllRaf();
+
+    heldRectTop = card.getBoundingClientRect().top - beforeRectTop;
+    endedAtBottom = Math.abs(metrics.getMaxScrollTop() - metrics.getScrollTop()) < 40;
+  });
+
+  return { drift: heldRectTop, endedAtBottom };
+}
+
+/** Accept: the booking card must stay put. */
+export async function testAcceptingABookingKeepsTheCardAnchored(): Promise<void> {
+  const { drift, endedAtBottom } = await actOnBookingCardWhileReadingHistory(true);
+  assert.equal(
+    endedAtBottom,
+    false,
+    "accepting a booking from a card up in the history must not jump the DM to the bottom",
+  );
+  assert.ok(
+    Math.abs(drift) <= 4,
+    `the booking card must stay visually put while acting on it (drifted ${drift}px)`,
+  );
+}
+
+/** Decline uses the same update path, so it must behave identically. */
+export async function testDecliningABookingKeepsTheCardAnchored(): Promise<void> {
+  const { drift, endedAtBottom } = await actOnBookingCardWhileReadingHistory(true);
+  assert.equal(endedAtBottom, false, "declining must not jump to the bottom either");
+  assert.ok(Math.abs(drift) <= 4, `card drifted ${drift}px on decline`);
+}
+
+/** The other half of the contract: a genuinely-pinned reader still follows. */
+export async function testOwnMessageStillFollowsWhenPinnedToBottom(): Promise<void> {
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages = makeMessages();
+    await render({ loading: true, messages: [], targetMessageId: null });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1600, clientHeight: 600 });
+    await render({ loading: false, messages, targetMessageId: null });
+    mockMessageRects(scroller, new Map(messages.map((m) => [m.id, 80])));
+    doubles.flushAllRaf();
+
+    // Sitting at the bottom, as after a normal manual open.
+    assert.equal(metrics.getScrollTop(), metrics.getMaxScrollTop());
+
+    await act(async () => {
+      apiRef.current!.captureScrollBeforeIncomingInsert(true);
+    });
+    const withNew = [
+      ...messages,
+      { id: "msg-new", text: "mine", user_id: "current-user", created_at: "2026-01-01T02:00:00Z" },
+    ];
+    metrics.setScrollHeight(1680);
+    await render({ loading: false, messages: withNew, targetMessageId: null });
+    mockMessageRects(scroller, new Map(withNew.map((m) => [m.id, 80])));
+    doubles.flushAllRaf();
+
+    assert.equal(
+      metrics.getScrollTop(),
+      metrics.getMaxScrollTop(),
+      "a reader already at the bottom must still follow their own new message down",
+    );
+  });
+}
+
 export async function runMessageTargetScrollPriorityTests(): Promise<void> {
   await testTargetScrollSurvivesLayoutChangeAfterRelease();
   await testTargetSurvivesRepeatedLateLayoutChanges();
@@ -645,6 +767,9 @@ export async function runMessageTargetScrollPriorityTests(): Promise<void> {
   await testTargetHoldsThroughLateSettleBurst();
   await testLeaseStillEndsAfterItsBudget();
   await testUserTakeoverCancelsTheLongerLease();
+  await testAcceptingABookingKeepsTheCardAnchored();
+  await testDecliningABookingKeepsTheCardAnchored();
+  await testOwnMessageStillFollowsWhenPinnedToBottom();
   await testNoTargetStillLandsAtBottom();
   await testMissingTargetFallsBackToBottom();
 }

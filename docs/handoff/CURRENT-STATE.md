@@ -1,5 +1,37 @@
 # Current state (last updated: 2026-08-16)
 
+## Booking Accept/Decline no longer jumps the DM to the bottom (2026-08-16)
+
+**Report:** the DJ taps Accept on a booking request card up in the DM history and is immediately scrolled to the bottom. Not a push/deep-link issue — the deep link now lands correctly.
+
+**Exact scroll writer:** `scrollToBottom("auto")` in the own-message branch of `useChatScroll`'s append effect.
+
+**Why acceptance triggered it.** `handleBookingResponse` itself is innocent — it updates the existing booking message's text in place, adds no message, toggles no `loading`, and navigates nowhere. But server-side, `updateBookingRequestStatus` calls **`insertBookingAcceptedDmMessageIfNeeded(booking)`**, which inserts a *new* DM message **attributed to the responder's own user id**. That arrives back through the messages realtime INSERT handler, which calls `captureScrollBeforeIncomingInsert(isFromCurrentUser)` — and its own-message branch did:
+
+```
+pendingIncomingAppendPinnedRef.current = null;
+pinnedToBottomRef.current = true;   // unconditional
+```
+
+Every scroll path in `useChatScroll` is gated on `pinnedToBottomRef`, so forcing it `true` unlocked all of them; the append effect's own-message branch then scrolled to the bottom. The assumption baked into that branch — "a message from me is one I just typed, so follow it" — is false for anything the server inserts under the acting user's id.
+
+**Fix (`lib/useChatScroll.ts`, one branch):** pin only when the reader is genuinely near the bottom, exactly as the other-user branch already does. A real composer send is unaffected because it is captured separately and earlier: `markUserSentMessage` records the pre-send pinned state into `pendingOwnAppendPinnedRef`, which the append effect consults **before** `pinnedToBottomRef`. Nothing was globally disabled and no new scroll system was added.
+
+**Behaviour matrix:**
+
+| Case | Before | After |
+|---|---|---|
+| Accept/Decline while reading history | jumps to bottom | **card stays anchored** |
+| Accept/Decline while already at the bottom | bottom | bottom (unchanged) |
+| Composer send while pinned | follows down | follows down (unchanged) |
+| Composer send while reading history | stays put | stays put (unchanged) |
+| Incoming message from the other user | pill / stays put | unchanged |
+| Manual DM open, push deep-link targeting | unchanged | unchanged |
+
+**Tests:** three new cases in the happy-dom harness covering the full A→E sequence — card above later messages, user acts on it, a message under their own id is appended, layout settles, viewport still holds the card — for **Accept and Decline**, plus `testOwnMessageStillFollowsWhenPinnedToBottom` pinning the other half of the contract so the fix cannot be "achieved" by never following own messages. **Mutation-tested**: restoring the unconditional pin fails both booking tests and leaves the pinned-follow test passing, which is exactly the right signature. `npm run test:regressions` → **All regression checks passed**. `npm run build` passes.
+
+**Not touched:** push delivery, VAPID, subscriptions, service worker, `message_id` plumbing, the deep-link target path, or `active_chat_presence`.
+
 ## Push regression #4: booking-request pushes now deep-link to the booking card (2026-08-16)
 
 **Report:** tapping a booking-request push opened the right DM but scrolled to the latest message instead of the booking request card.

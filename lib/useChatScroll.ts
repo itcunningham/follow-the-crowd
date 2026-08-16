@@ -240,9 +240,24 @@ export function useChatScroll({
   const captureScrollBeforeIncomingInsert = useCallback(
     (isFromCurrentUser: boolean) => {
       if (isFromCurrentUser) {
+        // A message attributed to the current user is NOT necessarily one they
+        // just typed. Accepting or declining a booking inserts a DM message
+        // server-side under the responder's own id, so it arrives here via
+        // realtime with isFromCurrentUser === true. Pinning unconditionally
+        // meant that acting on a booking card up in the history immediately
+        // yanked the reader to the bottom.
+        //
+        // Follow it only if they were genuinely at the bottom. A real composer
+        // send while pinned is already covered separately: markUserSentMessage
+        // captures that intent up-front into pendingOwnAppendPinnedRef, which
+        // the append effect consults before this ref.
         pendingIncomingAppendPinnedRef.current = null;
-        pinnedToBottomRef.current = true;
-        clearPendingScrollPreserve();
+
+        if (isNearBottom()) {
+          pinnedToBottomRef.current = true;
+          clearPendingScrollPreserve();
+        }
+
         return;
       }
 
