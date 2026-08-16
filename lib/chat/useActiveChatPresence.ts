@@ -27,23 +27,51 @@ export function useActiveChatPresence(
       return;
     }
 
+    // Supabase's PostgrestBuilder is a *thenable*, not a promise: it only
+    // issues the HTTP request when .then() is invoked. `void builder` builds
+    // the query and throws it away without ever calling .then(), so the
+    // request is never sent -- which is exactly why this table stayed empty in
+    // production while RLS, grants and a manual upsert all checked out.
+    // Calling .then() here is what actually dispatches it; the handlers only
+    // exist to keep a failure visible instead of becoming an unhandled
+    // rejection. Delivery correctness never depends on these landing --
+    // push-send's TTL stays authoritative.
+    const dispatch = (
+      builder: PromiseLike<{ error: { message: string } | null }>,
+      label: string,
+    ) => {
+      builder.then(
+        ({ error }) => {
+          if (error) {
+            console.error(`[presence] ${label} failed:`, error.message);
+          }
+        },
+        (error: unknown) => {
+          console.error(`[presence] ${label} threw:`, error);
+        },
+      );
+    };
+
     const upsertPresence = () => {
       if (document.visibilityState !== "visible") {
         return;
       }
 
-      void supabase.from("active_chat_presence").upsert(
-        {
-          user_id: userId,
-          thread_link: threadLink,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
+      dispatch(
+        supabase.from("active_chat_presence").upsert(
+          {
+            user_id: userId,
+            thread_link: threadLink,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        ),
+        "upsert",
       );
     };
 
     const clearPresence = () => {
-      void supabase.from("active_chat_presence").delete().eq("user_id", userId);
+      dispatch(supabase.from("active_chat_presence").delete().eq("user_id", userId), "clear");
     };
 
     upsertPresence();

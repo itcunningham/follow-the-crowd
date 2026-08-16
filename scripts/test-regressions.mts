@@ -5257,6 +5257,54 @@ async function testServiceWorkerNotificationClickKeepsTheTarget() {
  * Invisible at 390px (row starts at x=64; 64 + 320 = 384 < 390) and only
  * overflowing below that -- which is why every 390px parity check passed.
  */
+/**
+ * Round 13: active-chat push suppression never worked in production because
+ * useActiveChatPresence did `void supabase.from(...).upsert(...)`. Supabase's
+ * PostgrestBuilder is a THENABLE, not a promise -- it only issues the HTTP
+ * request when .then() is invoked. `void builder` constructs the query and
+ * discards it, so nothing was ever sent: zero network calls, zero rows, and
+ * no error anywhere, while RLS/grants/schema all tested fine.
+ *
+ * This asserts the builders are actually dispatched, and that no `void`-ed
+ * supabase call sneaks back into this file.
+ */
+function testActiveChatPresenceActuallyDispatchesItsQueries() {
+  const source = readFileSync(
+    new URL("../lib/chat/useActiveChatPresence.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(
+    source,
+    /void\s+supabase\s*\./,
+    "`void supabase.…` never dispatches -- PostgrestBuilder only sends its request when .then() " +
+      "is called. Use the dispatch() helper (or await) instead, or presence silently stops writing.",
+  );
+
+  assert.match(
+    source,
+    /builder\.then\(/,
+    "the presence queries must be dispatched by invoking .then() on the builder",
+  );
+
+  for (const call of ["upsert", "delete"]) {
+    assert.ok(
+      new RegExp(`dispatch\\(\\s*\\n?\\s*supabase[\\s\\S]{0,200}?\\.${call}\\(`).test(source),
+      `the ${call} must go through dispatch() so the request is actually sent`,
+    );
+  }
+
+  // The heartbeat has to stay comfortably inside push-send's PRESENCE_TTL_MS
+  // (45s) or a genuinely-open thread goes stale between beats.
+  const heartbeat = source.match(/ACTIVE_CHAT_PRESENCE_HEARTBEAT_MS = ([\d_]+)/);
+  assert.ok(heartbeat, "heartbeat interval constant must exist");
+  const heartbeatMs = Number(heartbeat![1].replace(/_/g, ""));
+  assert.ok(
+    heartbeatMs > 0 && heartbeatMs <= 30_000,
+    `heartbeat (${heartbeatMs}ms) must stay well under push-send's 45s presence TTL`,
+  );
+}
+
 function testBookingCardFocusRingCannotOverflowItsColumn() {
   const source = readFileSync(
     new URL("../app/components/dm/BookingCardFocusRing.tsx", import.meta.url),
@@ -18559,6 +18607,7 @@ async function main() {
   await testMessageTargetScrollPriority();
   await testServiceWorkerNotificationClickKeepsTheTarget();
   testBookingCardFocusRingCannotOverflowItsColumn();
+  testActiveChatPresenceActuallyDispatchesItsQueries();
   testCrewChatAttachmentRealtimeAndStateReconciliation();
   testCrewChatUnreadUsesTheSharedUnreadSystem();
   await testGroupInboxUnreadSurvivesOverlappingRefreshes();
