@@ -106,6 +106,11 @@ function mockScrollMetrics(container: HTMLElement, initial: { scrollHeight: numb
   return {
     getScrollTop: () => scrollTopValue,
     getMaxScrollTop: () => Math.max(0, scrollHeightValue - clientHeightValue),
+    /** Content settling after first paint -- e.g. images decoding above the
+     *  target and growing the list. */
+    setScrollHeight: (value: number) => {
+      scrollHeightValue = value;
+    },
   };
 }
 
@@ -425,7 +430,8 @@ export async function testBottomScrollIsSuppressedWhileTargetSettles(): Promise<
 
     // Once the settle window closes, normal behaviour must come back --
     // the guard is a short lease on the viewport, not a permanent lock.
-    await new Promise((resolve) => setTimeout(resolve, 900));
+    // Must exceed MESSAGE_TARGET_SETTLE_QUIET_MS (1800ms).
+    await new Promise((resolve) => setTimeout(resolve, 2200));
     doubles.flushAllRaf();
 
     await act(async () => {
@@ -459,7 +465,9 @@ export async function testTargetHoldsAfterSettleWindowCloses(): Promise<void> {
 
     const onTarget = metrics.getScrollTop();
 
-    await new Promise((resolve) => setTimeout(resolve, 900));
+    // Must exceed MESSAGE_TARGET_SETTLE_QUIET_MS (1800ms) so the lease has
+    // genuinely ended -- otherwise this asserts nothing about post-lease state.
+    await new Promise((resolve) => setTimeout(resolve, 2200));
     doubles.flushAllRaf();
 
     doubles.triggerAllResizeCallbacks();
@@ -508,12 +516,135 @@ export async function testIncomingMessageDoesNotStealTheTarget(): Promise<void> 
   });
 }
 
+
+/**
+ * Round 12: the drift that survived the first lease. Real Production tracing
+ * at 320px showed content settling in bursts -- ~2.06s, then a 1.46s GAP,
+ * then ~3.62/3.72/3.83s, then ~4.6-5.3s. The original 400ms quiet window
+ * expired inside that gap, so every later change ran unguarded, and because
+ * the container is `[overflow-anchor:none]`, content growing above the target
+ * slides it down the viewport without moving scrollTop. Measured drift: 163px
+ * (crew @320) and 83px (DM image @320).
+ *
+ * This asserts the target's VERTICAL OFFSET stays put across a late change
+ * that lands after the old window would have closed -- not merely that the
+ * target is "still visible", which the pre-fix code also satisfied.
+ */
+export async function testTargetHoldsThroughLateSettleBurst(): Promise<void> {
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages = makeMessages();
+    const targetMessageId = "msg-10";
+    const heights = new Map(messages.map((m) => [m.id, 80]));
+
+    await render({ loading: true, messages: [], targetMessageId });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1600, clientHeight: 600 });
+
+    await render({ loading: false, messages, targetMessageId });
+    mockMessageRects(scroller, heights);
+    doubles.flushAllRaf();
+
+    const targetEl = scroller.querySelector(
+      `[${CHAT_MESSAGE_ID_ATTR}="${targetMessageId}"]`,
+    ) as HTMLElement;
+    const landedRectTop = targetEl.getBoundingClientRect().top;
+    assert.notEqual(metrics.getScrollTop(), metrics.getMaxScrollTop(), "phase A: not at the bottom");
+
+    // Phase B: content ABOVE the target grows -- ten 80px messages become
+    // 120px as their images decode. This is the real mechanism: scrollTop does
+    // not move (the container is [overflow-anchor:none]), so the target slides
+    // DOWN the viewport by 400px unless something corrects for it.
+    //
+    // Timed past the OLD 400ms quiet window, which is precisely when the
+    // real-device drift landed.
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    for (let i = 0; i < 10; i += 1) heights.set(`msg-${i}`, 120);
+    metrics.setScrollHeight(2000);
+    mockMessageRects(scroller, heights);
+    doubles.triggerAllResizeCallbacks();
+    doubles.flushAllRaf();
+
+    const afterRectTop = targetEl.getBoundingClientRect().top;
+    assert.ok(
+      Math.abs(afterRectTop - landedRectTop) <= 4,
+      `phase C: the target must stay put when content above it grows. Landed at rectTop ` +
+        `${landedRectTop}, ended at ${afterRectTop} (drift ${Math.round(afterRectTop - landedRectTop)}px). ` +
+        `This is the exact downward drift real-device QA reported.`,
+    );
+  });
+}
+
+/** The lease must still be a lease. After the hard budget, control returns. */
+export async function testLeaseStillEndsAfterItsBudget(): Promise<void> {
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages = makeMessages();
+    await render({ loading: true, messages: [], targetMessageId: "msg-10" });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1600, clientHeight: 600 });
+    await render({ loading: false, messages, targetMessageId: "msg-10" });
+    mockMessageRects(scroller, new Map(messages.map((m) => [m.id, 80])));
+    doubles.flushAllRaf();
+
+    // Quiet for longer than the quiet window -> lease ends -> normal resumes.
+    await new Promise((resolve) => setTimeout(resolve, 2200));
+    doubles.flushAllRaf();
+
+    await act(async () => {
+      apiRef.current!.scrollToBottomSmooth();
+    });
+    doubles.flushAllRaf();
+
+    assert.equal(
+      metrics.getScrollTop(),
+      metrics.getMaxScrollTop(),
+      "once the quiet window elapses the lease must release, or auto-scroll is disabled for good",
+    );
+  });
+}
+
+/** User takeover must still cancel the (now longer) lease immediately. */
+export async function testUserTakeoverCancelsTheLongerLease(): Promise<void> {
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages = makeMessages();
+    await render({ loading: true, messages: [], targetMessageId: "msg-10" });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1600, clientHeight: 600 });
+    await render({ loading: false, messages, targetMessageId: "msg-10" });
+    mockMessageRects(scroller, new Map(messages.map((m) => [m.id, 80])));
+    doubles.flushAllRaf();
+
+    // Reader takes over well inside the lease.
+    await act(async () => {
+      scroller.dispatchEvent(
+        new (scroller.ownerDocument.defaultView as unknown as { Event: typeof Event }).Event(
+          "pointerdown",
+        ),
+      );
+    });
+    doubles.flushAllRaf();
+
+    await act(async () => {
+      apiRef.current!.scrollToBottomSmooth();
+    });
+    doubles.flushAllRaf();
+
+    assert.equal(
+      metrics.getScrollTop(),
+      metrics.getMaxScrollTop(),
+      "a real user gesture must end the lease immediately, however long its budget is",
+    );
+  });
+}
+
 export async function runMessageTargetScrollPriorityTests(): Promise<void> {
   await testTargetScrollSurvivesLayoutChangeAfterRelease();
   await testTargetSurvivesRepeatedLateLayoutChanges();
   await testBottomScrollIsSuppressedWhileTargetSettles();
   await testTargetHoldsAfterSettleWindowCloses();
   await testIncomingMessageDoesNotStealTheTarget();
+  await testTargetHoldsThroughLateSettleBurst();
+  await testLeaseStillEndsAfterItsBudget();
+  await testUserTakeoverCancelsTheLongerLease();
   await testNoTargetStillLandsAtBottom();
   await testMissingTargetFallsBackToBottom();
 }

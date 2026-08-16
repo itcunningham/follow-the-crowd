@@ -26,9 +26,22 @@ const MESSAGE_TARGET_SCROLL_RETRY_MS = 50;
  * suppression on, re-assert the target position on each layout change, and
  * only hand control back once layout has been quiet, the budget is spent, or
  * the user takes over by scrolling themselves.
+ *
+ * Both windows are measured, not guessed. Tracing a real Production chat at
+ * 320px every 100ms showed content still settling in bursts long after the
+ * target scroll: layout changes at ~2.06s, then a 1.46s gap, then ~3.62s,
+ * ~3.72s, ~3.83s, ~4.63s, ~4.74s, ~5.33s (avatars and attachment images
+ * decoding). The original 400ms quiet window closed during that 1.46s gap, so
+ * every later change went unguarded -- and because the chat container sets
+ * `[overflow-anchor:none]`, content growing ABOVE the target does not move
+ * scrollTop, it slides the target down the viewport instead. That is the
+ * small downward drift: 163px on crew at 320px, 83px on a DM image target.
+ *
+ * The quiet window therefore has to bridge the largest observed gap (1.46s),
+ * and the hard budget has to outlast the last observed change (5.33s).
  */
-const MESSAGE_TARGET_SETTLE_QUIET_MS = 400;
-const MESSAGE_TARGET_SETTLE_MAX_MS = 4000;
+const MESSAGE_TARGET_SETTLE_QUIET_MS = 1800;
+const MESSAGE_TARGET_SETTLE_MAX_MS = 8000;
 
 /** Real user takeover -- these are gestures, never anything an effect emits. */
 const USER_TAKEOVER_EVENTS = ["pointerdown", "touchstart", "wheel", "keydown"] as const;
@@ -135,6 +148,8 @@ export function useChatMessageTargetScroll({
      * race we have to win.
      */
     const holdTargetUntilSettled = (messageElement: HTMLElement, container: HTMLElement) => {
+      let removeViewportListeners: (() => void) | undefined;
+
       const reassert = () => {
         // Re-measure every time: the whole point is that layout moved.
         container.scrollTop = computeChatMessageCenterScrollTop(container, messageElement);
@@ -150,6 +165,8 @@ export function useChatMessageTargetScroll({
         endSettle = undefined;
         settleObserver?.disconnect();
         settleObserver = undefined;
+        removeViewportListeners?.();
+        removeViewportListeners = undefined;
 
         if (settleQuietTimeoutId !== undefined) window.clearTimeout(settleQuietTimeoutId);
         if (settleMaxTimeoutId !== undefined) window.clearTimeout(settleMaxTimeoutId);
@@ -180,6 +197,30 @@ export function useChatMessageTargetScroll({
       for (const eventName of USER_TAKEOVER_EVENTS) {
         container.addEventListener(eventName, handleUserTakeover, { passive: true });
       }
+
+      // A ResizeObserver on the container and content root catches content
+      // settling, but not the iOS-only case where the *viewport* itself
+      // resizes as the PWA finishes resuming (URL bar / safe-area settling).
+      // That moves the target without resizing anything we observe, and it is
+      // not reproducible headless, so it is guarded by signal rather than by
+      // evidence we could gather here.
+      const handleViewportSettle = () => {
+        if (!endSettle) {
+          return;
+        }
+
+        reassert();
+        restartQuietWindow();
+      };
+
+      window.addEventListener("resize", handleViewportSettle);
+      window.visualViewport?.addEventListener("resize", handleViewportSettle);
+      window.visualViewport?.addEventListener("scroll", handleViewportSettle);
+      removeViewportListeners = () => {
+        window.removeEventListener("resize", handleViewportSettle);
+        window.visualViewport?.removeEventListener("resize", handleViewportSettle);
+        window.visualViewport?.removeEventListener("scroll", handleViewportSettle);
+      };
 
       if (typeof ResizeObserver !== "undefined") {
         settleObserver = new ResizeObserver(() => {
