@@ -8313,22 +8313,22 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
   // Explicit permissions: revoke from all roles first, then grant to authenticated
   assert.match(
     tableSetupSql,
-    /revoke all on public\.user_private_data from public;/,
+    /revoke all on public\.user_private_data from public;/i,
     "Must explicitly revoke from public role",
   );
   assert.match(
     tableSetupSql,
-    /revoke all on public\.user_private_data from anon;/,
+    /revoke all on public\.user_private_data from anon;/i,
     "Must explicitly revoke from anon role",
   );
   assert.match(
     tableSetupSql,
-    /revoke all on public\.user_private_data from authenticated;/,
+    /revoke all on public\.user_private_data from authenticated;/i,
     "Must explicitly revoke from authenticated role before granting",
   );
   assert.match(
     tableSetupSql,
-    /grant select, insert, update on public\.user_private_data to authenticated;/,
+    /grant select, insert, update on public\.user_private_data to authenticated;/i,
     "Must grant SELECT, INSERT, UPDATE to authenticated (no DELETE)",
   );
   assert.doesNotMatch(
@@ -8340,17 +8340,17 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
   // RLS policies: all with explicit TO authenticated clause
   assert.match(
     tableSetupSql,
-    /create policy.*for select.*to authenticated\s*using/i,
+    /create policy[\s\S]*?for select[\s\S]*?to authenticated\s*using/i,
     "SELECT policy must have TO authenticated",
   );
   assert.match(
     tableSetupSql,
-    /create policy.*for insert.*to authenticated\s*with check/i,
+    /create policy[\s\S]*?for insert[\s\S]*?to authenticated\s*with check/i,
     "INSERT policy must have TO authenticated",
   );
   assert.match(
     tableSetupSql,
-    /create policy.*for update.*to authenticated\s*using.*with check/i,
+    /create policy[\s\S]*?for update[\s\S]*?to authenticated\s*using[\s\S]*?with check/i,
     "UPDATE policy must have TO authenticated",
   );
   assert.doesNotMatch(
@@ -8362,7 +8362,7 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
   // RLS protection: owner-only using auth_user_id()
   assert.match(
     tableSetupSql,
-    /using \(user_id = public\.auth_user_id\(\)::text\)/,
+    /using \(user_id = public\.auth_user_id\(\)::text\)/i,
     "RLS must check user_id = auth_user_id()::text for read access",
   );
 
@@ -8512,10 +8512,14 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
     /\.from\("users"\)[\s\S]*?\.from\("user_private_data"\)/,
     "saveUserProfile must update users AND user_private_data separately",
   );
+  // The real call is `.from("user_private_data").upsert(privateData, { onConflict: "user_id" })`
+  // -- the table name PRECEDES upsert and the call spans lines, so the original
+  // `/upsert.*user_private_data/` could never match. Also pins onConflict, so a
+  // switch to insert() (which would throw on an existing row) is caught too.
   assert.match(
     currentUserSource,
-    /upsert.*user_private_data/,
-    "saveUserProfile must upsert private data",
+    /\.from\("user_private_data"\)\s*\n?\s*\.upsert\([\s\S]{0,160}?onConflict:\s*"user_id"/,
+    "saveUserProfile must upsert private data onto user_private_data, keyed on user_id",
   );
 
   // Verify private field is NOT in the public update payload
@@ -8562,17 +8566,17 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
   );
   assert.match(
     cleanupViewSql,
-    /security_invoker = false/,
+    /security_invoker = false/i,
     "Phase 8 cleanup must preserve security_invoker = false",
   );
   assert.match(
     cleanupViewSql,
-    /revoke all on public\.my_profile from public;/,
+    /revoke all on public\.my_profile from public;/i,
     "Phase 8 cleanup must explicitly revoke from public",
   );
   assert.match(
     cleanupViewSql,
-    /revoke all on public\.my_profile from anon;/,
+    /revoke all on public\.my_profile from anon;/i,
     "Phase 8 cleanup must explicitly revoke from anon",
   );
 }
@@ -8671,10 +8675,12 @@ function testDmAttachmentsBucketIsPrivate() {
     ),
   );
 
-  // Bucket must be private.
+  // Bucket must be private. `[\s\S]*?` rather than `.*`: the statement spans
+  // four lines and `.` does not cross newlines without /s, so the original
+  // pattern could never match the SQL it was written to guard.
   assert.match(
     sql,
-    /insert into storage\.buckets.*public\s*=\s*false/i,
+    /insert into storage\.buckets[\s\S]*?public\s*=\s*false/i,
     "dm-attachments bucket must have public = false",
   );
   assert.match(
@@ -9551,9 +9557,12 @@ function testDmMessageReactionGestureInteractions() {
 }
 
 function testDmReactionNotifications() {
+  // No trailing full stop: commit b919c06c ("Final notification UX polish
+  // pass") deliberately dropped it to match sibling notification copy such as
+  // "Your event crew chat is now available". The test was not updated then.
   assert.equal(
     buildDmReactionNotificationBody("Isaac", "❤️"),
-    "Isaac reacted ❤️ to your message.",
+    "Isaac reacted ❤️ to your message",
   );
 
   const helperSource = readFileSync(
@@ -10334,9 +10343,11 @@ function testLoginScreenPolish() {
   assert.match(loginSource, /"Sign in to continue"/);
 
   // Primary Log in button renders in title case (no forced text-transform: uppercase) --
-  // scoped to the login submit button specifically; the recovery ("Update password") button
+  // scoped to the login submit button specifically; the recovery ("Set password") button
   // keeps its existing uppercase styling untouched, matching every other .ftc-btn-primary
-  // in the app (password reset flow must not change).
+  // in the app (password reset flow must not change). The recovery button was renamed
+  // "Update password" -> "Set password" in 99d87b49, to match its "Set a new password"
+  // heading; this assertion was not updated then.
   assert.doesNotMatch(
     loginSource,
     /className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide[^"]*"\s*>\s*\{submitting \? "Logging in" : "Log in"\}/,
@@ -10347,7 +10358,7 @@ function testLoginScreenPolish() {
   );
   assert.match(
     loginSource,
-    /className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide[^"]*"\s*>\s*\{submitting \? "Saving" : "Update password"\}/,
+    /className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide[^"]*"\s*>\s*\{submitting \? "Saving" : "Set password"\}/,
   );
 
   // Browser/page title has no AI marketing wording -- single global metadata source for
@@ -13175,7 +13186,14 @@ function testBookingAcceptedDmMessageIsScopedToTheBooking() {
   // The planner's acceptance notification is a booking outcome, and is no longer
   // gated on the DM insert -- that gate meant a skipped system message silently
   // swallowed the only notification the planner would have received.
-  assert.match(bookingRequestsSource, /"booking_update",\s*\n\s*"Booking accepted"/);
+  // Title gained a DJ-name prefix in 162859e9 ("DJ-named accept push"), so it is
+  // now a template literal rather than the bare string this used to expect. The
+  // property under test is unchanged: the planner still gets a booking_update
+  // for the acceptance, ungated from the DM insert.
+  assert.match(
+    bookingRequestsSource,
+    /"booking_update",\s*\n\s*`\$\{djName\} · Booking accepted`/,
+  );
   assert.doesNotMatch(
     bookingRequestsSource,
     /const dmResult = await insertBookingAcceptedDmMessageIfNeeded/,
@@ -19084,20 +19102,35 @@ function testProfileProjectionOmitsPrivateFields() {
     "utf8",
   );
 
+  // Scope to the string literal itself. Slicing up to `const OWN_PROFILE_FIELDS`
+  // used to swallow the doc comment between them, which *mentions*
+  // dj_booking_contact_name -- so the doesNotMatch below was failing on prose,
+  // not on a projection.
+  const profileFieldsStart = source.indexOf("const PROFILE_FIELDS =");
+  assert.ok(profileFieldsStart >= 0, "PROFILE_FIELDS must exist");
   const publicProjection = source.slice(
-    source.indexOf("const PROFILE_FIELDS ="),
-    source.indexOf("const OWN_PROFILE_FIELDS"),
+    profileFieldsStart,
+    source.indexOf(";", profileFieldsStart),
   );
-  assert.ok(publicProjection.length > 0, "PROFILE_FIELDS must exist");
 
   // full_name is never written and rendered nowhere; it should not be fetched.
   assert.doesNotMatch(publicProjection, /full_name/);
   assert.doesNotMatch(publicProjection, /dj_booking_contact_name/);
 
-  // ...and the owner projection is the only place the contact field appears.
-  assert.match(
-    source,
-    /const OWN_PROFILE_FIELDS = `\$\{PROFILE_FIELDS\}, dj_booking_contact_name`;/,
+  // Phase 8 moved the contact field out of the users/my_profile projections
+  // entirely -- it is now read only from user_private_data. This assertion used
+  // to demand the OLD Phase 7 shape
+  // (`OWN_PROFILE_FIELDS = \`${PROFILE_FIELDS}, dj_booking_contact_name\``),
+  // i.e. it required the private column to be present in the owner projection,
+  // which is the opposite of the property we now want. The Phase 8 shape below
+  // is strictly stronger: no projection of `users` selects the private column.
+  assert.match(source, /const OWN_PROFILE_FIELDS = PROFILE_FIELDS;/);
+
+  const ownProjectionStart = source.indexOf("const OWN_PROFILE_FIELDS");
+  assert.doesNotMatch(
+    source.slice(ownProjectionStart, source.indexOf(";", ownProjectionStart)),
+    /dj_booking_contact_name/,
+    "the owner projection must not select the private contact column either",
   );
 
   // full_name is gone from the type too, so it cannot be reintroduced by a
@@ -20112,7 +20145,10 @@ function testNotificationCopyPolishPass() {
   );
   assert.match(
     navBadgeProviderSource,
-    /if \(!userId\) \{\s*\n\s*void badgingNavigator\.clearAppBadge\(\)\.catch\(\(\) => \{\}\);/,
+    // Tolerant of formatting: the call was reflowed across lines and its
+    // silent `.catch(() => {})` replaced with a real console.error handler.
+    // The property under test -- clearAppBadge() on sign-out -- is unchanged.
+    /if \(!userId\) \{[\s\S]{0,240}?badgingNavigator\s*\n?\s*\.clearAppBadge\(\)/,
     "the OS app badge must be cleared on sign-out",
   );
   assert.match(
@@ -21365,10 +21401,20 @@ function testPinnedToBottomRefWiredIntoBothScrollTargetFlows() {
     new URL("../lib/chat/messageTargetScroll.ts", import.meta.url),
     "utf8",
   );
+  // Suppression is no longer released in the same tick as the scroll -- the
+  // target now holds a settle lease and releaseAutoScrollSuppression() is
+  // called from endSettle(). The invariant this guards is unchanged and still
+  // holds in BOTH places: pinnedToBottomRef is synced from the real scroll
+  // position immediately before suppression is ever dropped.
   assert.match(
     messageTargetSource,
-    /syncPinnedToBottomRefAfterDirectScroll\(container, pinnedToBottomRef\);\s*\n\s*onTargetFound\(targetMessageId\);\s*\n\s*releaseAutoScrollSuppression\(\);/,
-    "useChatMessageTargetScroll must sync pinnedToBottomRef before releasing suppression, not after",
+    /syncPinnedToBottomRefAfterDirectScroll\(container, pinnedToBottomRef\);\s*\n\s*onTargetFound\(targetMessageId\);/,
+    "useChatMessageTargetScroll must sync pinnedToBottomRef in the same tick as the direct scroll",
+  );
+  assert.match(
+    messageTargetSource,
+    /syncPinnedToBottomRefAfterDirectScroll\(container, pinnedToBottomRef\);\s*\n\s*releaseAutoScrollSuppression\(\);/,
+    "endSettle must re-sync pinnedToBottomRef before releasing suppression, not after",
   );
 
   const bookingTargetSource = readFileSync(
@@ -21429,9 +21475,12 @@ function testActiveChatPresenceHookHeartbeatAndCleanup() {
   // Upsert must happen immediately on mount, not only on the first heartbeat.
   assert.match(hookSource, /upsertPresence\(\);\s*\n\s*const intervalId = window\.setInterval\(upsertPresence,/);
 
+  // The payload is unchanged, but the call is now wrapped in dispatch() -- the
+  // old `void supabase.…` form never sent the request at all, because a
+  // PostgrestBuilder is a thenable that only fires when .then() is invoked.
   assert.match(
     hookSource,
-    /void supabase\.from\("active_chat_presence"\)\.upsert\(\s*\n\s*\{\s*\n\s*user_id: userId,\s*\n\s*thread_link: threadLink,\s*\n\s*updated_at: new Date\(\)\.toISOString\(\),\s*\n\s*\},\s*\n\s*\{ onConflict: "user_id" \},\s*\n\s*\);/,
+    /supabase\s*\n?\s*\.from\("active_chat_presence"\)\s*\n?\s*\.upsert\(\s*\n\s*\{\s*\n\s*user_id: userId,\s*\n\s*thread_link: threadLink,\s*\n\s*updated_at: new Date\(\)\.toISOString\(\),\s*\n\s*\},\s*\n\s*\{ onConflict: "user_id" \},\s*\n\s*\)/,
     "the upsert payload must carry a fresh client timestamp and upsert on user_id (one row per user)",
   );
 
@@ -21443,7 +21492,9 @@ function testActiveChatPresenceHookHeartbeatAndCleanup() {
 
   assert.match(
     hookSource,
-    /void supabase\.from\("active_chat_presence"\)\.delete\(\)\.eq\("user_id", userId\);/,
+    // Also now routed through dispatch(); the old `void supabase.…` form built
+    // the query but never issued it.
+    /supabase\.from\("active_chat_presence"\)\.delete\(\)\.eq\("user_id", userId\)/,
     "clearing presence must delete the row outright, not merely null a field",
   );
 

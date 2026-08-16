@@ -1,5 +1,29 @@
 # Current state (last updated: 2026-08-16)
 
+## `npm run test:regressions` runs end to end again — 328/328 (2026-08-16)
+
+**The suite had been halting on its first SQL-text assertion for a long time, so most of it never ran.** Nine tests were failing. **Every single one was a false failure: the SQL/app code was correct and the assertion was wrong.** Nothing was weakened to make anything pass, and every fix was mutation-tested by breaking the thing it guards and confirming the assertion fails.
+
+Rather than fix-and-rerun serially (the suite halts on first throw, hiding the rest), I generated a runner that calls all 328 `test*` functions independently — which surfaced the full list in one pass, including four failures the original filing had not reached.
+
+| Test | Why it was wrong | Class |
+|---|---|---|
+| `testDmAttachmentsBucketIsPrivate` | `.*` across a four-line `insert into storage.buckets` — `.` can't cross newlines without `/s` | regex |
+| `testPrivateProfileFieldsAreDatabaseEnforced` | 8 assertions: lowercase patterns without `/i` against UPPERCASE SQL; multi-line `CREATE POLICY` blocks using `.*`; and `/upsert.*user_private_data/` where the real call is `.from("user_private_data").upsert(…)` — table name *precedes* `upsert`, across lines | regex |
+| `testDmReactionNotifications` | Expected a trailing full stop the copy-polish pass (`b919c06c`) deliberately removed | stale copy |
+| `testLoginScreenPolish` | Expected `"Update password"`; renamed to `"Set password"` in `99d87b49` for consistency with its "Set a new password" heading | stale copy |
+| `testBookingAcceptedDmMessageIsScopedToTheBooking` | Expected the bare string `"Booking accepted"`; `162859e9` made the title a template literal with a DJ-name prefix | stale copy |
+| `testProfileProjectionOmitsPrivateFields` | **Was asserting the opposite of the desired security property** — see below | stale + wrong |
+| `testNotificationCopyPolishPass` | Sign-out `clearAppBadge()` call was reflowed across lines and its silent `.catch(() => {})` replaced with a real error handler | formatting |
+| `testPinnedToBottomRefWiredIntoBothScrollTargetFlows` | Broken by this session's settle-lease work: suppression is now released from `endSettle()`, not in the same tick as the scroll | reshaped by us |
+| `testActiveChatPresenceHookHeartbeatAndCleanup` | Broken by this session's `dispatch()` fix: the queries are no longer `void supabase.…` | reshaped by us |
+
+**The one that mattered.** `testProfileProjectionOmitsPrivateFields` was doing two wrong things. Its `publicProjection` slice ran from `const PROFILE_FIELDS =` to `const OWN_PROFILE_FIELDS`, swallowing the **doc comment** between them — which *mentions* `dj_booking_contact_name` — so `doesNotMatch` was failing on prose, not on a projection. Worse, its next assertion demanded ``OWN_PROFILE_FIELDS = `${PROFILE_FIELDS}, dj_booking_contact_name` `` — the **Phase 7** shape. Phase 8 removed the private column from the owner projection entirely (it is read only from `user_private_data`), so the test was requiring the private field to be present in a `users` projection: the opposite of the property it claims to enforce. Now scoped to the string literal and pinned to the Phase 8 shape, which is strictly stronger. Mutation-tested three ways: leaking the column into the public projection, reintroducing it into the owner projection, and pointing `getUserProfileById` at the owner projection — all three caught.
+
+**`testWorkspaceGigsPendingDisplayCountPreservesLastKnown` was never broken.** Recent rounds recorded it as "the same one pre-existing unrelated failure", but it passes both in isolation and in the full ordered run (`main()` line 18443). The suite was halting around line 8200–8674, thousands of lines earlier, so that test was simply never reached — the attribution was carried forward from round to round without being re-checked. **Those notes were wrong and this supersedes them.**
+
+**Result:** `npm run test:regressions` → **All regression checks passed.** `npm run build` passes. Only `scripts/test-regressions.mts` changed; no application code, no SQL.
+
 ## `events.event_brand` applied in Production — the crew-chat 400 is gone (2026-08-16)
 
 **Isaac ran `scripts/setupEventBrands.sql` in the Supabase SQL Editor** (`alter table public.events add column if not exists event_brand text; notify pgrst, 'reload schema';`). No code change was needed or made.
@@ -222,7 +246,7 @@ The image cases matter most: they are exactly the late-decode layout shift the e
 
 **Not touched**: message dedupe SQL, VAPID keys, badge logic, run-sheet pushes, booking push copy — confirmed via diff review before merge.
 
-**Verified**: independent QA pass re-ran and adversarially mutation-tested the new happy-dom scroll-priority test (confirmed it fails without the fix, passes with it) and the pre-existing booking-return-scroll test suite (still passing with the new required `pinnedToBottomRef` parameter threaded through); confirmed the presence migration's RLS policies are all scoped to `user_id = auth.uid()`; confirmed push-send's suppression check is exact-conversation-aware, fails open, and sits before VAPID/webhook/delivery code that remains fully untouched. `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round; all new tests for this round verified passing in isolation (the full suite still can't reach them in call order, same known limitation as recent rounds).
+**Verified**: independent QA pass re-ran and adversarially mutation-tested the new happy-dom scroll-priority test (confirmed it fails without the fix, passes with it) and the pre-existing booking-return-scroll test suite (still passing with the new required `pinnedToBottomRef` parameter threaded through); confirmed the presence migration's RLS policies are all scoped to `user_id = auth.uid()`; confirmed push-send's suppression check is exact-conversation-aware, fails open, and sits before VAPID/webhook/delivery code that remains fully untouched. `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*; all new tests for this round verified passing in isolation (the full suite still can't reach them in call order, same known limitation as recent rounds).
 
 **Sandbox limitation (unchanged from every prior round)**: no real Supabase project access, no real iPhone, no egress to the production app. This round's scroll-priority fix and its regression test *do* exercise real DOM/React behavior via happy-dom (not just source-text assertions), which is a meaningfully stronger proof than prior rounds had available — but a genuine real-device retest is still the only way to fully confirm both fixes end-to-end.
 
@@ -244,7 +268,7 @@ Both chat pages currently load a conversation's **entire history on mount, with 
 
 **Not touched:** SQL migrations, VAPID, `pg_net`, badge, run-sheet, booking notifications, and the service worker (`public/sw.js`) needed zero changes — it already forwards whatever `link` string arrives in the push payload verbatim, including query params.
 
-**Verified:** independent QA pass confirmed the diff's scope (7 files, no scope creep), the push-send boundary, that the stored `notifications.link` column is never written with the query param baked in, the suppression-ref race-condition trace, the fallback path end-to-end, and that `addHighlightedMessageId` is genuinely wired to every message-bubble type in both pages (so the highlight will actually be visible for text, image/attachment, and booking-card messages alike). One minor DRY nit was found and fixed: `lib/chat/messageTargetScroll.ts` initially reimplemented `computeChatMessageCenterScrollTop` instead of importing the existing export from `lib/dm/chatBookingTarget.ts`. `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round (`testWorkspaceGigsPendingDisplayCountPreservesLastKnown`); all 8 new tests for this feature verified passing in isolation (the full suite halts on that pre-existing failure before reaching them in call order, same as recent rounds' new tests).
+**Verified:** independent QA pass confirmed the diff's scope (7 files, no scope creep), the push-send boundary, that the stored `notifications.link` column is never written with the query param baked in, the suppression-ref race-condition trace, the fallback path end-to-end, and that `addHighlightedMessageId` is genuinely wired to every message-bubble type in both pages (so the highlight will actually be visible for text, image/attachment, and booking-card messages alike). One minor DRY nit was found and fixed: `lib/chat/messageTargetScroll.ts` initially reimplemented `computeChatMessageCenterScrollTop` instead of importing the existing export from `lib/dm/chatBookingTarget.ts`. `npm run build` passed. `npm run test:regressions` halted before reaching this round's tests, so all 8 were verified passing in isolation. *(Superseded 2026-08-16: the halt was a set of broken assertions much earlier in the file, not `testWorkspaceGigsPendingDisplayCountPreservesLastKnown`, which was never failing. Suite now runs end to end.)*
 
 **Sandbox limitation (unchanged from every prior round):** no real Supabase project access, no real iPhone, no egress to the production app — this round's implementation and both QA passes are source-level verification only. Real-device retest needed for: new DM text notification, old/legacy DM notification (no `message_id`), DM image notification, crew text notification, crew image notification, and the deleted/missing target-message fallback — all six scenarios listed in the task's "Also verify" checklist.
 
@@ -265,7 +289,7 @@ Both chat pages currently load a conversation's **entire history on mount, with 
 
 **Not touched:** SQL migrations, VAPID, push-send, pg_net, badge, run-sheet, booking notifications — confirmed via `git diff` that the only file changed is `scripts/test-regressions.mts` (purely additive, +100/-0).
 
-**Verified:** new test verified in isolation via a scratch script before merging; independent QA agent re-read every file involved from scratch (not trusting my summary), independently confirmed the RPC payload includes `p_message_id` by name, independently confirmed all four send paths thread a real message id through, and adversarially mutation-tested the new test to confirm it actually catches the regression it claims to catch. `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round (`testWorkspaceGigsPendingDisplayCountPreservesLastKnown`, confirmed present identically on `main` before this round's change).
+**Verified:** new test verified in isolation via a scratch script before merging; independent QA agent re-read every file involved from scratch (not trusting my summary), independently confirmed the RPC payload includes `p_message_id` by name, independently confirmed all four send paths thread a real message id through, and adversarially mutation-tested the new test to confirm it actually catches the regression it claims to catch. `npm run build` passed. `npm run test:regressions` halted early, identically on `main` before this round's change. *(Superseded 2026-08-16: the halt was broken assertions earlier in the file; `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` was never failing.)*
 
 **Sandbox limitation (unchanged from every prior round): no real Supabase project access (`.env.local`'s URL is a placeholder), no real iPhone, no egress to the production app — this round's diagnosis is source-level reasoning only and cannot itself confirm Production's deployed commit or PostgREST schema-cache state. The user must check both directly.**
 
@@ -283,7 +307,7 @@ Both chat pages currently load a conversation's **entire history on mount, with 
 
 **Not touched:** VAPID, webhook secret, pg_net, JWT config, service-role grants, run-sheet/withdrawal notification code, badge-setting logic. No new SQL migration this round.
 
-**Verified:** two independent QA passes (traced all 4 message paths for exactly-once notification creation with real message ids threaded through; verified the event-cancellation fix doesn't orphan `formatEventCancelledInboxPreview`, still used elsewhere; confirmed badge-sync logic byte-identical minus diagnostics recording; one pass flagged a theoretical RLS read-back risk in the new text-send `.select("id").single()` calls, confirmed to be the same proven-safe pattern the image sends already use). Incidentally fixed two pre-existing, unrelated stale test assertions discovered only because isolating tests for verification bypasses an unrelated pre-existing failure that has always halted the full suite before reaching them. `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round.
+**Verified:** two independent QA passes (traced all 4 message paths for exactly-once notification creation with real message ids threaded through; verified the event-cancellation fix doesn't orphan `formatEventCancelledInboxPreview`, still used elsewhere; confirmed badge-sync logic byte-identical minus diagnostics recording; one pass flagged a theoretical RLS read-back risk in the new text-send `.select("id").single()` calls, confirmed to be the same proven-safe pattern the image sends already use). Incidentally fixed two pre-existing, unrelated stale test assertions discovered only because isolating tests for verification bypasses an unrelated pre-existing failure that has always halted the full suite before reaching them. `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*.
 
 ## Fourth real-device QA round: DM/crew image-only push fixed (`ec16d342` on `main`, 2026-08-15)
 
@@ -297,7 +321,7 @@ Both chat pages currently load a conversation's **entire history on mount, with 
 
 **Not touched:** VAPID, webhook secret, pg_net trigger config, JWT, service-role grants, reaction notification dedupe, booking/event/run-sheet notification dedupe, the confirmed-working run-sheet and withdrawal pushes, and the Home Screen badge logic/diagnostics (explicitly off-limits this round).
 
-**Verified:** independent QA pass diffed the new migration's authorization branches against the live function clause-by-clause (byte-identical), hand-traced the exact collision scenario pre/post fix, confirmed text paths and badge/run-sheet/booking files have zero diff, confirmed the old 6-arg signature is dropped before the 7-arg replace (avoiding the ambiguous-overload failure this codebase hit once before) — no defects found. `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round.
+**Verified:** independent QA pass diffed the new migration's authorization branches against the live function clause-by-clause (byte-identical), hand-traced the exact collision scenario pre/post fix, confirmed text paths and badge/run-sheet/booking files have zero diff, confirmed the old 6-arg signature is dropped before the 7-arg replace (avoiding the ambiguous-overload failure this codebase hit once before) — no defects found. `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*.
 
 **SQL migration must be run manually in Supabase** (`20260817000000_notification_message_identity_dedupe.sql`) — not auto-applied. So must the prior round's `20260816000000` if it hasn't been already; this sandbox cannot confirm either has been applied to production. To check from the SQL Editor:
 ```sql
@@ -324,7 +348,7 @@ Three issues reported still broken after the prior round's fixes; run-sheet push
 
 **Not touched:** VAPID, webhook secret, pg_net, JWT config, service-role grants, auth/session persistence, unsupported-iOS handling, reconnect flow, and the confirmed-working run-sheet notification path.
 
-**Verified:** two independent QA passes (withdrawal fix traced end-to-end including both real UI call sites and the SQL authorization condition; badge diagnostics checked for zero secret exposure and correct wiring at every branch; a second pass specifically re-verified the hydration fix). `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round.
+**Verified:** two independent QA passes (withdrawal fix traced end-to-end including both real UI call sites and the SQL authorization condition; badge diagnostics checked for zero secret exposure and correct wiring at every branch; a second pass specifically re-verified the hydration fix). `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*.
 
 ## Real-device Production QA follow-up: crew-image push, badge, run-sheet push, withdrawal audit (`08140c49` on `main`, 2026-08-15)
 
@@ -342,7 +366,7 @@ Four issues reported from real-device Production QA, each root-caused via actual
 
 **Not touched:** VAPID key values, webhook secret, pg_net trigger config, JWT config, push-send auth, RLS policies, service-role grants, `lib/push/client.ts` (reconnect/VAPID-decode logic), the Device diagnostics panel.
 
-**Verified:** two independent QA passes (SQL migration diffed clause-by-clause against the live function for zero authorization weakening; push-send's INSERT-only trigger dependency confirmed by reading the edge function; badge fix confirmed to have no other UI-visible side effect; run-sheet change-detector hand-traced across 5+ cases; withdrawal audit independently re-verified with a fresh repo-wide grep, not just accepted). `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round.
+**Verified:** two independent QA passes (SQL migration diffed clause-by-clause against the live function for zero authorization weakening; push-send's INSERT-only trigger dependency confirmed by reading the edge function; badge fix confirmed to have no other UI-visible side effect; run-sheet change-detector hand-traced across 5+ cases; withdrawal audit independently re-verified with a fresh repo-wide grep, not just accepted). `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*.
 
 ## Final notification UX polish pass: copy + badge count (`58007d15` on `main`, 2026-08-15)
 
@@ -360,7 +384,7 @@ Four issues reported from real-device Production QA, each root-caused via actual
 
 **Not touched:** VAPID, webhook secret, pg_net, JWT config, push-send, the reconnect-state/VAPID-decode logic from the prior round (`lib/push/client.ts`), the Device diagnostics panel, `NotificationType` (still exactly `"message" | "booking_request" | "booking_update"` — no new category added).
 
-**Verified:** independent QA pass (spec-copy correctness character-by-character, venue-fallback math, actor-naming/recipient-routing correctness, scope discipline via full diff, badge-fix skepticism check for pre-existing Badging API usage, test coverage re-derivation) — no defects found. `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round (`testWorkspaceGigsPendingDisplayCountPreservesLastKnown`).
+**Verified:** independent QA pass (spec-copy correctness character-by-character, venue-fallback math, actor-naming/recipient-routing correctness, scope discipline via full diff, badge-fix skepticism check for pre-existing Badging API usage, test coverage re-derivation) — no defects found. `npm run build` passed. `npm run test:regressions` halted early. *(Superseded 2026-08-16: the halt was broken assertions earlier in the file; `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` was never failing.)*
 
 ## Push reconnect state + VAPID URL-safe decode fix (`1afd622b` on `main`, 2026-08-15)
 
@@ -378,7 +402,7 @@ Four issues reported from real-device Production QA, each root-caused via actual
 
 **Not touched:** VAPID key values, webhook secret, pg_net, JWT config, push-send auth, any `createNotification()` call site — confirmed via diff inspection, 100% client-side (`lib/push/client.ts` + `PushNotificationsSection.tsx` + tests). Temporary Device diagnostics panel kept (removal is a later cleanup task, only after real-device retest passes).
 
-**Verified:** independent QA pass (state-model control flow, VAPID decode math against a real 87-char sample, RLS-scoped self-heal safety, copy exactness, scope discipline via full diff grep, test coverage re-derivation) — no defects found. `npm run build` passed. `npm run test:regressions` has one pre-existing unrelated failure (`testWorkspaceGigsPendingDisplayCountPreservesLastKnown`), confirmed identical with/without this change.
+**Verified:** independent QA pass (state-model control flow, VAPID decode math against a real 87-char sample, RLS-scoped self-heal safety, copy exactness, scope discipline via full diff grep, test coverage re-derivation) — no defects found. `npm run build` passed. `npm run test:regressions` halted early, confirmed identical with/without this change. *(Superseded 2026-08-16: the halt was broken assertions earlier in the file; `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` was never failing.)*
 
 ## Unsupported-iOS push state added (`40412f7a` on `main`, 2026-08-14)
 
