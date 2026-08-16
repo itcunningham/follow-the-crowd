@@ -1,5 +1,33 @@
 # Current state (last updated: 2026-08-16)
 
+## Push regression #4: booking-request pushes now deep-link to the booking card (2026-08-16)
+
+**Report:** tapping a booking-request push opened the right DM but scrolled to the latest message instead of the booking request card.
+
+**Exact cause.** `sendBookingRequest` inserts the booking-card DM message with a plain `.insert({...})` — **no `.select("id")` read-back** — and then called `createNotification` with only **five** arguments. `messageId` is the 7th, so `notifications.message_id` was **NULL** for every booking request, and push-send (which appends `?message=` only when `message_id` is set) had nothing to append. The push link was a bare `/dm/<conversationId>`, and the DM opened at the bottom exactly as designed.
+
+**The booking card is a real `messages` row.** Its text encodes `BOOKING REQUEST / Booking ID: <uuid>`, and the DM page renders it in an `<li>` carrying `data-chat-message-id={message.id}`. So no booking-specific scroll mechanism was needed — the existing `?message=<id>` path finds it like any other message, and inherits the settle lease from the previous round for free.
+
+**Deliberately NOT used:** the pre-existing `?bookingRequestId=` / `useChatBookingTargetScroll` flow. It resolves a booking id to a message id client-side and works, but it releases suppression immediately on landing and has **no settle lease**, so it would drift exactly the way the `?message=` path used to. Reusing `?message=` keeps one hardened path instead of two.
+
+**Verified the RPC assumption rather than trusting it.** A raw probe call was rejected (`P0001 Not allowed to create booking_request notification` — the branch requires a `booking_requests` row created within 10 minutes), so the live `create_notification` definition was read directly via the Management API. The decisive part:
+
+```
+if p_message_id is not null then          -- NOT gated on p_type
+  ... where n.user_id = p_user_id and n.message_id = p_message_id
+  insert into public.notifications (..., message_id) values (..., p_message_id)
+```
+
+So for `booking_request` the id **persists**, and dedupe becomes `(user_id, message_id)` — idempotent per recipient per message. **One booking request still produces exactly one notification and one push**, and this is stricter than the old title/link + 10-minute fingerprint it replaces.
+
+**Fix:** `lib/bookingRequests.ts` only — read the message id back via `.select("id").single()` (the same shape the DM and crew text sends already use) and pass it as `createNotification`'s 7th argument. **No push-send change, so no Edge Function redeploy**; `?message=` appending is gated on `message_id` presence, not on notification type.
+
+**Deep-link format (unchanged, reused):** `/dm/<conversationId>?message=<messages.id>`
+
+**Tests:** new `testBookingRequestPushDeepLinksToTheBookingCard` pins the read-back, the 7th-argument threading, and the argument arity (so a future edit cannot slide the id into the `reactionId` slot). **Mutation-tested both ways** — reverting to the 5-arg call and removing the read-back each fail it. The A→B→C settle behaviour is already covered generically by `testTargetHoldsThroughLateSettleBurst`, which grows content above the target after the old window would have closed; the target hook is content-agnostic, so a booking-card duplicate of it would assert nothing new. `npm run test:regressions` → **All regression checks passed**. `npm run build` passes.
+
+**Not touched:** push delivery, VAPID, subscriptions, service worker, `active_chat_presence`, and the existing message deep-link path.
+
 ## `npm run test:regressions` runs end to end again — 328/328 (2026-08-16)
 
 **The suite had been halting on its first SQL-text assertion for a long time, so most of it never ran.** Nine tests were failing. **Every single one was a false failure: the SQL/app code was correct and the assertion was wrong.** Nothing was weakened to make anything pass, and every fix was mutation-tested by breaking the thing it guards and confirming the assertion fails.

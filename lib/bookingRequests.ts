@@ -2235,11 +2235,21 @@ export async function sendBookingRequestToDj(
 
   const messageText = formatBookingRequestMessage(booking);
 
-  const { error: messageError } = await supabase.from("messages").insert({
-    conversation_id: conversationId,
-    user_id: currentUserId,
-    text: messageText,
-  });
+  // Read the id back so the notification can carry this exact message as its
+  // deep-link target. The booking card is rendered from a real `messages` row
+  // (the DM page puts `data-chat-message-id` on its <li>), so the notification
+  // needs no bespoke target mechanism -- it reuses `?message=<id>` exactly like
+  // a normal chat message. Same insert-then-select-back shape the DM and crew
+  // text sends already use.
+  const { data: messageRow, error: messageError } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: conversationId,
+      user_id: currentUserId,
+      text: messageText,
+    })
+    .select("id")
+    .single();
 
   if (messageError) {
     throw messageError;
@@ -2261,6 +2271,12 @@ export async function sendBookingRequestToDj(
       `${senderName} · Booking request`,
       formatEventVenueLine(input.eventName.trim(), input.venue),
       `/dm/${conversationId}`,
+      null,
+      // Deep-links the push straight to the booking card instead of dumping the
+      // DJ at the bottom of the DM. push-send appends `?message=` whenever
+      // message_id is set -- it is not gated on notification type -- so this
+      // needs no push-send change.
+      messageRow?.id as string | undefined,
     );
   } catch (notificationError) {
     // Booking + DM already exist. Don't fail the invite over a notification glitch

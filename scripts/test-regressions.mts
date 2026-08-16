@@ -18676,6 +18676,7 @@ async function main() {
   testNotificationLinkColumnStaysBareForReadTracking();
   testNotificationTypeAndNotificationsPageUseMessageId();
   testPushSendForwardsMessageIdIntoLink();
+  testBookingRequestPushDeepLinksToTheBookingCard();
   testDmPageWiresMessageTargetScroll();
   testCrewChatPageWiresMessageTargetScroll();
   testChatMessageTargetScrollSuppressionIsAsymmetric();
@@ -21219,6 +21220,56 @@ function testNotificationTypeAndNotificationsPageUseMessageId() {
  * it deliberately does not touch (and this test does not re-verify) VAPID
  * signing, webhook secret validation, or the pg_net delivery loop.
  */
+/**
+ * Round 15: tapping a booking-request push opened the right DM but landed at
+ * the bottom instead of on the booking card. The booking card IS a real
+ * `messages` row (the DM page puts `data-chat-message-id` on its <li>), but
+ * sendBookingRequest inserted that row without reading its id back and called
+ * createNotification with only 5 arguments -- so notifications.message_id was
+ * NULL and push-send had nothing to append `?message=` from.
+ *
+ * Fixed by threading the real message id through, reusing the existing
+ * `?message=<id>` deep link rather than inventing a booking-specific one.
+ * The live create_notification RPC's `if p_message_id is not null` branch is
+ * NOT gated on p_type, so it persists and dedupes on (user_id, message_id) for
+ * booking_request exactly as it does for chat messages -- which also keeps
+ * one booking request to exactly one notification.
+ */
+function testBookingRequestPushDeepLinksToTheBookingCard() {
+  const source = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+
+  // The booking-card message insert must read its id back.
+  assert.match(
+    source,
+    /const \{ data: messageRow, error: messageError \} = await supabase[\s\S]{0,300}?\.select\("id"\)[\s\S]{0,40}?\.single\(\);/,
+    "sendBookingRequest must read back the booking-card message id -- without it the " +
+      "notification cannot carry a deep-link target",
+  );
+
+  // ...and that id must reach createNotification as its messageId argument.
+  const bookingRequestNotification = source.slice(
+    source.indexOf('"booking_request",'),
+    source.indexOf('"booking_request",') + 800,
+  );
+  assert.match(
+    bookingRequestNotification,
+    /messageRow\?\.id as string \| undefined,/,
+    "the booking_request notification must pass the booking-card message id, or the push " +
+      "deep link falls back to a bare /dm/<id> and the DJ lands at the bottom",
+  );
+
+  // Guard the arity: messageId is the 7th argument, so reactionId must be an
+  // explicit null in the 6th. A future edit must not slide the id into it.
+  assert.match(
+    bookingRequestNotification,
+    /`\/dm\/\$\{conversationId\}`,[\s\S]{0,80}?null,[\s\S]{0,400}?messageRow\?\.id as string \| undefined,/,
+    "messageId must be the 7th argument, with reactionId explicitly null in the 6th",
+  );
+}
+
 function testPushSendForwardsMessageIdIntoLink() {
   const pushSendSource = readFileSync(
     new URL("../supabase/functions/push-send/index.ts", import.meta.url),
