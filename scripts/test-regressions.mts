@@ -5233,6 +5233,21 @@ async function testMessageTargetScrollPriority() {
   await runMessageTargetScrollPriorityTests();
 }
 
+/**
+ * Ninth real-device QA round: fresh pushes still opened the chat at the
+ * bottom. Every stage upstream was provably correct -- the break was
+ * notificationclick handing the targeted link to the page via postMessage,
+ * which is silently dropped whenever the page has not yet attached its
+ * listener (iOS restores the PWA onto its previous URL and fires
+ * notificationclick before React hydrates). Executes the real public/sw.js
+ * and asserts the full ?message= link reaches the browser on BOTH the
+ * existing-client and closed-app paths.
+ */
+async function testServiceWorkerNotificationClickKeepsTheTarget() {
+  const { run } = await import("./test-sw-notification-click.js");
+  await run();
+}
+
 function testResolvePlannerHistoryHideEventIds() {
   const events = [
     {
@@ -18504,6 +18519,7 @@ async function main() {
   await testDmMessageOrderDeterminism();
   await testDmBookingReturnScroll();
   await testMessageTargetScrollPriority();
+  await testServiceWorkerNotificationClickKeepsTheTarget();
   testCrewChatAttachmentRealtimeAndStateReconciliation();
   testCrewChatUnreadUsesTheSharedUnreadSystem();
   await testGroupInboxUnreadSurvivesOverlappingRefreshes();

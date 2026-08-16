@@ -108,9 +108,31 @@ async function handleNotificationClick(link) {
   for (const client of clientList) {
     // Check if the client's URL is our app origin
     if (isOurOrigin(client.url)) {
-      // Focus and navigate
+      // Navigate the existing window from here, rather than asking the page
+      // to navigate itself.
+      //
+      // postMessage only works if the page has already mounted and attached
+      // its listener (ServiceWorkerProvider -> setupNotificationClickListener).
+      // On an iOS cold resume that is not true: iOS restores the PWA onto
+      // whatever URL it was last on and fires notificationclick before React
+      // hydrates, so the message lands with no listener and is dropped
+      // silently. The user sees the app sitting on the old page -- and when
+      // that old page is the very chat the push was about, it looks exactly
+      // like "the deep link opened the right chat but ignored the message",
+      // which is how this shipped broken twice.
+      if (typeof client.navigate === 'function') {
+        try {
+          const navigated = await client.navigate(link);
+          await (navigated || client).focus();
+          return;
+        } catch (navigateError) {
+          // navigate() rejects for uncontrolled clients and is restricted in
+          // some browsers -- fall through to the postMessage path below.
+          console.warn('[sw] client.navigate failed, falling back to postMessage:', navigateError);
+        }
+      }
+
       await client.focus();
-      // Send message to navigate (if needed)
       client.postMessage({ type: 'NAVIGATE_TO', link });
       return;
     }

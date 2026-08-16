@@ -1,5 +1,34 @@
 # Current state (last updated: 2026-08-16)
 
+## Tenth QA round: notificationclick lost the target to a hydration race (2026-08-16)
+
+**Report:** fresh pushes — created after the ninth round's `push-send` v9 deploy, with `message_id` confirmed populated — *still* opened the correct chat at the bottom.
+
+**Every stage upstream was proven correct before touching any code**, which is what made this one hard:
+
+| Stage | Evidence |
+|---|---|
+| `notifications.message_id` | Real UUIDs on fresh rows; stored `link` correctly bare |
+| push-send builds the link | Replayed push-send's exact `.select("*")` query **with its own service-role credentials** — every fresh row yields `/dm/<convo>?message=<uuid>` |
+| Web Push transmission | `sendWebPush` sends `JSON.stringify(payload)` verbatim, no link transformation |
+| `sw.js` push handler | Stores the link verbatim in `data.link`; no `pathname` rebuild anywhere, and **no historical version of `sw.js` ever stripped a query** (checked all three revisions) |
+| Production `sw.js` | Byte-identical to repo |
+| Client scroll | 12 Production scenarios at iPhone 13/390px already green in round nine |
+
+**Root cause — `notificationclick`'s existing-client branch.** It called `client.focus()` and then handed the targeted link to the *page* via `postMessage({type:"NAVIGATE_TO"})`, relying on `ServiceWorkerProvider` having already mounted `setupNotificationClickListener`. On an **iOS cold resume that listener does not exist yet**: iOS restores the PWA onto whatever URL it was last on and fires `notificationclick` before React hydrates. The message lands with no listener attached and is dropped silently — no error, nothing in any log.
+
+When the restored page happens to be the chat the push was about — overwhelmingly likely during QA, since you're testing in the thread you were just reading — the app never navigates at all. It simply sits where it already was: **the right chat, at the bottom, with a bare URL.** Indistinguishable from "the deep link worked but didn't scroll", which is exactly how two prior rounds misdiagnosed it.
+
+**Reproduced before fixing**, against Production with Playwright WebKit at iPhone 13: dispatching the service worker's own `NAVIGATE_TO` message at `document.readyState === "interactive"` (pre-hydration) on `/dm/<convo>` left the page at `scroll 8478/8478`, `atBottom=true`, URL still bare — the reported symptom exactly. The identical dispatch *after* hydration navigated and centred the target, which is why round nine's five existing-client probes all passed: they all fired late.
+
+**Fix (`public/sw.js`, ~15 lines).** The existing-client branch now calls `client.navigate(link)` — the service worker navigates the window itself, so nothing depends on page timing — then focuses the returned client. `postMessage` is kept strictly as a fallback for browsers without `WindowClient.navigate` and for clients where `navigate()` rejects (it does for uncontrolled clients). The closed-app `openWindow(link)` path is untouched.
+
+**New behavioural test, `scripts/test-sw-notification-click.ts`** — executes the **real `public/sw.js`** in a `node:vm` sandbox against fake `WindowClient`s, covering both paths the task required: existing-client navigation (DM and crew), closed-app `openWindow`, both `postMessage` fallbacks, and that hostile links are still rejected. **Mutation-tested**: reverting to postMessage-only makes it fail. Wired into `test-regressions.mts` beside `testMessageTargetScrollPriority`.
+
+**Deployment:** `public/sw.js` is a Vercel static asset, so pushing to `main` ships it — and it is served `cache-control: public, max-age=0, must-revalidate`, so browsers revalidate on every SW update check, with `skipWaiting()` + `clients.claim()` already in the file making the new worker take over immediately. **`push-send` did not change this round, so no Edge Function redeploy was needed** (still v9). `active_chat_presence` is now applied — the table exists and reads clean.
+
+**Note for retesting:** the old bare-link notifications still in the iPhone's tray can never target, and pre-v9 tag behaviour means they stack rather than replace. Clear the tray first so you are certainly tapping a fresh push.
+
 ## Ninth QA round: the deep-link was never broken — the Edge Function was never deployed (2026-08-16)
 
 **Report:** tapping an older DM or crew-chat push still opened the chat at the bottom instead of the triggering message — i.e. the seventh and eighth rounds' feature appeared to have done nothing on the device.
@@ -1305,6 +1334,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `c197aa1f` — sw: navigate the existing window on notification click
 - `4ac98fe3` — Deploy push-send; document that Vercel never deploys Edge Functions
 - `591c5fbe` — docs(handoff): document scroll-priority fix and active-thread push suppression
 - `51058c41` — fix: target-message scroll survives layout changes; suppress push for active thread
