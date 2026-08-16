@@ -1,5 +1,31 @@
 # Current state (last updated: 2026-08-16)
 
+## Twelfth QA round: DM chat panned sideways below 390px (2026-08-16)
+
+**Report:** on the small iPhone, entering a chat via a push deep link let the conversation pan left/right as well as vertically.
+
+**It is not the deep link.** Reproduced at 375px and 320px on **manual open too** — the entry path is irrelevant. The report associated it with deep-linking only because that was how the chat was being opened.
+
+**Root cause:** `app/components/dm/BookingCardFocusRing.tsx` rendered `<div className={`relative ${roundedClassName}`}>` with no width cap. It sits in the bubble column `CHAT_INCOMING_BUBBLE_CELL_CLASS` (`col-start-2 min-w-0 w-full flex flex-col items-start`), and in a column flex with `items-start` a child is sized to **fit-content and is not clamped to the column width**. Its child, the booking card shell, is `w-full min-w-0 max-w-xs` — a fixed **320px**. So the wrapper took 320px inside a **271px** column and pushed the chat container's `scrollWidth` past the viewport.
+
+**Why 390px parity never caught it:** the incoming row grid starts at x=64, so 64 + 320 = **384**, which still fits a 390px viewport with 6px to spare. It only overflows below 390.
+
+**Measured on Production, before the fix:**
+
+| Viewport | chat scrollWidth / clientWidth |
+|---|---|
+| 320x568 | **384 / 320** (64px over) |
+| 375x667 | **384 / 375** (9px over) |
+| 390x844 | 390 / 390 (clean) |
+
+Crew chat was never affected — its bubble already carries `max-w-full` (`CHAT_MESSAGE_BUBBLE_GRID_BUBBLE_CLASS`), which is what the DM wrapper was missing.
+
+**Fix:** one class — `relative max-w-full ${roundedClassName}`. Chosen empirically, not by inspection: I applied three candidate fixes to the live DOM and measured each. Capping the inner card at `min(20rem,100%)` made it **worse** (392); `align-items: stretch` on the column worked but would stretch every bubble full-width; `max-width: 100%` on the wrapper resolved it exactly. **No global `overflow-x: hidden`** — the overflowing element itself is fixed.
+
+**Verified on Production** across 320/375/390 x {DM manual, DM deep-link text, DM deep-link image, crew manual, crew deep-link} — 15/15 with `scrollWidth == clientWidth`, `scrollLeft == 0`, and no document overflow. Re-run with a 9s settle confirmed deep-link targets still land and hold, and manual opens still land at the bottom. `npm run build` passes; 8/8 relevant tests including the sibling scroll flows.
+
+**Guard added:** `testBookingCardFocusRingCannotOverflowItsColumn` pins the `max-w-full` class and also asserts the card is still `max-w-xs`, so if that ever becomes fluid the rationale gets re-reasoned rather than silently outliving its reason. Note this is a source assertion — happy-dom does no layout, so the real proof is the Production measurement above.
+
 ## Eleventh QA round: the target now holds the viewport while layout settles (2026-08-16)
 
 **Report:** with the tenth round's service-worker fix live, fresh pushes now reach the correct historical message — but a moment later the chat scrolls itself back to the bottom.
@@ -1359,6 +1385,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `b1f58ca4` — fix(dm): stop the booking card panning the chat sideways below 390px
 - `dba69b37` — chat: hold the deep-link target while layout settles
 - `c197aa1f` — sw: navigate the existing window on notification click
 - `4ac98fe3` — Deploy push-send; document that Vercel never deploys Edge Functions
