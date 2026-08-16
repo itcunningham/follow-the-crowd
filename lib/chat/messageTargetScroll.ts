@@ -78,6 +78,14 @@ type UseChatMessageTargetScrollOptions = {
   onTargetMissing?: () => void;
   suppressAutoScrollRef: MutableRefObject<boolean>;
   pinnedToBottomRef: MutableRefObject<boolean>;
+  /**
+   * Tried when the target message id is not in the DOM. A booking lifecycle
+   * notification can point at a timeline notice that a newer notice has since
+   * superseded and hidden -- the notice is genuinely never rendered, so no
+   * amount of retrying finds it. Rather than dumping the reader at the bottom,
+   * the caller can offer the still-visible booking card for the same booking.
+   */
+  fallbackTargetSelector?: string | null;
 };
 
 /**
@@ -99,6 +107,7 @@ export function useChatMessageTargetScroll({
   onTargetMissing,
   suppressAutoScrollRef,
   pinnedToBottomRef,
+  fallbackTargetSelector,
 }: UseChatMessageTargetScrollOptions) {
   const scrollAttemptRef = useRef(0);
   const completedRef = useRef(false);
@@ -256,9 +265,12 @@ export function useChatMessageTargetScroll({
         return false;
       }
 
-      const messageElement = container.querySelector<HTMLElement>(
-        `[${CHAT_MESSAGE_ID_ATTR}="${CSS.escape(targetMessageId)}"]`,
-      );
+      const messageElement =
+        container.querySelector<HTMLElement>(
+          `[${CHAT_MESSAGE_ID_ATTR}="${CSS.escape(targetMessageId)}"]`,
+        ) ?? (fallbackTargetSelector
+          ? container.querySelector<HTMLElement>(fallbackTargetSelector)
+          : null);
 
       if (!messageElement) {
         return false;
@@ -331,5 +343,6 @@ export function useChatMessageTargetScroll({
     onTargetMissing,
     suppressAutoScrollRef,
     pinnedToBottomRef,
+    fallbackTargetSelector,
   ]);
 }

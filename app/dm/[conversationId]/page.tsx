@@ -129,6 +129,7 @@ import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
+import { parseDmBookingTimelineBookingId } from "@/lib/dm/dmBookingSystemMessages";
 import {
   CHAT_MESSAGE_TARGET_PARAM,
   parseChatMessageTargetIdParam,
@@ -499,6 +500,27 @@ export default function DmChatPage() {
     pinnedToBottomRef,
   });
 
+  // A booking lifecycle push targets its own timeline notice ("Booking
+  // confirmed · <event> · <bookingId>"). A newer notice for the same thread
+  // makes shouldSuppressDmBookingTimelineNotice hide the older one, so that
+  // message is never rendered and no retry can find it. The booking id is
+  // already encoded in the notice, so fall back to that booking's still-visible
+  // card rather than dumping the reader at the bottom.
+  const messageTargetFallbackSelector = useMemo(() => {
+    if (!messageTargetId) {
+      return null;
+    }
+
+    const targetMessage = messages.find((item) => item.id === messageTargetId);
+    const bookingId = targetMessage
+      ? parseDmBookingTimelineBookingId(targetMessage.text)
+      : null;
+
+    return bookingId
+      ? `[${CHAT_BOOKING_REQUEST_ID_ATTR}="${CSS.escape(bookingId)}"]`
+      : null;
+  }, [messageTargetId, messages]);
+
   useChatMessageTargetScroll({
     targetMessageId: messageTargetId,
     loading,
@@ -507,6 +529,7 @@ export default function DmChatPage() {
     onTargetMissing: scrollToBottomSmooth,
     suppressAutoScrollRef,
     pinnedToBottomRef,
+    fallbackTargetSelector: messageTargetFallbackSelector,
   });
 
   // Same bare link createNotification() uses for this conversation -- lets

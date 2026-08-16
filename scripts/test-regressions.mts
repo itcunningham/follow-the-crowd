@@ -18678,6 +18678,7 @@ async function main() {
   testPushSendForwardsMessageIdIntoLink();
   testBookingRequestPushDeepLinksToTheBookingCard();
   testBookingLifecyclePushesCarryAMessageTarget();
+  testDeepLinkTargetsSurviveImagesAndHiddenNotices();
   testDmPageWiresMessageTargetScroll();
   testCrewChatPageWiresMessageTargetScroll();
   testChatMessageTargetScrollSuppressionIsAsymmetric();
@@ -21260,6 +21261,94 @@ function testNotificationTypeAndNotificationsPageUseMessageId() {
  * REORDERED: it created the notification before inserting the DM notice, so
  * the id did not exist yet.
  */
+/**
+ * Round 18, two measured fixes.
+ *
+ * A) Attachment images corrected themselves on decode (~20px each, ~60px with
+ *    two or three photos), sliding a deep-link target down the viewport
+ *    several seconds after landing. The aspect ratio was only remembered in a
+ *    module-scoped Map, and tapping a push is a FULL document load, so the
+ *    ratio was always absent exactly when it mattered. It now persists.
+ *
+ * B) A booking lifecycle push targets its own timeline notice, which a newer
+ *    notice hides via shouldSuppressDmBookingTimelineNotice -- measured on
+ *    Production as found=false / atBottom=true. The booking id is already in
+ *    the notice text, so it now falls back to that booking's visible card.
+ */
+function testDeepLinkTargetsSurviveImagesAndHiddenNotices() {
+  const dimensions = readFileSync(
+    new URL("../lib/dm/dmImageAttachmentDimensions.ts", import.meta.url),
+    "utf8",
+  );
+
+  // A: the learned ratio must outlive the page, or a push tap never has it.
+  assert.match(
+    dimensions,
+    /window\.localStorage\.setItem\(ASPECT_RATIO_STORAGE_KEY/,
+    "decoded aspect ratios must persist, or every full page load re-guesses the box and the " +
+      "image corrects itself on decode, drifting the deep-link target",
+  );
+  assert.match(
+    dimensions,
+    /function hydrateFromStorageOnce\(\)/,
+    "persisted ratios must be read back on first lookup",
+  );
+  assert.match(
+    dimensions,
+    /MAX_PERSISTED_RATIOS/,
+    "the persisted ratio store must be bounded",
+  );
+  // Must stay best-effort: a disabled or full store degrades, never throws.
+  assert.match(dimensions, /catch \{[\s\S]{0,200}?\}/, "storage access must be wrapped");
+
+  // B: hidden timeline notice -> that booking's card.
+  const systemMessages = readFileSync(
+    new URL("../lib/dm/dmBookingSystemMessages.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    systemMessages,
+    /export function parseDmBookingTimelineBookingId\(/,
+    "the booking id encoded in a timeline notice must be parseable",
+  );
+
+  const hook = readFileSync(
+    new URL("../lib/chat/messageTargetScroll.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    hook,
+    /fallbackTargetSelector\?: string \| null;/,
+    "the shared target hook must accept a fallback selector",
+  );
+  assert.match(
+    hook,
+    /\?\? \(fallbackTargetSelector[\s\S]{0,160}?querySelector<HTMLElement>\(fallbackTargetSelector\)/,
+    "the fallback must only be tried when the message id itself is not in the DOM",
+  );
+
+  const dmPage = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmPage,
+    /parseDmBookingTimelineBookingId\(targetMessage\.text\)/,
+    "the DM page must derive the booking id from the targeted timeline notice",
+  );
+  assert.match(
+    dmPage,
+    /fallbackTargetSelector: messageTargetFallbackSelector,/,
+    "the DM page must pass the booking-card fallback to the target hook",
+  );
+  assert.match(
+    dmPage,
+    /\[\$\{CHAT_BOOKING_REQUEST_ID_ATTR\}="\$\{CSS\.escape\(bookingId\)\}"\]/,
+    "the fallback must resolve to the booking card by its existing booking-id attribute, not a " +
+      "new targeting system",
+  );
+}
+
 function testBookingLifecyclePushesCarryAMessageTarget() {
   const source = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),
@@ -21433,7 +21522,9 @@ function testDmPageWiresMessageTargetScroll() {
 
   assert.match(
     dmPageSource,
-    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*pinnedToBottomRef,\s*\n\s*\}\);/,
+    // fallbackTargetSelector was added for hidden booking timeline notices; the
+    // property under test (reuse the page's own callbacks) is unchanged.
+    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*pinnedToBottomRef,\s*\n\s*fallbackTargetSelector: messageTargetFallbackSelector,\s*\n\s*\}\);/,
     "the DM page must wire the hook to its own already-instantiated addHighlightedMessageId/scrollToBottomSmooth, not new bespoke callbacks",
   );
 
@@ -21585,9 +21676,11 @@ function testPinnedToBottomRefWiredIntoBothScrollTargetFlows() {
     dmPageSource,
     /useChatBookingTargetScroll\(\{[\s\S]{0,300}?pinnedToBottomRef,\s*\n\s*\}\);/,
   );
+  // pinnedToBottomRef need only be threaded in -- it is no longer the last
+  // argument, since fallbackTargetSelector follows it on the DM page.
   assert.match(
     dmPageSource,
-    /useChatMessageTargetScroll\(\{[\s\S]{0,300}?pinnedToBottomRef,\s*\n\s*\}\);/,
+    /useChatMessageTargetScroll\(\{[\s\S]{0,400}?pinnedToBottomRef,/,
   );
 
   const crewChatPageSource = readFileSync(

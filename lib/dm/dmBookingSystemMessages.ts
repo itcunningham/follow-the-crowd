@@ -348,3 +348,21 @@ export function formatDmBookingSystemMessageDisplay(text: string): string {
 
   return trimmed;
 }
+
+
+/**
+ * The booking id trailing a booking timeline notice, e.g.
+ * "Booking confirmed · <event> · <bookingId>".
+ *
+ * Exists so a notification whose target message has since been hidden by
+ * shouldSuppressDmBookingTimelineNotice (a newer notice supersedes it) can
+ * still resolve to something visible: that booking's own card. The identity is
+ * already encoded in the message -- no second notification system needed.
+ */
+export function parseDmBookingTimelineBookingId(text: string): string | null {
+  const match = text
+    .trim()
+    .match(/·\s*([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\s*$/);
+
+  return match?.[1] ?? null;
+}

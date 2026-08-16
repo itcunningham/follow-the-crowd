@@ -1,7 +1,77 @@
 const knownAspectRatioByAttachmentId = new Map<string, number>();
 
-/** Aspect ratio (width / height) learned from a prior decode of this attachment in this tab, if any. */
+/**
+ * Ratios also persist across page loads, because the in-memory Map alone was
+ * not enough for the case that actually matters.
+ *
+ * Tapping a push does a FULL document load (the service worker navigates the
+ * window), so the Map starts empty every time. With no ratio,
+ * getDmImageReservedSize falls back to a square guess, and each photo then
+ * corrects itself on decode -- measured on Production as roughly 20px per
+ * photo, ~60px total with two or three photos near a deep-link target, which
+ * pushed the targeted message down the viewport several seconds after landing.
+ *
+ * localStorage keeps the ratio from the previous visit, so the very first
+ * layout of a fresh load reserves the right box and there is nothing to
+ * correct. Best-effort throughout: a disabled/full/absent store just degrades
+ * to the old in-memory behaviour.
+ */
+const ASPECT_RATIO_STORAGE_KEY = "ftc:dm-image-aspect-ratios";
+const MAX_PERSISTED_RATIOS = 400;
+
+let hydratedFromStorage = false;
+
+function readStore(): Record<string, number> {
+  try {
+    const raw = window.localStorage.getItem(ASPECT_RATIO_STORAGE_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function hydrateFromStorageOnce(): void {
+  if (hydratedFromStorage || typeof window === "undefined") {
+    return;
+  }
+
+  hydratedFromStorage = true;
+
+  for (const [id, ratio] of Object.entries(readStore())) {
+    if (typeof ratio === "number" && ratio > 0 && !knownAspectRatioByAttachmentId.has(id)) {
+      knownAspectRatioByAttachmentId.set(id, ratio);
+    }
+  }
+}
+
+function persistRatio(attachmentId: string, ratio: number): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const store = readStore();
+    store[attachmentId] = ratio;
+
+    const ids = Object.keys(store);
+    if (ids.length > MAX_PERSISTED_RATIOS) {
+      // Bounded, oldest-inserted first -- object key order is insertion order
+      // for string keys, so this drops the least recently added.
+      for (const id of ids.slice(0, ids.length - MAX_PERSISTED_RATIOS)) {
+        delete store[id];
+      }
+    }
+
+    window.localStorage.setItem(ASPECT_RATIO_STORAGE_KEY, JSON.stringify(store));
+  } catch {
+    // Quota or private-mode failure -- the in-memory Map still works.
+  }
+}
+
+/** Aspect ratio (width / height) learned from a prior decode of this attachment, if any. */
 export function getKnownDmImageAspectRatio(attachmentId: string): number | undefined {
+  hydrateFromStorageOnce();
   return knownAspectRatioByAttachmentId.get(attachmentId);
 }
 
@@ -18,7 +88,9 @@ export function recordDmImageAspectRatio(
   naturalHeight: number,
 ): void {
   if (naturalWidth > 0 && naturalHeight > 0) {
-    knownAspectRatioByAttachmentId.set(attachmentId, naturalWidth / naturalHeight);
+    const ratio = naturalWidth / naturalHeight;
+    knownAspectRatioByAttachmentId.set(attachmentId, ratio);
+    persistRatio(attachmentId, ratio);
   }
 }
 
