@@ -21680,8 +21680,11 @@ async function testNoBookingUuidIsEverUserFacing() {
  * acting user got nothing.
  */
 async function testDmBookingLifecycleToast() {
-  const { formatDmBookingLifecycleToast, DM_BOOKING_LIFECYCLE_TOAST_MS } = await import(
+  const { formatDmBookingLifecycleToast } = await import(
     "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const { INLINE_TAB_FEEDBACK_FADE_MS, INLINE_TAB_FEEDBACK_CLEAR_MS } = await import(
+    "../lib/design/inlineTabFeedback.js"
   );
   const planner = "planner-1";
   const dj = "dj-1";
@@ -21758,12 +21761,7 @@ async function testDmBookingLifecycleToast() {
     );
   }
 
-  assert.ok(
-    DM_BOOKING_LIFECYCLE_TOAST_MS > 0 && DM_BOOKING_LIFECYCLE_TOAST_MS <= 10000,
-    "the toast must be temporary",
-  );
-
-  // --- wiring: existing realtime + existing notice, nothing new ----------
+  // --- wiring: existing realtime + existing neutral surface, nothing new --
   const dmPage = readFileSync(
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
     "utf8",
@@ -21780,11 +21778,59 @@ async function testDmBookingLifecycleToast() {
     /formatDmBookingLifecycleToast\(booking, currentUserId, otherUserLabel\)/,
     "the toast must be attributed to the DM's other participant, who is the actor in a 1:1 thread",
   );
+
+  // The surface: the app's shared NEUTRAL transient feedback, not the amber
+  // warning line. "Alice accepted your booking" is not a warning.
   assert.match(
     dmPage,
-    /setNotice\(toast\);/,
-    "the toast must reuse the page's existing notice surface, not a new component",
+    /useInlineTabFeedbackDismiss\(\s*bookingLifecycleToast,\s*clearBookingLifecycleToast,\s*\)/,
+    "the toast must use the shared transient-feedback lifecycle hook, not a hand-rolled timer",
   );
+  assert.match(
+    dmPage,
+    /<InlineTabFeedbackMessage\s+message=\{bookingLifecycleToast\}/,
+    "the toast must render through the shared neutral feedback component",
+  );
+  assert.match(
+    dmPage,
+    /setBookingLifecycleToast\(toast\);/,
+    "the toast must own its own state, so the amber notice line is untouched",
+  );
+  // The regression this replaced: routing the toast through `notice` painted
+  // it --ftc-color-warning, and sharing that state meant its auto-clear could
+  // also wipe a genuine booking warning.
+  assert.doesNotMatch(
+    dmPage,
+    /setNotice\(toast\)/,
+    "the toast must NOT reuse the amber warning line -- that is the colour bug",
+  );
+  const noticeLine = dmPage.slice(dmPage.indexOf("{notice ? ("), dmPage.indexOf("{notice ? (") + 200);
+  assert.match(
+    noticeLine,
+    /text-\[var\(--ftc-color-warning\)\]/,
+    "the existing warning line must KEEP its amber -- only the toast moved off it",
+  );
+
+  // The shared surface owns the timing, and it must stay temporary.
+  assert.ok(
+    INLINE_TAB_FEEDBACK_FADE_MS > 0 && INLINE_TAB_FEEDBACK_CLEAR_MS <= 10000,
+    "the toast must be temporary",
+  );
+  assert.ok(
+    INLINE_TAB_FEEDBACK_CLEAR_MS > INLINE_TAB_FEEDBACK_FADE_MS,
+    "the message must clear only after the opacity transition finishes, or it disappears mid-fade",
+  );
+  const feedbackClass = readFileSync(
+    new URL("../lib/design/inlineTabFeedback.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    feedbackClass,
+    /INLINE_TAB_FEEDBACK_TEXT_CLASS =\s*\n?\s*"[^"]*text-ftc-text-muted[^"]*"/,
+    "the shared feedback surface must stay neutral -- if it gains a status colour the toast " +
+      "inherits it",
+  );
+
   // The transition guard: a plain state check would re-toast on every reload.
   assert.match(
     dmPage,
@@ -21796,13 +21842,6 @@ async function testDmBookingLifecycleToast() {
     /if \(!previousSignatures \|\| !currentUserId\) \{\s*return;/,
     "the first snapshot must only seed the signature map, never toast",
   );
-  // Self-clearing, and only its own text.
-  assert.match(
-    dmPage,
-    /setNotice\(\(current\) => \(current === toast \? null : current\)\)/,
-    "the auto-clear must not wipe a booking warning set in the meantime",
-  );
-  assert.match(dmPage, /DM_BOOKING_LIFECYCLE_TOAST_MS\)/);
   // It must never become a message.
   assert.doesNotMatch(
     dmPage,

@@ -394,9 +394,6 @@ export function parseDmBookingTimelineBookingId(text: string): string | null {
   return match?.[1] ?? null;
 }
 
-/** How long the in-DM lifecycle toast stays up before fading itself out. */
-export const DM_BOOKING_LIFECYCLE_TOAST_MS = 5000;
-
 /**
  * Temporary in-DM confirmation of a booking lifecycle transition.
  *

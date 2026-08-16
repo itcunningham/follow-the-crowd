@@ -130,10 +130,11 @@ import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/c
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
 import {
-  DM_BOOKING_LIFECYCLE_TOAST_MS,
   formatDmBookingLifecycleToast,
   parseDmBookingTimelineBookingId,
 } from "@/lib/dm/dmBookingSystemMessages";
+import { InlineTabFeedbackMessage } from "@/app/components/feedback/InlineTabFeedbackMessage";
+import { useInlineTabFeedbackDismiss } from "@/lib/design/inlineTabFeedback";
 import {
   CHAT_MESSAGE_TARGET_PARAM,
   parseChatMessageTargetIdParam,
@@ -619,17 +620,20 @@ export default function DmChatPage() {
    * skipped, and an unrelated column change leaves the signature identical.
    * formatDmBookingLifecycleToast then drops anything the current user did
    * themselves.
+   *
+   * Presentation is the app's existing transient-feedback surface --
+   * useInlineTabFeedbackDismiss + InlineTabFeedbackMessage, the same neutral
+   * muted copy and 2700ms/300ms fade Event Plans, Gigs History and the DJ
+   * availability calendar already use. It is deliberately NOT the `notice`
+   * line: that one is amber `--ftc-color-warning` and belongs to the booking
+   * action handlers' warnings, which must keep reading as warnings.
    */
   const bookingLifecycleSignatureRef = useRef<Map<string, string> | null>(null);
-  const bookingLifecycleToastTimeoutRef = useRef<number | undefined>(undefined);
-
-  useEffect(
-    () => () => {
-      if (bookingLifecycleToastTimeoutRef.current !== undefined) {
-        window.clearTimeout(bookingLifecycleToastTimeoutRef.current);
-      }
-    },
-    [],
+  const [bookingLifecycleToast, setBookingLifecycleToast] = useState<string | null>(null);
+  const clearBookingLifecycleToast = useCallback(() => setBookingLifecycleToast(null), []);
+  const bookingLifecycleToastFading = useInlineTabFeedbackDismiss(
+    bookingLifecycleToast,
+    clearBookingLifecycleToast,
   );
 
   useEffect(() => {
@@ -663,18 +667,7 @@ export default function DmChatPage() {
         continue;
       }
 
-      setNotice(toast);
-
-      if (bookingLifecycleToastTimeoutRef.current !== undefined) {
-        window.clearTimeout(bookingLifecycleToastTimeoutRef.current);
-      }
-
-      // Only clear our own toast -- a booking warning set in the meantime by
-      // one of the action handlers must survive this timer.
-      bookingLifecycleToastTimeoutRef.current = window.setTimeout(() => {
-        setNotice((current) => (current === toast ? null : current));
-      }, DM_BOOKING_LIFECYCLE_TOAST_MS);
-
+      setBookingLifecycleToast(toast);
       break;
     }
   }, [bookings, currentUserId, otherUserLabel]);
@@ -2406,6 +2399,12 @@ export default function DmChatPage() {
       {notice ? (
         <p className="px-4 pb-2 text-sm text-[var(--ftc-color-warning)]">{notice}</p>
       ) : null}
+
+      <InlineTabFeedbackMessage
+        message={bookingLifecycleToast}
+        fading={bookingLifecycleToastFading}
+        className="w-full px-4 pb-2 text-center"
+      />
 
       {showNewMessagesPill ? (
         <ChatNewMessagesPill

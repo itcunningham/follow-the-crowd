@@ -72,10 +72,23 @@ still fall to the bottom, so the test cannot pass vacuously.
 `message_id` plumbing, booking card design, `active_chat_presence`, and every lifecycle DB row.
 **No SQL.**
 
-**Known nit, not fixed:** the toast renders in the notice line's existing `--ftc-color-warning`
-colour, which reads oddly for "accepted". Reusing the existing surface was the explicit instruction;
-a success/neutral variant is a follow-up. The new effect also adds one instance of
-`react-hooks/set-state-in-effect`, a rule the same file already violates three times.
+**Follow-up (same branch): the toast is now neutral, not amber.** It first shipped through the DM's
+`notice` line, which is `--ftc-color-warning` (`#fbbf24`) — wrong for "Alice accepted your booking",
+and sharing that state meant the toast's auto-clear could also wipe a genuine booking warning. It
+now uses the app's **existing** neutral transient-feedback surface — `useInlineTabFeedbackDismiss`
++ `InlineTabFeedbackMessage` (`text-ftc-text-muted`, `transition-opacity duration-300`, 2700ms
+visible / 3000ms clear) — the same one Event Plans, Gigs History, Booking Plans and the DJ
+availability calendar already use. **No new colour, token, variant or component**, and the
+hand-rolled timer plus `DM_BOOKING_LIFECYCLE_TOAST_MS` are gone; the shared hook owns the timing.
+The amber `notice` line is untouched and still amber for real warnings.
+
+Measured on device at 1280 / 390 / 320: colour `rgb(100, 116, 139)` (was `#fbbf24`),
+`transition: opacity 0.3s`, no truncation, no page overflow, self-clears, adds no chat line. Two
+more mutations caught — routing the toast back through `setNotice`, and giving the shared feedback
+class a status colour.
+
+**Known nit, not fixed:** the effect adds one instance of `react-hooks/set-state-in-effect`, a rule
+the same file already violates three times.
 
 ## Booking lifecycle pushes now deep-link to their own message (2026-08-16)
 
