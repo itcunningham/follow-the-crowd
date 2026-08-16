@@ -12,6 +12,27 @@ export const CHAT_MESSAGE_TARGET_PARAM = "message";
 const MESSAGE_TARGET_SCROLL_MAX_ATTEMPTS = 12;
 const MESSAGE_TARGET_SCROLL_RETRY_MS = 50;
 
+/**
+ * Landing on the target is not the same as staying on it. Releasing
+ * suppression in the same tick as the scroll (what this hook used to do) left
+ * the position defended by `pinnedToBottomRef` alone, and everything that
+ * settles *after* first paint gets a turn at it: attachment images finishing
+ * decode, the crew page's artwork refresh on visibilitychange, the DM page's
+ * 5s read-receipt poll, a realtime message arriving, the highlight timeout
+ * expiring. Any one of them that re-pins and scrolls wins, and the reader is
+ * yanked to the bottom a beat after arriving -- the reported symptom.
+ *
+ * So the target owns the viewport for a short settling window instead: keep
+ * suppression on, re-assert the target position on each layout change, and
+ * only hand control back once layout has been quiet, the budget is spent, or
+ * the user takes over by scrolling themselves.
+ */
+const MESSAGE_TARGET_SETTLE_QUIET_MS = 400;
+const MESSAGE_TARGET_SETTLE_MAX_MS = 4000;
+
+/** Real user takeover -- these are gestures, never anything an effect emits. */
+const USER_TAKEOVER_EVENTS = ["pointerdown", "touchstart", "wheel", "keydown"] as const;
+
 export function parseChatMessageTargetIdParam(
   value: string | null | undefined,
 ): string | null {
@@ -97,10 +118,90 @@ export function useChatMessageTargetScroll({
 
     let cancelled = false;
     let retryTimeoutId: number | undefined;
+    let settleObserver: ResizeObserver | undefined;
+    let settleQuietTimeoutId: number | undefined;
+    let settleMaxTimeoutId: number | undefined;
+    let endSettle: (() => void) | undefined;
 
     const releaseAutoScrollSuppression = () => {
       completedRef.current = true;
       suppressAutoScrollRef.current = false;
+    };
+
+    /**
+     * Holds the viewport on `messageElement` until layout stops moving.
+     * Suppression stays on for the whole window, so any sibling effect that
+     * tries to scroll to the bottom in the meantime is a no-op rather than a
+     * race we have to win.
+     */
+    const holdTargetUntilSettled = (messageElement: HTMLElement, container: HTMLElement) => {
+      const reassert = () => {
+        // Re-measure every time: the whole point is that layout moved.
+        container.scrollTop = computeChatMessageCenterScrollTop(container, messageElement);
+        clampChatScrollTop(container);
+        syncPinnedToBottomRefAfterDirectScroll(container, pinnedToBottomRef);
+      };
+
+      endSettle = () => {
+        if (!endSettle) {
+          return;
+        }
+
+        endSettle = undefined;
+        settleObserver?.disconnect();
+        settleObserver = undefined;
+
+        if (settleQuietTimeoutId !== undefined) window.clearTimeout(settleQuietTimeoutId);
+        if (settleMaxTimeoutId !== undefined) window.clearTimeout(settleMaxTimeoutId);
+
+        for (const eventName of USER_TAKEOVER_EVENTS) {
+          container.removeEventListener(eventName, handleUserTakeover);
+        }
+
+        // Leave pinnedToBottomRef agreeing with wherever we actually ended up,
+        // so normal chat behaviour resumes from an honest starting point.
+        syncPinnedToBottomRefAfterDirectScroll(container, pinnedToBottomRef);
+        releaseAutoScrollSuppression();
+      };
+
+      function handleUserTakeover() {
+        // The reader has taken over -- stop fighting them immediately.
+        endSettle?.();
+      }
+
+      const restartQuietWindow = () => {
+        if (settleQuietTimeoutId !== undefined) {
+          window.clearTimeout(settleQuietTimeoutId);
+        }
+
+        settleQuietTimeoutId = window.setTimeout(() => endSettle?.(), MESSAGE_TARGET_SETTLE_QUIET_MS);
+      };
+
+      for (const eventName of USER_TAKEOVER_EVENTS) {
+        container.addEventListener(eventName, handleUserTakeover, { passive: true });
+      }
+
+      if (typeof ResizeObserver !== "undefined") {
+        settleObserver = new ResizeObserver(() => {
+          if (!endSettle) {
+            return;
+          }
+
+          reassert();
+          restartQuietWindow();
+        });
+
+        settleObserver.observe(container);
+
+        const contentRoot = container.querySelector<HTMLElement>("[data-chat-content-root]");
+
+        if (contentRoot) {
+          settleObserver.observe(contentRoot);
+        }
+      }
+
+      restartQuietWindow();
+      settleMaxTimeoutId = window.setTimeout(() => endSettle?.(), MESSAGE_TARGET_SETTLE_MAX_MS);
     };
 
     const scrollToTarget = () => {
@@ -132,7 +233,10 @@ export function useChatMessageTargetScroll({
       // bottom once suppression drops.
       syncPinnedToBottomRefAfterDirectScroll(container, pinnedToBottomRef);
       onTargetFound(targetMessageId);
-      releaseAutoScrollSuppression();
+      // Mark the retry loop done, but deliberately do NOT drop suppression
+      // yet -- holdTargetUntilSettled owns that, once layout is quiet.
+      completedRef.current = true;
+      holdTargetUntilSettled(messageElement, container);
       return true;
     };
 
@@ -172,6 +276,11 @@ export function useChatMessageTargetScroll({
       if (retryTimeoutId !== undefined) {
         window.clearTimeout(retryTimeoutId);
       }
+
+      // Unmounting or retargeting mid-settle must not strand suppression on --
+      // it is shared with the sibling scroll flows, and a stuck `true` would
+      // silently disable scroll-to-bottom for the rest of the page's life.
+      endSettle?.();
     };
   }, [
     targetMessageId,

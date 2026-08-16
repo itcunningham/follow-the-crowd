@@ -347,8 +347,173 @@ export async function testMissingTargetFallsBackToBottom(): Promise<void> {
   });
 }
 
+
+/**
+ * Round 10, the reported symptom: the target IS reached, then "a moment
+ * later" the viewport jumps to the bottom. The first target scroll landing
+ * correctly proves nothing -- what matters is whether the position survives
+ * everything that settles afterwards. These exercise the full sequence:
+ *
+ *   A. target scroll succeeds
+ *   B. late effects fire (layout changes, a message append, and an outright
+ *      scroll-to-bottom request from a sibling flow)
+ *   C. the viewport is STILL on the target
+ */
+export async function testTargetSurvivesRepeatedLateLayoutChanges(): Promise<void> {
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages = makeMessages();
+    const targetMessageId = "msg-10";
+
+    await render({ loading: true, messages: [], targetMessageId });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1600, clientHeight: 600 });
+
+    await render({ loading: false, messages, targetMessageId });
+    mockMessageRects(scroller, new Map(messages.map((m) => [m.id, 80])));
+    doubles.flushAllRaf();
+
+    const onTarget = metrics.getScrollTop();
+    assert.notEqual(onTarget, metrics.getMaxScrollTop(), "phase A: must not already be at the bottom");
+    assert.notEqual(onTarget, 0, "phase A: target must actually be centered");
+
+    // Phase B: several successive layout settles, the shape of multiple
+    // attachment images decoding one after another.
+    for (let wave = 0; wave < 4; wave += 1) {
+      doubles.triggerAllResizeCallbacks();
+      doubles.flushAllRaf();
+    }
+
+    assert.equal(
+      metrics.getScrollTop(),
+      onTarget,
+      "phase C: repeated late layout changes must not drift the viewport off the target",
+    );
+  });
+}
+
+/**
+ * The decisive one. While the target is settling, a sibling flow explicitly
+ * asks to scroll to the bottom -- which is what every late effect on the real
+ * page ultimately does (ResizeObserver re-pin, append effect, initial-scroll
+ * effect). It must be a no-op until the target hands control back.
+ */
+export async function testBottomScrollIsSuppressedWhileTargetSettles(): Promise<void> {
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages = makeMessages();
+    const targetMessageId = "msg-10";
+
+    await render({ loading: true, messages: [], targetMessageId });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1600, clientHeight: 600 });
+
+    await render({ loading: false, messages, targetMessageId });
+    mockMessageRects(scroller, new Map(messages.map((m) => [m.id, 80])));
+    doubles.flushAllRaf();
+
+    const onTarget = metrics.getScrollTop();
+
+    await act(async () => {
+      apiRef.current!.scrollToBottomSmooth();
+    });
+    doubles.flushAllRaf();
+
+    assert.equal(
+      metrics.getScrollTop(),
+      onTarget,
+      "a scroll-to-bottom requested while the target is still settling must be ignored",
+    );
+
+    // Once the settle window closes, normal behaviour must come back --
+    // the guard is a short lease on the viewport, not a permanent lock.
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    doubles.flushAllRaf();
+
+    await act(async () => {
+      apiRef.current!.scrollToBottomSmooth();
+    });
+    doubles.flushAllRaf();
+
+    assert.equal(
+      metrics.getScrollTop(),
+      metrics.getMaxScrollTop(),
+      "after the target settles, scroll-to-bottom must work normally again -- otherwise the guard has " +
+        "permanently disabled auto-scroll for the rest of the page's life",
+    );
+  });
+}
+
+/** A late layout change arriving AFTER the settle window must behave normally
+ *  again: the reader is parked in history, so it must still not yank them. */
+export async function testTargetHoldsAfterSettleWindowCloses(): Promise<void> {
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages = makeMessages();
+    const targetMessageId = "msg-10";
+
+    await render({ loading: true, messages: [], targetMessageId });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1600, clientHeight: 600 });
+
+    await render({ loading: false, messages, targetMessageId });
+    mockMessageRects(scroller, new Map(messages.map((m) => [m.id, 80])));
+    doubles.flushAllRaf();
+
+    const onTarget = metrics.getScrollTop();
+
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    doubles.flushAllRaf();
+
+    doubles.triggerAllResizeCallbacks();
+    doubles.flushAllRaf();
+
+    assert.equal(
+      metrics.getScrollTop(),
+      onTarget,
+      "once suppression is handed back, pinnedToBottomRef must still say 'not pinned' so a reader " +
+        "parked in history is left alone",
+    );
+  });
+}
+
+/** A message arriving while the reader sits on a deep-linked target must not
+ *  drag them to the bottom -- it should behave like reading history. */
+export async function testIncomingMessageDoesNotStealTheTarget(): Promise<void> {
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages = makeMessages();
+    const targetMessageId = "msg-10";
+
+    await render({ loading: true, messages: [], targetMessageId });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1600, clientHeight: 600 });
+
+    await render({ loading: false, messages, targetMessageId });
+    mockMessageRects(scroller, new Map(messages.map((m) => [m.id, 80])));
+    doubles.flushAllRaf();
+
+    const onTarget = metrics.getScrollTop();
+
+    const withIncoming = [
+      ...messages,
+      { id: "msg-late", text: "late arrival", user_id: "them", created_at: "2026-01-01T01:00:00Z" },
+    ];
+    await render({ loading: false, messages: withIncoming, targetMessageId });
+    mockMessageRects(scroller, new Map(withIncoming.map((m) => [m.id, 80])));
+    doubles.triggerAllResizeCallbacks();
+    doubles.flushAllRaf();
+
+    assert.equal(
+      metrics.getScrollTop(),
+      onTarget,
+      "a message arriving after a deep link must not pull the reader off the targeted message",
+    );
+  });
+}
+
 export async function runMessageTargetScrollPriorityTests(): Promise<void> {
   await testTargetScrollSurvivesLayoutChangeAfterRelease();
+  await testTargetSurvivesRepeatedLateLayoutChanges();
+  await testBottomScrollIsSuppressedWhileTargetSettles();
+  await testTargetHoldsAfterSettleWindowCloses();
+  await testIncomingMessageDoesNotStealTheTarget();
   await testNoTargetStillLandsAtBottom();
   await testMissingTargetFallsBackToBottom();
 }

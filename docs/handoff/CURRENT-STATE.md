@@ -1,5 +1,30 @@
 # Current state (last updated: 2026-08-16)
 
+## Eleventh QA round: the target now holds the viewport while layout settles (2026-08-16)
+
+**Report:** with the tenth round's service-worker fix live, fresh pushes now reach the correct historical message — but a moment later the chat scrolls itself back to the bottom.
+
+**Honest caveat up front: this snap-back does not reproduce headless.** Traced `scrollTop` every 250ms for 25 seconds per case against Production (WebKit, iPhone 13, fresh context so image caches could not mask late decode) across historical DM text, historical DM image, and historical crew text targets. All three landed on target and **stayed** there for the full 25s. So the trigger is something the headless environment does not produce — a real resume from background, a realtime reconnect, the crew page's `refreshEventArtwork()` on `visibilitychange`, the DM page's 5s read-receipt poll, or slower on-device image decode.
+
+**Root cause of the *class* of failure, which is fixable regardless.** `useChatMessageTargetScroll` released `suppressAutoScrollRef` **in the same synchronous tick as the target scroll**. From that instant the position was defended by `pinnedToBottomRef` alone — and that ref has several writers (`scrollToBottom` sets it `true`; the `loading` reset in `useChatScroll` sets it `true`; the native scroll handler recomputes it). Every effect that settles after first paint then gets a turn at the viewport: image decode via the ResizeObserver re-pin, the append effect, the initial-scroll effect after any `loading` flip. Any one of them that re-pins wins, and the reader is yanked to the bottom a beat after arriving. Landing on the target was never the hard part; **staying** on it was, and nothing guaranteed it.
+
+**Fix — the target holds a short lease on the viewport** (`lib/chat/messageTargetScroll.ts`, one shared hook, so DM and crew get it identically with no divergent handling). After a successful target scroll the hook now keeps suppression **on** and enters a settling phase: a `ResizeObserver` on the container and content root re-asserts the target's centred position on every layout change, restarting a 400ms quiet timer each time. Control is handed back — suppression released, `pinnedToBottomRef` synced to wherever the viewport honestly ended up — when layout has been quiet for 400ms, when a 4s hard budget expires, or immediately when the user takes over (`pointerdown`/`touchstart`/`wheel`/`keydown`). Cleanup also fires on unmount or retarget, so a stuck `true` can never permanently disable auto-scroll.
+
+Because suppression stays on for the window, every late bottom-scroll is a **no-op rather than a race to win** — which is why this works without knowing exactly which effect fires on the device.
+
+**Tests — four new ones, all reproducing the full A→B→C sequence** the task required (target scroll succeeds → late effects fire → viewport still on target), not just the first scroll:
+
+- repeated successive layout settles (several images decoding in sequence)
+- **an explicit `scrollToBottomSmooth()` during the settle window is ignored** — the decisive proof the guard holds — *and* works normally again once the window closes, so the lease is provably temporary
+- a layout change after the window closes still leaves a reader parked in history alone
+- a message arriving after the deep link does not steal the target
+
+**Mutation-tested**: reverting to the immediate-release behaviour fails on "a scroll-to-bottom requested while the target is still settling must be ignored".
+
+**Verified:** `npm run build` passes. 14/14 relevant tests pass, including the sibling scroll flows the shared `suppressAutoScrollRef` could have disturbed — `testDmBookingReturnScroll`, `testDmChatReopenScroll`, `testDmChatGrowthScrollRace`, `testDmImageAttachmentDimensions`.
+
+**Not touched**, per the task's explicit list: push-send, service worker navigation, notification payload links, `message_id` threading, SQL, VAPID. **No Edge Function or SQL deploy needed this round** — the change is client-side only and ships with Vercel.
+
 ## Tenth QA round: notificationclick lost the target to a hydration race (2026-08-16)
 
 **Report:** fresh pushes — created after the ninth round's `push-send` v9 deploy, with `message_id` confirmed populated — *still* opened the correct chat at the bottom.
@@ -1334,6 +1359,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `dba69b37` — chat: hold the deep-link target while layout settles
 - `c197aa1f` — sw: navigate the existing window on notification click
 - `4ac98fe3` — Deploy push-send; document that Vercel never deploys Edge Functions
 - `591c5fbe` — docs(handoff): document scroll-priority fix and active-thread push suppression
