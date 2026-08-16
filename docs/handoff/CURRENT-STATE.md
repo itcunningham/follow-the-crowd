@@ -1,4 +1,48 @@
-# Current state (last updated: 2026-08-15)
+# Current state (last updated: 2026-08-16)
+
+## Ninth QA round: the deep-link was never broken — the Edge Function was never deployed (2026-08-16)
+
+**Report:** tapping an older DM or crew-chat push still opened the chat at the bottom instead of the triggering message — i.e. the seventh and eighth rounds' feature appeared to have done nothing on the device.
+
+**Root cause — a deployment gap, not a code bug.** `supabase/functions/push-send/index.ts` builds the outbound push payload's `link`, and the seventh round changed it to append `?message=<messages.id>`. **Vercel does not deploy Supabase Edge Functions.** Merging to `main` shipped the Next.js half and nothing else, so `push-send` kept serving its **2026-08-13 build (version 8)** — the pre-deep-link version — for a full day. Every push therefore carried a bare `/dm/<id>` or `/events/<id>/chat` link with no target, and the client, working exactly as designed, opened the chat at the bottom. Confirmed by downloading the live function and diffing it against `main`: 348 deployed lines vs 397 in the repo, with **zero** occurrences of `message=`, `message_id`, `active_chat_presence`, or `PRESENCE_TTL` in the deployed source.
+
+Both prior rounds verified this feature by reading the repo, which is why neither caught it: the repo was correct the whole time. Nothing in the tooling compares deployed Edge Function source to `main`, and `supabase/README.md` + `docs/handoff/SUPABASE.md` documented a deploy order covering migrations and the app but **never mentioned Edge Functions at all** — so there was no step to skip. Both files now do, with the exact command, the `--no-verify-jwt` requirement, and how to diff what is actually live. That documentation gap is the systemic fix; the deploy itself was the immediate one.
+
+**Fixed by deploying, not by editing.** `push-send` redeployed from `main` — now **version 9**, `verify_jwt: false` preserved, and a re-download confirms the deployed source is byte-identical to the repo. Post-deploy the function still returns its own `405` to GET and `401` to an unauthenticated POST, proving it boots and its webhook auth path runs — push delivery itself untouched.
+
+**The client side was already correct and already live** — proven against Production, not inferred. Signed in as the QA DJ account with Playwright WebKit at iPhone 13 / 390px and drove twelve real scenarios against `follow-the-crowd.vercel.app`:
+
+| Scenario | Result |
+|---|---|
+| DM manual open (no param) | bottom, `8027/8027` |
+| DM old text target (msg 4 of 77) | centred, offset **0** from container centre |
+| DM old **image** target | centred, offset **0** — no snap-back after a 6s settle |
+| DM latest-message target | visible, at bottom |
+| DM bogus/deleted target | clean fallback to bottom, no console errors |
+| Crew manual open | bottom |
+| Crew old user text (08-09) | centred, offset **0** |
+| Crew mid user text (08-15) | visible, offset −19 |
+| Crew old **image** target | centred, offset **0** |
+| Crew bogus/deleted target | clean fallback to bottom |
+
+The image cases matter most: they are exactly the late-decode layout shift the eighth round's `pinnedToBottomRef` fix targeted, and a 6-second settle confirms it holds on real Production code, not just in happy-dom.
+
+**A crew system message (`"Crew chat started"`) is not a deep-link target** — it renders without `data-chat-message-id`, so it falls back to the bottom. Correct by construction: system notices go through `createNotification` with no `messageId`, so they never produce a `?message=` link in the first place.
+
+**Two further live-data findings, from the first session to actually query the production DB** (prior rounds had no Supabase access; this one signed in as the QA accounts with the anon key and read their own rows under RLS):
+
+1. **`notifications.message_id` is populated — but only from 2026-08-15 ~08:00 UTC onward.** Every message notification before that is `NULL` (24 of 52 on the QA DJ account). Those can never deep-link: pushes already delivered to a device have a frozen payload, and the rows themselves carry no target for the in-app list either. **A retest must use a newly sent message** — an old notification landing at the bottom after this deploy is expected, not a regression.
+2. **Migration `20260818000000_active_chat_presence.sql` was never applied.** `public.active_chat_presence` does not exist in production, so the eighth round's "don't push a thread the recipient is reading" feature is inert. It fails safe — `useActiveChatPresence` fires `void` upserts whose errors are discarded, and `push-send` reads the table with destructured `data` only, so a missing table yields `null` and falls through to a normal send. **Still pending Isaac's SQL Editor paste.**
+
+**Also spotted, out of scope, filed separately:** every crew chat page load fires a `400` on a `rest/v1/events?select=id,created_at,owner_id,booking_plan_id,...` request — a select list that does not match `EVENT_QUERY_FIELDS`, so there is a second divergent events query in that path. Page renders fine; it is a wasted failing round-trip and console noise that makes real errors harder to spot during QA.
+
+**The feature's own two wiring tests had been failing since the eighth round merged, unnoticed.** `testDmPageWiresMessageTargetScroll` and `testCrewChatPageWiresMessageTargetScroll` assert the exact `useChatMessageTargetScroll({...})` call shape, ending `suppressAutoScrollRef,\n});`. The eighth round inserted `pinnedToBottomRef,` into that call and never updated the seventh round's assertions, so both silently went red — invisible because the suite halts long before reaching them. Both patterns now expect `pinnedToBottomRef,`, and **each was mutation-tested**: removing `pinnedToBottomRef` from the real call makes both fail, restoring it makes both pass.
+
+**Tests run.** `npm run build` passes. All **9** deep-link tests pass in isolation: the seven `?message=` tests, `testMessageTargetScrollPriority` (the eighth round's happy-dom ResizeObserver test), and `testCreateNotificationRpcPayloadIncludesMessageId`.
+
+**`npm run test:regressions` is broken far earlier and never reaches any of them** — worse than the single known failure recent rounds have been recording. It halts on `testDmAttachmentsBucketIsPrivate`, then on a chain inside `testPrivateProfileFieldsAreDatabaseEnforced`. **Every one checked is a false failure: the SQL and app code are correct and the test's own regex is wrong** — `.*` used across multi-line SQL statements without `/s`, and lowercase patterns without `/i` matched against uppercase SQL. Two of those are security assertions (`REVOKE ALL ON public.user_private_data FROM public/anon`), and the REVOKEs were verified genuinely present, so this is **not** a security gap — but it does mean the suite has been providing far less cover than its green-ish reputation suggested. Deliberately **not** fixed here to keep this round's diff honest; filed as its own task with all eight diagnosed assertions listed.
+
+**Not touched:** no application code changed this round. Repo edits are `supabase/README.md`, `docs/handoff/SUPABASE.md`, this file, and the two stale test assertions above. VAPID, the webhook secret, `pg_net`, badge logic, run-sheet and booking notifications, RLS, and `public/sw.js` are all untouched.
 
 ## Eighth real-device QA round: scroll-priority race fixed; push suppressed for active thread (merge on `main`, 2026-08-15)
 
@@ -1246,6 +1290,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Feature | Script / migration |
 |---------|-------------------|
 | **Web Push notifications** | `supabase/migrations/20260812000000_push_subscriptions.sql` — push_subscriptions table with RLS. **Also requires:** Edge Function deployment, webhook creation, VAPID secrets (see Web Push section above) |
+| **⚠️ Active-thread push suppression** | **`supabase/migrations/20260818000000_active_chat_presence.sql` — NOT applied. Verified missing from production 2026-08-16;** `public.active_chat_presence` does not exist, so the eighth round's "skip a push for a thread the recipient is reading" feature is inert. Fails safe (both the client upsert and `push-send`'s read swallow the error and fall through to a normal send), so nothing is broken by leaving it — the feature just does nothing until pasted. |
 | Event history hide | `supabase/migrations/20250710120000_event_history_hide.sql` |
 | Gig history hide (per-user) | `supabase/migrations/20250710130000_booking_request_history_hides.sql` |
 | Planner Archived tab | `scripts/setupBookingRequestArchiving.sql` (sender `archived_at`) |
@@ -1260,6 +1305,10 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `4ac98fe3` — Deploy push-send; document that Vercel never deploys Edge Functions
+- `591c5fbe` — docs(handoff): document scroll-priority fix and active-thread push suppression
+- `51058c41` — fix: target-message scroll survives layout changes; suppress push for active thread
+- `cf8cf1e8` — feat: deep-link push notifications to the exact chat message
 - `7c6cf928` — Integrate PushNotificationsSection into Settings
 - `4923a9b1` — Merge Web Push feature branch to main
 - `6a4f24db` — Remove local-only allowedDevOrigins config

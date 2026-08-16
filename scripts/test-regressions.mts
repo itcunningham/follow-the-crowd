@@ -21144,7 +21144,7 @@ function testDmPageWiresMessageTargetScroll() {
 
   assert.match(
     dmPageSource,
-    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*\}\);/,
+    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*pinnedToBottomRef,\s*\n\s*\}\);/,
     "the DM page must wire the hook to its own already-instantiated addHighlightedMessageId/scrollToBottomSmooth, not new bespoke callbacks",
   );
 
@@ -21193,7 +21193,7 @@ function testCrewChatPageWiresMessageTargetScroll() {
 
   assert.match(
     crewChatPageSource,
-    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*\}\);/,
+    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*pinnedToBottomRef,\s*\n\s*\}\);/,
     "the crew chat page must wire the hook to its own already-instantiated addHighlightedMessageId/scrollToBottomSmooth",
   );
 }

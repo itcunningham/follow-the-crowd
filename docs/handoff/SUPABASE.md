@@ -2,7 +2,7 @@
 
 Database changes are versioned in **`supabase/migrations/`**. See **`supabase/README.md`** for deploy steps.
 
-Isaac applies migrations by pasting the migration file once in the **Supabase SQL Editor** (this repo is not configured for Supabase CLI).
+Isaac applies migrations by pasting the migration file once in the **Supabase SQL Editor**. The repo has no `supabase/config.toml` and is not linked, so `supabase db push` is not the path — but the CLI itself *is* installed and authenticated, and is the only way to deploy Edge Functions (see below).
 
 Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New feature schema should be added as timestamped migrations, not duplicate `scripts/setup*.sql` files.
 
@@ -37,7 +37,26 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 
 1. Merge migration to `main`
 2. Paste and run the migration in Supabase SQL Editor
-3. Deploy the Next.js app
+3. **Deploy any changed Edge Function** — see below. Vercel does not do this.
+4. Deploy the Next.js app
+
+## Edge Functions (`supabase/functions/`) — separate deploy, easy to forget
+
+**Merging to `main` does not deploy an Edge Function.** Vercel builds the Next.js app only. The function keeps serving whatever was last pushed to Supabase, with no error anywhere to tell you the repo and production have diverged.
+
+This is not hypothetical: the push deep-link fix merged 2026-08-15 sat undeployed for a day while `push-send` ran its 2026-08-13 build. Two QA rounds passed it on source inspection; the feature was dead on the device the whole time.
+
+```bash
+# deploy after any change under supabase/functions/
+supabase functions deploy push-send --project-ref gidplxriruttihfirvii --no-verify-jwt
+
+# check what is actually live (version number + verify_jwt)
+supabase functions list --project-ref gidplxriruttihfirvii
+```
+
+`--no-verify-jwt` must be kept — `push-send` authenticates the database webhook itself via `x-push-webhook-secret`. Deploying without it makes the gateway demand a JWT and every push 401s before the function runs.
+
+Contrary to older notes in this file, the **Supabase CLI is installed and authenticated on Isaac's machine** — `supabase functions deploy/list/download` all work. Migrations are still applied by pasting into the SQL Editor.
 
 ## Rough setup order (fresh project)
 
