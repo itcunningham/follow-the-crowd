@@ -18,6 +18,7 @@ import {
   DM_BOOKING_REQUEST_DECLINED_MESSAGE,
   formatDmBookingSystemMessageDisplay,
   isDmBookingSystemMessage,
+  isVersionedBookingLifecycleDmMessage,
 } from "@/lib/dm/dmBookingSystemMessages";
 
 /** Gap after which the next message starts a new timestamp cluster. */
@@ -245,6 +246,27 @@ export function classifyDmConversationMessageKind(
     messageIndex?: number;
   },
 ): DmChatVisibleMessageKind {
+  // The booking card is the ONE visible source of truth for booking state, so
+  // the three versioned lifecycle rows -- "Booking confirmed | withdrawn |
+  // cancelled · <event> · <bookingId>" -- never render as visible chat.
+  //
+  // Hidden VISUALLY, never logically. The `messages` rows stay exactly where
+  // they are: they still set the conversation's latest_activity, still mark it
+  // unread for the recipient, still drive the Messages badge, still carry the
+  // notifications.message_id a lifecycle push deep-links to, and are still
+  // found by parseDmBookingTimelineBookingId for the booking-card fallback
+  // (which reads the loaded `messages` array, not the DOM). Skipping the
+  // INSERT instead is the failure this replaces -- CURRENT-STATE records that
+  // when the confirmation insert was skipped, the invite stayed latest and the
+  // planner never got unread or a badge.
+  //
+  // Legacy unversioned rows ("Booking confirmed", "Booking accepted · <event>",
+  // "Booking request cancelled by planner.") are deliberately NOT matched here
+  // and keep rendering as timeline notices in historical threads.
+  if (isVersionedBookingLifecycleDmMessage(messageText)) {
+    return "hidden";
+  }
+
   if (
     isBookingActivityDmMessage(messageText) &&
     parseEventCancellationActivityEventName(messageText)

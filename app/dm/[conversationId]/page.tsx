@@ -129,7 +129,13 @@ import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
-import { parseDmBookingTimelineBookingId } from "@/lib/dm/dmBookingSystemMessages";
+import {
+  buildDmBookingLifecycleSignatures,
+  parseDmBookingTimelineBookingId,
+  pickDmBookingLifecycleToast,
+} from "@/lib/dm/dmBookingSystemMessages";
+import { InlineTabFeedbackMessage } from "@/app/components/feedback/InlineTabFeedbackMessage";
+import { useInlineTabFeedbackDismiss } from "@/lib/design/inlineTabFeedback";
 import {
   CHAT_MESSAGE_TARGET_PARAM,
   parseChatMessageTargetIdParam,
@@ -598,6 +604,57 @@ export default function DmChatPage() {
       cancelled = true;
     };
   }, [bookings]);
+
+  /**
+   * Temporary in-DM toast on a booking lifecycle transition.
+   *
+   * The lifecycle rows are hidden from the timeline now, so a reader already
+   * sitting in the thread would otherwise watch the card mutate in silence.
+   *
+   * No new realtime system: this reads `bookings`, which the EXISTING
+   * `booking_requests` subscription refreshes via reloadConversationBookings().
+   * Driving it off the resulting state (rather than the subscription callback)
+   * also covers the other reload entry point, `ftc-notifications-updated`.
+   *
+   * Transition detection and copy both live in pure helpers
+   * (buildDmBookingLifecycleSignatures / pickDmBookingLifecycleToast) so they
+   * are covered behaviourally rather than by a source regex -- a source regex
+   * over this effect is exactly what let a status-only signature, which cannot
+   * tell a DJ withdrawal from a planner cancellation, pass review.
+   *
+   * Presentation is the app's existing transient-feedback surface --
+   * useInlineTabFeedbackDismiss + InlineTabFeedbackMessage, the same neutral
+   * muted copy and 2700ms/300ms fade Event Plans, Gigs History, Booking Plans
+   * and the DJ availability calendar already use. It is deliberately NOT the
+   * `notice` line: that one is amber `--ftc-color-warning` and belongs to the
+   * booking action handlers' warnings, which must keep reading as warnings.
+   */
+  const bookingLifecycleSignatureRef = useRef<Map<string, string> | null>(null);
+  const [bookingLifecycleToast, setBookingLifecycleToast] = useState<string | null>(null);
+  const clearBookingLifecycleToast = useCallback(() => setBookingLifecycleToast(null), []);
+  const bookingLifecycleToastFading = useInlineTabFeedbackDismiss(
+    bookingLifecycleToast,
+    clearBookingLifecycleToast,
+  );
+
+  useEffect(() => {
+    const previousSignatures = bookingLifecycleSignatureRef.current;
+    const nextSignatures = buildDmBookingLifecycleSignatures(bookings);
+
+    bookingLifecycleSignatureRef.current = nextSignatures;
+
+    const toast = pickDmBookingLifecycleToast({
+      previousSignatures,
+      nextSignatures,
+      bookings,
+      currentUserId,
+      actorDisplayName: otherUserLabel,
+    });
+
+    if (toast) {
+      setBookingLifecycleToast(toast);
+    }
+  }, [bookings, currentUserId, otherUserLabel]);
 
   const blockBannerMessage = useMemo(
     () => getDmBlockBannerMessage(blockStatus, otherUserLabel),
@@ -2326,6 +2383,16 @@ export default function DmChatPage() {
       {notice ? (
         <p className="px-4 pb-2 text-sm text-[var(--ftc-color-warning)]">{notice}</p>
       ) : null}
+
+      {/* wrap: a chat is not a fixed-height tab row, and the event name is the
+          informative half of "<DJ> withdrew from <event>" -- truncating eats
+          exactly the part worth reading. */}
+      <InlineTabFeedbackMessage
+        message={bookingLifecycleToast}
+        fading={bookingLifecycleToastFading}
+        className="w-full px-4 pb-2 text-center"
+        wrap
+      />
 
       {showNewMessagesPill ? (
         <ChatNewMessagesPill

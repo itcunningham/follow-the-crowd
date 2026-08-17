@@ -1,4 +1,7 @@
 import { formatIntegerRateDisplay } from "@/lib/bookingRate";
+// Type-only: erased at compile time, so this cannot create a runtime cycle
+// with lib/bookingRequests.ts (which imports this module's copy helpers).
+import type { BookingRequest } from "@/lib/bookingRequests";
 
 export const DM_BOOKING_PROPOSED_RATE_PREFIX = "Rate proposed: ";
 
@@ -300,6 +303,18 @@ export function isEventCancellationDmActivityMessage(text: string): boolean {
 /** User-facing copy for booking timeline system messages in DM. */
 export function formatDmBookingSystemMessageDisplay(text: string): string {
   const trimmed = text.trim();
+
+  // Versioned lifecycle rows are hidden from the DM timeline, but they are
+  // still the newest `messages` row, so they remain the Messages inbox
+  // preview -- which is what keeps that conversation ordered and unread
+  // correctly. Only the label may be shown: the event name is redundant beside
+  // the conversation name, and the trailing booking id is a raw UUID, which
+  // must never be user-facing (FTC_WORKFLOW §7). One branch rather than three
+  // so a future fourth verb cannot leak an id by being forgotten here.
+  if (isVersionedBookingLifecycleDmMessage(trimmed)) {
+    return trimmed.slice(0, trimmed.indexOf(" · "));
+  }
+
   const proposedRate = parseStoredProposedRate(trimmed);
 
   if (proposedRate) {
@@ -377,4 +392,135 @@ export function parseDmBookingTimelineBookingId(text: string): string | null {
     .match(/·\s*([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\s*$/);
 
   return match?.[1] ?? null;
+}
+
+/**
+ * Temporary in-DM confirmation of a booking lifecycle transition.
+ *
+ * The lifecycle rows are hidden from the timeline, so a reader already sitting
+ * in the thread would otherwise watch the booking card mutate in silence. This
+ * is a transient notice only -- it adds no `messages` row, so it cannot affect
+ * ordering, unread, or badges.
+ *
+ * Returns null when the current user is the one who acted (the card gives them
+ * their own feedback) and for every non-reportable transition. `declined` is
+ * deliberately silent: it writes no DM system message and its notification
+ * points at /bookings, not the DM -- see CURRENT-STATE 2026-08-16.
+ *
+ * `actorDisplayName` is the DM's other participant, which in a 1:1 thread IS
+ * the actor for all three cases -- no profile lookup needed.
+ */
+export function formatDmBookingLifecycleToast(
+  booking: Pick<
+    BookingRequest,
+    "status" | "event_name" | "sender_id" | "recipient_id" | "cancelled_by"
+  >,
+  currentUserId: string | null,
+  actorDisplayName: string,
+): string | null {
+  const name = actorDisplayName.trim();
+
+  if (!currentUserId || !name) {
+    return null;
+  }
+
+  // Accept and withdraw are the DJ's (recipient) actions -- the planner
+  // (sender) is the one who needs telling. Cancel is the planner's, so it is
+  // the DJ's turn.
+  if (booking.status === "accepted") {
+    return currentUserId === booking.sender_id ? `${name} accepted your booking` : null;
+  }
+
+  if (booking.status !== "cancelled" || !booking.cancelled_by) {
+    return null;
+  }
+
+  if (booking.cancelled_by === booking.recipient_id) {
+    if (currentUserId !== booking.sender_id) {
+      return null;
+    }
+
+    const eventName = booking.event_name?.trim();
+
+    return eventName ? `${name} withdrew from ${eventName}` : `${name} withdrew from your booking`;
+  }
+
+  if (booking.cancelled_by === booking.sender_id) {
+    return currentUserId === booking.recipient_id ? `${name} cancelled your booking` : null;
+  }
+
+  return null;
+}
+
+type DmBookingLifecycleBooking = Pick<
+  BookingRequest,
+  "id" | "status" | "event_name" | "sender_id" | "recipient_id" | "cancelled_by"
+>;
+
+/**
+ * The per-booking identity a lifecycle transition is detected against.
+ *
+ * `cancelled_by` is load-bearing, not decoration. A DJ withdrawal and a planner
+ * cancellation are BOTH `status: "cancelled"`, so a status-only signature makes
+ * them indistinguishable -- one replacing the other yields no detected change
+ * and therefore no toast, which is precisely the path the live "planner
+ * cancelled" verification exercises. Keyed by id so an unrelated column change
+ * (rate proposal fields, hide flags) leaves the signature identical.
+ */
+export function buildDmBookingLifecycleSignatures(
+  bookings: readonly DmBookingLifecycleBooking[],
+): Map<string, string> {
+  return new Map(
+    bookings.map((booking) => [
+      booking.id,
+      `${booking.status}:${booking.cancelled_by ?? ""}`,
+    ]),
+  );
+}
+
+/**
+ * The toast for the first reportable transition between two signature
+ * snapshots, or null.
+ *
+ * A null `previousSignatures` means this is the first snapshot: it only seeds
+ * the map, so opening a DM onto an already-accepted booking says nothing. An id
+ * absent from the previous snapshot is a booking seen for the first time, not a
+ * transition. Whatever survives both gates still has to get past
+ * formatDmBookingLifecycleToast, which drops anything the current user did.
+ */
+export function pickDmBookingLifecycleToast(options: {
+  previousSignatures: Map<string, string> | null;
+  nextSignatures: Map<string, string>;
+  bookings: readonly DmBookingLifecycleBooking[];
+  currentUserId: string | null;
+  actorDisplayName: string;
+}): string | null {
+  const { previousSignatures, nextSignatures, bookings } = options;
+
+  if (!previousSignatures || !options.currentUserId) {
+    return null;
+  }
+
+  for (const booking of bookings) {
+    const previousSignature = previousSignatures.get(booking.id);
+
+    if (
+      previousSignature === undefined ||
+      previousSignature === nextSignatures.get(booking.id)
+    ) {
+      continue;
+    }
+
+    const toast = formatDmBookingLifecycleToast(
+      booking,
+      options.currentUserId,
+      options.actorDisplayName,
+    );
+
+    if (toast) {
+      return toast;
+    }
+  }
+
+  return null;
 }

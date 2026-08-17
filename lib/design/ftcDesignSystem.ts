@@ -128,6 +128,22 @@ export const EVENTS_LIST_TAB_ROW_CLASS =
 export const EVENTS_LIST_TAB_FEEDBACK_CLASS =
   "min-w-0 truncate text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-300 sm:text-xs";
 
+/**
+ * Same neutral transient-feedback surface, for hosts that are NOT slot-constrained
+ * and may grow vertically (the DM booking lifecycle toast).
+ *
+ * Derived from the base class rather than restated, so colour, size and the
+ * opacity transition can never drift apart from it: the ONLY differences are
+ * dropping the tab-row constraints (`min-w-0 truncate`) and relaxing
+ * `leading-none`, which is unreadable once copy wraps to a second line. On the
+ * tab row truncation is correct — there the message shares a fixed-height row.
+ * In a chat the event name is the informative half, so an ellipsis eats exactly
+ * the part worth reading.
+ */
+export const EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS = `${EVENTS_LIST_TAB_FEEDBACK_CLASS
+  .replace("min-w-0 truncate ", "")
+  .replace("leading-none", "leading-snug")} break-words`;
+
 /** Event Plans toolbar row — fixed height for trash ↔ delete-selection swap (matches Events/Gigs tab row). */
 export const EVENT_PLANS_TOOLBAR_ROW_CLASS =
   "relative h-[1.875rem] max-h-[1.875rem] min-h-[1.875rem] w-full shrink-0 md:h-[2.375rem] md:max-h-[2.375rem] md:min-h-[2.375rem]";

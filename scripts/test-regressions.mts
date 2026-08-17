@@ -18681,6 +18681,13 @@ async function main() {
   testDeepLinkTargetsSurviveImagesAndHiddenNotices();
   await testBookingCancellationNoticesAreUniquePerBookingAndAction();
   await testVersionedLifecycleNoticesNeverRenderAsChat();
+  await testVersionedLifecycleRowsAreHiddenFromTheDmTimeline();
+  await testHiddenLifecycleRowsStillDriveInboxRecencyAndUnread();
+  await testNoBookingUuidIsEverUserFacing();
+  await testDmBookingLifecycleToast();
+  await testLifecycleToastRendersTheNeutralFeedbackSurface();
+  await testBookingLifecycleTransitionIdentityIncludesTheActor();
+  await testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget();
   testDmPageWiresMessageTargetScroll();
   testCrewChatPageWiresMessageTargetScroll();
   testChatMessageTargetScrollSuppressionIsAsymmetric();
@@ -21315,6 +21322,869 @@ async function testVersionedLifecycleNoticesNeverRenderAsChat() {
   assert.equal(isDmBookingSystemMessage("Booking confirmed by phone earlier"), false);
 }
 
+const LIFECYCLE_BOOKING_ID = "7c691536-1ff0-4e1e-bd0e-959bea7ad9be";
+const LIFECYCLE_LABELS = ["Booking confirmed", "Booking withdrawn", "Booking cancelled"] as const;
+const ANY_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+function lifecycleNoticeText(label: string, eventName = "Club 53"): string {
+  return `${label} · ${eventName} · ${LIFECYCLE_BOOKING_ID}`;
+}
+
+/**
+ * The booking card is the ONE visible source of truth for booking state, so
+ * the three versioned lifecycle rows must never render as visible chat.
+ *
+ * Measured on a real device (WebKit, QA DJ, production data) BEFORE this
+ * change: the DM timeline rendered "Booking withdrawn"/"Booking confirmed"
+ * notices and the Messages inbox row read
+ * "Booking withdrawn · Club · a73127e1-137d-44c7-b516-9ee3b262917e" -- a raw
+ * booking UUID in the user's face. After: neither surface contains any UUID
+ * and the notices are gone from the timeline.
+ */
+async function testVersionedLifecycleRowsAreHiddenFromTheDmTimeline() {
+  const conversationId = "conversation-1";
+  const booking = createRegressionBookingRequest({
+    id: LIFECYCLE_BOOKING_ID,
+    status: "accepted",
+  });
+  const messages = [
+    { id: "booking-card", created_at: "2026-07-27T12:00:00.000Z", text: formatBookingRequestMessage(booking) },
+    { id: "chat", created_at: "2026-07-27T12:01:00.000Z", text: "See you Friday" },
+    { id: "lifecycle", created_at: "2026-07-27T12:02:00.000Z", text: "" },
+  ];
+
+  for (const label of LIFECYCLE_LABELS) {
+    messages[2].text = lifecycleNoticeText(label);
+
+    assert.equal(
+      classifyDmConversationMessageKind(messages[2].text, {
+        bookings: [booking],
+        conversationId,
+        messages,
+        messageIndex: 2,
+      }),
+      "hidden",
+      `${label} must never render in the DM timeline -- the booking card is the source of truth`,
+    );
+
+    // ...and it must stay hidden with NO neighbouring booking card to lean on.
+    // shouldSuppressDmBookingTimelineNotice only hides a notice when a visible
+    // card already reflects the same state, so relying on it would leave the
+    // row visible in exactly the threads where the card is gone.
+    assert.equal(
+      classifyDmConversationMessageKind(messages[2].text, {
+        bookings: [],
+        conversationId,
+        messages: [messages[2]],
+        messageIndex: 0,
+      }),
+      "hidden",
+      `${label} must be hidden unconditionally, not only when a sibling card happens to match`,
+    );
+
+    // The bare no-context call the layout builder can make must agree.
+    assert.equal(
+      classifyDmConversationMessageKind(messages[2].text, {
+        bookings: [booking],
+        conversationId,
+      }),
+      "hidden",
+      `${label} must be hidden even without messages/messageIndex context`,
+    );
+  }
+
+  // Hidden rows must drop out of timestamp clustering too, or they leave a
+  // phantom day/time separator behind.
+  messages[2].text = lifecycleNoticeText("Booking confirmed");
+  const layout = buildDmConversationTimestampLayout(messages, {
+    bookings: [booking],
+    conversationId,
+  });
+  assert.equal(
+    layout.has("lifecycle"),
+    false,
+    "a hidden lifecycle row must not receive a timestamp-layout entry",
+  );
+  assert.equal(layout.has("chat"), true, "ordinary chat must still be laid out");
+  assert.equal(layout.has("booking-card"), true, "the booking card must still be laid out");
+
+  // --- what must NOT be hidden -------------------------------------------
+  // Legacy unversioned rows in historical threads keep rendering.
+  for (const legacy of [
+    "Booking confirmed",
+    "Booking cancelled",
+    "Booking accepted · Club 53",
+    "Booking cancelled · Club 53",
+    "Booking request cancelled by planner.",
+    "Booking confirmed · Club 53",
+  ]) {
+    assert.equal(
+      classifyDmConversationMessageKind(legacy, { bookings: [], conversationId }),
+      "timeline",
+      `legacy row "${legacy}" must keep rendering as a timeline notice`,
+    );
+  }
+
+  // Ordinary conversation is untouched.
+  assert.equal(
+    classifyDmConversationMessageKind("Hey are you free Friday?", { bookings: [], conversationId }),
+    "chat",
+  );
+  assert.equal(
+    classifyDmConversationMessageKind(`Booking confirmed by phone · ${LIFECYCLE_BOOKING_ID}`, {
+      bookings: [],
+      conversationId,
+    }),
+    "chat",
+    "only the three exact lifecycle verbs may be hidden -- a chat message that happens to end " +
+      "in a uuid must not vanish",
+  );
+
+  // The card itself must still be a card.
+  assert.equal(
+    classifyDmConversationMessageKind(formatBookingRequestMessage(booking), {
+      bookings: [booking],
+      conversationId,
+    }),
+    "booking_card",
+  );
+
+  // The DM page must actually drop "hidden".
+  const dmPage = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmPage,
+    /if \(timelineKind === "hidden"\) \{\s*return null;/,
+    "the DM page must render nothing for a hidden classification",
+  );
+}
+
+/**
+ * The trap this round had to avoid: hidden VISUALLY, never logically.
+ *
+ * CURRENT-STATE records what happens when a lifecycle row is suppressed at the
+ * data level instead -- "the invite stayed latest, and the planner never got
+ * unread/badge". These rows are what make the conversation recent and unread.
+ */
+async function testHiddenLifecycleRowsStillDriveInboxRecencyAndUnread() {
+  const { buildDmInboxRows, applyDmInboxRealtimeMessage } = await import("../lib/dmInbox.js");
+  const { formatDmInboxConversationPreview, isDmInboxSystemPreviewMessage } = await import(
+    "../lib/dm/messagePreview.js"
+  );
+
+  const conversationId = "conversation-1";
+  const otherConversationId = "conversation-2";
+  const planner = "planner-1";
+  const dj = "dj-1";
+  const booking = createRegressionBookingRequest({ id: LIFECYCLE_BOOKING_ID, status: "accepted" });
+
+  for (const label of LIFECYCLE_LABELS) {
+    const lifecycleText = lifecycleNoticeText(label);
+    const messages = [
+      {
+        id: "invite",
+        conversation_id: conversationId,
+        user_id: planner,
+        text: formatBookingRequestMessage(booking),
+        created_at: "2026-07-27T12:00:00.000Z",
+      },
+      {
+        id: "lifecycle",
+        conversation_id: conversationId,
+        // Authored by the DJ -- this is what makes it unread for the planner.
+        user_id: dj,
+        text: lifecycleText,
+        created_at: "2026-07-27T12:05:00.000Z",
+      },
+      {
+        id: "other",
+        conversation_id: otherConversationId,
+        user_id: dj,
+        text: "unrelated",
+        created_at: "2026-07-27T12:03:00.000Z",
+      },
+    ];
+
+    // A) It is still the preview-driving message -- which is the SAME object
+    //    that supplies latestActivityAt. Skipping it here would silently
+    //    demote the conversation to the previous message's timestamp.
+    const picked = pickDmInboxPreviewMessage(messages, conversationId, [booking]);
+    assert.equal(
+      picked?.id,
+      "lifecycle",
+      `${label} must remain the latest-activity message, or the conversation loses its recency`,
+    );
+
+    // B) Inbox ordering: the lifecycle row must sort this conversation first.
+    const rows = buildDmInboxRows(
+      [
+        { id: conversationId, created_at: "2026-07-27T11:00:00.000Z" },
+        { id: otherConversationId, created_at: "2026-07-27T11:00:00.000Z" },
+      ],
+      messages,
+      { bookingsByConversationId: new Map([[conversationId, [booking]]]) },
+    );
+    assert.equal(
+      rows[0]?.conversationId,
+      conversationId,
+      `${label} must keep its conversation at the top of the inbox`,
+    );
+    assert.equal(
+      rows[0]?.latestActivityAt,
+      "2026-07-27T12:05:00.000Z",
+      `${label} must set latestActivityAt -- ordering reads this field`,
+    );
+    assert.equal(
+      rows[0]?.latestMessageUserId,
+      dj,
+      `${label} must keep its author, which is what marks it unread for the other participant`,
+    );
+
+    // C) The realtime insert path must reorder on it too.
+    const reordered = applyDmInboxRealtimeMessage(
+      [
+        { conversationId: otherConversationId, latestActivityAt: "2026-07-27T12:03:00.000Z", latestPreview: "unrelated", latestMessageUserId: dj },
+        { conversationId, latestActivityAt: "2026-07-27T12:00:00.000Z", latestPreview: "x", latestMessageUserId: planner },
+      ],
+      messages[1],
+      { allMessages: messages, bookingsByConversationId: new Map([[conversationId, [booking]]]) },
+    );
+    assert.equal(reordered.matched, true);
+    assert.equal(
+      reordered.rows[0]?.conversationId,
+      conversationId,
+      `a live ${label} row must lift its conversation to the top`,
+    );
+
+    // D) Preview copy: label only. No event name, and above all no UUID.
+    const preview = formatDmInboxConversationPreview({
+      latestPreview: lifecycleText,
+      latestMessageUserId: dj,
+      currentUserId: planner,
+      bookings: [booking],
+    });
+    assert.equal(preview, label, `${label} must preview as its bare label`);
+    assert.doesNotMatch(
+      preview,
+      ANY_UUID,
+      `${label} must never put a raw booking id in the inbox (measured leaking on production)`,
+    );
+    assert.equal(
+      formatDmInboxMessagePreview(lifecycleText, { bookings: [booking] }),
+      label,
+    );
+
+    // E) System previews never get the "You: " prefix, even for the author.
+    assert.equal(isDmInboxSystemPreviewMessage(lifecycleText), true);
+    assert.equal(
+      formatDmInboxConversationPreview({
+        latestPreview: lifecycleText,
+        latestMessageUserId: dj,
+        currentUserId: dj,
+        bookings: [booking],
+      }),
+      label,
+      `${label} must not be prefixed with "You: "`,
+    );
+  }
+
+  // F) The unread machinery must not have learned about message kinds at all.
+  //    If it ever starts filtering, hiding becomes hiding-logically and the
+  //    badge regression in CURRENT-STATE comes straight back.
+  for (const file of ["../lib/inboxUnread.ts", "../lib/messageReads.ts"]) {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.doesNotMatch(
+      source,
+      /classifyDmConversationMessageKind|isVersionedBookingLifecycleDmMessage|isDmBookingSystemMessage/,
+      `${file} must stay kind-agnostic -- unread is computed from raw messages rows`,
+    );
+  }
+
+  // G) And pickDmInboxPreviewMessage must not gain a lifecycle skip either.
+  const previewSource = readFileSync(
+    new URL("../lib/dm/messagePreview.ts", import.meta.url),
+    "utf8",
+  );
+  const picker = previewSource.slice(
+    previewSource.indexOf("export function pickDmInboxPreviewMessage("),
+    previewSource.indexOf("function findBookingForMessage("),
+  );
+  assert.ok(picker.length > 0);
+  assert.doesNotMatch(
+    picker,
+    /isVersionedBookingLifecycleDmMessage|isDmBookingSystemMessage/,
+    "skipping lifecycle rows when picking the preview would also drop their timestamp and " +
+      "author, demoting the conversation and losing unread -- hide the TEXT, never the row",
+  );
+}
+
+/**
+ * No raw booking UUID may reach any user-facing string, on any surface, for
+ * any of the three verbs -- including a legacy row and an event name that
+ * itself contains the " · " separator.
+ */
+async function testNoBookingUuidIsEverUserFacing() {
+  const { formatDmBookingSystemMessageDisplay, isVersionedBookingLifecycleDmMessage } =
+    await import("../lib/dm/dmBookingSystemMessages.js");
+  const { formatBookingMessagePreview } = await import("../lib/bookingRequests.js");
+
+  for (const label of LIFECYCLE_LABELS) {
+    for (const eventName of ["Club 53", "Club · 53 · Warehouse", "  "]) {
+      const text = lifecycleNoticeText(label, eventName);
+
+      if (eventName.trim()) {
+        assert.equal(isVersionedBookingLifecycleDmMessage(text), true, `${text} must be recognised`);
+      }
+
+      for (const rendered of [
+        formatDmBookingSystemMessageDisplay(text),
+        formatDmInboxMessagePreview(text) ?? "",
+        formatBookingMessagePreview(text),
+      ]) {
+        assert.doesNotMatch(
+          rendered,
+          ANY_UUID,
+          `"${rendered}" (from "${text}") exposes a raw booking id to the user`,
+        );
+      }
+    }
+
+    assert.equal(formatDmBookingSystemMessageDisplay(lifecycleNoticeText(label)), label);
+  }
+
+  // Legacy display copy is unchanged.
+  assert.equal(formatDmBookingSystemMessageDisplay("Booking confirmed · Club 53"), "Booking confirmed");
+  assert.equal(formatDmBookingSystemMessageDisplay("Booking accepted · Club 53"), "Booking confirmed");
+  assert.equal(
+    formatDmBookingSystemMessageDisplay("Booking request cancelled by planner."),
+    "Booking cancelled",
+  );
+  assert.equal(formatDmBookingSystemMessageDisplay("Rate proposed: $200"), "Rate proposed: $200");
+  assert.equal(
+    formatDmBookingSystemMessageDisplay("Run sheet updated · Club 53 · Stage: Back"),
+    "Run sheet updated · Club 53 · Stage: Back",
+    "run sheet notices keep their change summary -- they carry no booking id",
+  );
+}
+
+/**
+ * The temporary in-DM toast. It exists because the lifecycle rows are hidden:
+ * a reader already in the thread would otherwise watch the card mutate in
+ * silence.
+ *
+ * Verified live (WebKit, QA DJ, production realtime): flipping
+ * booking_requests.cancelled_by from the DJ to the planner produced
+ * "Planner1 cancelled your booking" 508ms later, the toast cleared itself, and
+ * no chat line was added. The two negative controls below were verified live
+ * too -- an already-cancelled booking on first load produced nothing, and the
+ * acting user got nothing.
+ */
+async function testDmBookingLifecycleToast() {
+  const { formatDmBookingLifecycleToast } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const { INLINE_TAB_FEEDBACK_FADE_MS, INLINE_TAB_FEEDBACK_CLEAR_MS } = await import(
+    "../lib/design/inlineTabFeedback.js"
+  );
+  const planner = "planner-1";
+  const dj = "dj-1";
+  const base = createRegressionBookingRequest({ event_name: "Club 53" });
+
+  const accepted = { ...base, status: "accepted" as const };
+  const withdrawn = { ...base, status: "cancelled" as const, cancelled_by: dj };
+  const cancelled = { ...base, status: "cancelled" as const, cancelled_by: planner };
+
+  // --- the three required strings, to the right person -------------------
+  assert.equal(
+    formatDmBookingLifecycleToast(accepted, planner, "Dj2"),
+    "Dj2 accepted your booking",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast(withdrawn, planner, "Dj2"),
+    "Dj2 withdrew from Club 53",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast(cancelled, dj, "Planner1"),
+    "Planner1 cancelled your booking",
+  );
+
+  // --- never to the person who did it ------------------------------------
+  assert.equal(
+    formatDmBookingLifecycleToast(accepted, dj, "Planner1"),
+    null,
+    "the DJ accepted -- they must not be told about their own action",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast(withdrawn, dj, "Planner1"),
+    null,
+    "the DJ withdrew -- they must not be told about their own action",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast(cancelled, planner, "Dj2"),
+    null,
+    "the planner cancelled -- they must not be told about their own action",
+  );
+
+  // --- everything else stays silent --------------------------------------
+  assert.equal(formatDmBookingLifecycleToast({ ...base, status: "pending" }, planner, "Dj2"), null);
+  assert.equal(
+    formatDmBookingLifecycleToast({ ...base, status: "declined" }, planner, "Dj2"),
+    null,
+    "declined writes no DM system message and links to /bookings -- silent by decision, not accident",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast({ ...base, status: "cancelled", cancelled_by: null }, planner, "Dj2"),
+    null,
+    "a cancellation with no actor cannot be attributed, so it must not guess",
+  );
+  assert.equal(formatDmBookingLifecycleToast(accepted, null, "Dj2"), null);
+  assert.equal(formatDmBookingLifecycleToast(accepted, planner, "   "), null);
+  assert.equal(
+    formatDmBookingLifecycleToast(
+      { ...withdrawn, event_name: "" },
+      planner,
+      "Dj2",
+    ),
+    "Dj2 withdrew from your booking",
+    "a nameless event must not produce a dangling 'withdrew from '",
+  );
+
+  for (const [booking, viewer, name] of [
+    [accepted, planner, "Dj2"],
+    [withdrawn, planner, "Dj2"],
+    [cancelled, dj, "Planner1"],
+  ] as const) {
+    assert.doesNotMatch(
+      formatDmBookingLifecycleToast(booking, viewer, name) ?? "",
+      ANY_UUID,
+      "the toast must not leak a booking id either",
+    );
+  }
+
+  // --- wiring: existing realtime + existing neutral surface, nothing new --
+  const dmPage = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.equal(
+    (dmPage.match(/table: "booking_requests"/g) ?? []).length,
+    1,
+    "there must be exactly ONE booking_requests subscription -- the toast reuses it, it does " +
+      "not add a second realtime system",
+  );
+  assert.match(
+    dmPage,
+    /actorDisplayName: otherUserLabel,/,
+    "the toast must be attributed to the DM's other participant, who is the actor in a 1:1 thread",
+  );
+
+  // The surface: the app's shared NEUTRAL transient feedback, not the amber
+  // warning line. "Alice accepted your booking" is not a warning.
+  assert.match(
+    dmPage,
+    /useInlineTabFeedbackDismiss\(\s*bookingLifecycleToast,\s*clearBookingLifecycleToast,\s*\)/,
+    "the toast must use the shared transient-feedback lifecycle hook, not a hand-rolled timer",
+  );
+  // The whole element, so prop presence is asserted against THIS call site
+  // rather than against a hand-built render in the sibling test.
+  const toastElementStart = dmPage.indexOf("<InlineTabFeedbackMessage");
+  assert.ok(toastElementStart > -1, "the toast must render through the shared feedback component");
+  const toastElement = dmPage.slice(toastElementStart, dmPage.indexOf("/>", toastElementStart) + 2);
+  assert.match(
+    toastElement,
+    /message=\{bookingLifecycleToast\}/,
+    "the toast must render through the shared neutral feedback component",
+  );
+  assert.match(
+    toastElement,
+    /fading=\{bookingLifecycleToastFading\}/,
+    "the toast must be driven by the shared fade lifecycle",
+  );
+  // Without `wrap` the shared component truncates, and the event name -- the
+  // informative half of "<DJ> withdrew from <event>" -- is what gets cut.
+  assert.match(
+    toastElement,
+    /\bwrap\b/,
+    "the DM toast must opt into wrapping; the default is the fixed-height tab-row truncation",
+  );
+  assert.match(
+    dmPage,
+    /setBookingLifecycleToast\(toast\);/,
+    "the toast must own its own state, so the amber notice line is untouched",
+  );
+  // The regression this replaced: routing the toast through `notice` painted
+  // it --ftc-color-warning, and sharing that state meant its auto-clear could
+  // also wipe a genuine booking warning.
+  assert.doesNotMatch(
+    dmPage,
+    /setNotice\(toast\)/,
+    "the toast must NOT reuse the amber warning line -- that is the colour bug",
+  );
+  const noticeLine = dmPage.slice(dmPage.indexOf("{notice ? ("), dmPage.indexOf("{notice ? (") + 200);
+  assert.match(
+    noticeLine,
+    /text-\[var\(--ftc-color-warning\)\]/,
+    "the existing warning line must KEEP its amber -- only the toast moved off it",
+  );
+
+  // The shared surface owns the timing, and it must stay temporary.
+  assert.ok(
+    INLINE_TAB_FEEDBACK_FADE_MS > 0 && INLINE_TAB_FEEDBACK_CLEAR_MS <= 10000,
+    "the toast must be temporary",
+  );
+  assert.ok(
+    INLINE_TAB_FEEDBACK_CLEAR_MS > INLINE_TAB_FEEDBACK_FADE_MS,
+    "the message must clear only after the opacity transition finishes, or it disappears mid-fade",
+  );
+  // It must never become a message.
+  assert.doesNotMatch(
+    dmPage,
+    /pickDmBookingLifecycleToast[\s\S]{0,400}?from\("messages"\)\s*\.insert/,
+    "the toast must add no chat line",
+  );
+}
+
+/**
+ * Hiding is a RENDER decision. The writes must be untouched: every lifecycle
+ * action still inserts its `messages` row, still reads the id back, and still
+ * hands it to create_notification -- that row is what makes the conversation
+ * recent, unread, badged and deep-linkable.
+ */
+/**
+ * QA escape #1. The colour guard asserted on INLINE_TAB_FEEDBACK_TEXT_CLASS,
+ * which had ZERO production consumers -- its only reference in the repo was the
+ * assertion itself. The component actually renders
+ * EVENTS_LIST_TAB_FEEDBACK_CLASS, so QA painted the real class amber and the
+ * whole suite still passed. The orphan is now deleted, and this asserts on
+ * what the component *renders* rather than on any constant by name, so it
+ * survives the component switching constants again.
+ */
+async function testLifecycleToastRendersTheNeutralFeedbackSurface() {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const React = (await import("react")).default;
+  const { InlineTabFeedbackMessage } = await import(
+    "../app/components/feedback/InlineTabFeedbackMessage.js"
+  );
+
+  const renderClassName = (props: Record<string, unknown>): string => {
+    const markup = renderToStaticMarkup(
+      React.createElement(InlineTabFeedbackMessage, {
+        message: "Dj2 withdrew from Club 53",
+        fading: false,
+        ...props,
+      } as never),
+    );
+    return markup.match(/class="([^"]*)"/)?.[1] ?? "";
+  };
+
+  // The DM lifecycle toast renders with wrap -- this is the exact call the page
+  // makes, so a colour regression anywhere in its class chain lands here.
+  const toastClass = renderClassName({ className: "w-full px-4 pb-2 text-center", wrap: true });
+  const tabRowClass = renderClassName({});
+
+  for (const [label, className] of [
+    ["the DM lifecycle toast", toastClass],
+    ["the tab-row feedback", tabRowClass],
+  ] as const) {
+    assert.match(
+      className,
+      /\btext-ftc-text-muted\b/,
+      `${label} must render the neutral muted colour`,
+    );
+    // The actual regression: "Alice accepted your booking" painted like a warning.
+    assert.doesNotMatch(
+      className,
+      /--ftc-color-(warning|danger|error|success)|\btext-(amber|yellow|orange|red|rose|green|emerald)-/,
+      `${label} must not render a status colour -- a lifecycle confirmation is not a warning`,
+    );
+    assert.match(className, /\btransition-opacity\b/, `${label} must keep the shared fade`);
+    assert.match(className, /\bduration-300\b/);
+  }
+
+  // --- the wrap opt-out, and its blast radius --------------------------------
+  assert.doesNotMatch(
+    toastClass,
+    /\btruncate\b/,
+    "the toast must not ellipsise -- the event name is the informative half of " +
+      '"<DJ> withdrew from <event>"',
+  );
+  assert.doesNotMatch(
+    toastClass,
+    /\bmin-w-0\b/,
+    "min-w-0 exists to let the tab row shrink the message; a chat toast must not inherit it",
+  );
+  assert.match(toastClass, /\bbreak-words\b/, "a long event name must be able to break");
+  assert.doesNotMatch(
+    toastClass,
+    /\bleading-none\b/,
+    "leading-none is unreadable once copy wraps to a second line",
+  );
+
+  // Default is the untouched slot-constrained behaviour, so the four existing
+  // consumers (Event Plans, Gigs History, Booking Plans, DJ availability, all
+  // via PlannerWorkspaceTitleFeedback) are byte-identical.
+  assert.match(
+    tabRowClass,
+    /\btruncate\b/,
+    "wrap must default OFF -- the tab row is fixed height and must keep truncating",
+  );
+  assert.match(tabRowClass, /\bmin-w-0\b/);
+  assert.match(tabRowClass, /\bleading-none\b/);
+  assert.equal(
+    tabRowClass,
+    "min-w-0 truncate text-[11px] font-normal leading-none text-ftc-text-muted " +
+      "transition-opacity duration-300 sm:text-xs w-full text-center opacity-100",
+    "the default rendering must be exactly what every existing consumer already got",
+  );
+
+  // Blast radius: the only other consumer of the component is the planner
+  // title-feedback slot, which fans out to Event Plans, Gigs History, Booking
+  // Plans and the DJ availability calendar. It must NOT opt into wrapping --
+  // those live in fixed-height rows.
+  const plannerSlot = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceTitleFeedback.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(plannerSlot, /<InlineTabFeedbackMessage /);
+  assert.doesNotMatch(
+    plannerSlot,
+    /\bwrap\b/,
+    "the planner title-feedback slot sits in a fixed-height row and must keep truncating",
+  );
+  // HistoryTabRowFeedbackCell uses the base class directly, so it cannot be
+  // reached by the prop at all -- pin that it still uses the constrained one.
+  const historyCell = readFileSync(
+    new URL("../app/components/history/HistoryTabRowFeedbackCell.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    historyCell,
+    /EVENTS_LIST_TAB_FEEDBACK_CLASS/,
+    "the history tab row must keep the slot-constrained class, not the wrap variant",
+  );
+  assert.doesNotMatch(historyCell, /EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS/);
+
+  // The derived class must not silently lose its derivation. It is built by
+  // string-replacing the base class, so a reorder of the base would make the
+  // replace a no-op and quietly reinstate truncate.
+  const { EVENTS_LIST_TAB_FEEDBACK_CLASS, EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS } = await import(
+    "../lib/design/ftcDesignSystem.js"
+  );
+  assert.match(EVENTS_LIST_TAB_FEEDBACK_CLASS, /\bmin-w-0 truncate\b/);
+  assert.doesNotMatch(EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS, /\btruncate\b|\bmin-w-0\b/);
+  assert.equal(
+    EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS.includes("text-ftc-text-muted"),
+    true,
+    "the wrap variant must inherit the base colour, not restate it",
+  );
+}
+
+/**
+ * QA escape #2. The transition identity was guarded only by a source regex over
+ * the DM page, so QA reduced the signature from
+ * `${status}:${cancelled_by}` to `${status}` and the suite passed.
+ *
+ * That single field is what separates a DJ withdrawal from a planner
+ * cancellation: both are `status: "cancelled"`, so a status-only signature sees
+ * no change between them and emits nothing -- and the planner-cancellation path
+ * is the one the live device evidence actually exercised.
+ *
+ * Behavioural: drive the real helpers through real snapshot sequences.
+ */
+async function testBookingLifecycleTransitionIdentityIncludesTheActor() {
+  const { buildDmBookingLifecycleSignatures, pickDmBookingLifecycleToast } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const planner = "planner-1";
+  const dj = "dj-1";
+  const base = createRegressionBookingRequest({
+    id: "booking-1",
+    event_name: "Club 53",
+    sender_id: planner,
+    recipient_id: dj,
+  });
+  const withdrawnByDj = { ...base, status: "cancelled" as const, cancelled_by: dj };
+  const cancelledByPlanner = { ...base, status: "cancelled" as const, cancelled_by: planner };
+
+  const step = (
+    from: typeof base | null,
+    to: typeof base,
+    viewer: string,
+    actorDisplayName: string,
+  ) =>
+    pickDmBookingLifecycleToast({
+      previousSignatures: from ? buildDmBookingLifecycleSignatures([from]) : null,
+      nextSignatures: buildDmBookingLifecycleSignatures([to]),
+      bookings: [to],
+      currentUserId: viewer,
+      actorDisplayName,
+    });
+
+  // THE decisive pair: identical `status`, different actor, different feedback.
+  // A status-only signature makes both of these null.
+  assert.equal(
+    step(withdrawnByDj, cancelledByPlanner, dj, "Planner1"),
+    "Planner1 cancelled your booking",
+    "a planner cancellation replacing a DJ withdrawal is a real transition -- status alone " +
+      "cannot see it",
+  );
+  assert.equal(
+    step(cancelledByPlanner, withdrawnByDj, planner, "Dj2"),
+    "Dj2 withdrew from Club 53",
+    "and the reverse must report the withdrawal, with the event name intact",
+  );
+
+  // The ordinary pending -> terminal transitions still work.
+  assert.equal(
+    step(base, { ...base, status: "accepted" }, planner, "Dj2"),
+    "Dj2 accepted your booking",
+  );
+  assert.equal(step(base, withdrawnByDj, planner, "Dj2"), "Dj2 withdrew from Club 53");
+  assert.equal(step(base, cancelledByPlanner, dj, "Planner1"), "Planner1 cancelled your booking");
+
+  // --- and the things that must stay silent ---------------------------------
+  assert.equal(
+    step(null, cancelledByPlanner, dj, "Planner1"),
+    null,
+    "the first snapshot only seeds the map -- opening a DM onto a settled booking must say nothing",
+  );
+  assert.equal(
+    step(cancelledByPlanner, cancelledByPlanner, dj, "Planner1"),
+    null,
+    "an unchanged signature is not a transition",
+  );
+  assert.equal(
+    pickDmBookingLifecycleToast({
+      previousSignatures: new Map(),
+      nextSignatures: buildDmBookingLifecycleSignatures([cancelledByPlanner]),
+      bookings: [cancelledByPlanner],
+      currentUserId: dj,
+      actorDisplayName: "Planner1",
+    }),
+    null,
+    "a booking id seen for the first time is a new booking, not a transition",
+  );
+  assert.equal(
+    step(withdrawnByDj, cancelledByPlanner, planner, "Dj2"),
+    null,
+    "the planner cancelled -- they must not be told about their own action",
+  );
+
+  // An unrelated column change must not move the signature at all.
+  const withUnrelatedEdits: BookingRequest = {
+    ...cancelledByPlanner,
+    proposed_rate: 400,
+    lineup_hidden_at: "2026-08-01T00:00:00.000Z",
+  };
+  assert.equal(
+    buildDmBookingLifecycleSignatures([cancelledByPlanner]).get("booking-1"),
+    buildDmBookingLifecycleSignatures([withUnrelatedEdits]).get("booking-1"),
+    "rate/hide columns must not look like a lifecycle transition",
+  );
+  assert.equal(
+    step(cancelledByPlanner, withUnrelatedEdits, dj, "Planner1"),
+    null,
+    "editing a rate on a settled booking must not re-announce the cancellation",
+  );
+
+  // The signature must actually carry the actor, stated directly so the reason
+  // for the field is not merely implied by the cases above.
+  assert.notEqual(
+    buildDmBookingLifecycleSignatures([withdrawnByDj]).get("booking-1"),
+    buildDmBookingLifecycleSignatures([cancelledByPlanner]).get("booking-1"),
+    "two cancellations by different actors must not share a signature",
+  );
+
+  // And the page must use these helpers rather than reimplementing them inline,
+  // which is how the untested version got in.
+  const dmPage = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmPage, /buildDmBookingLifecycleSignatures\(bookings\)/);
+  assert.match(dmPage, /pickDmBookingLifecycleToast\(\{/);
+  assert.doesNotMatch(
+    dmPage,
+    /\$\{booking\.status\}/,
+    "the signature must not be rebuilt inline in the page -- it belongs to the tested helper",
+  );
+}
+
+async function testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget() {
+  const source = readFileSync(new URL("../lib/bookingRequests.ts", import.meta.url), "utf8");
+  const { formatBookingCancelledDmMessage } = await import("../lib/bookingRequests.js");
+  const { formatBookingConfirmedDmMessage } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const { isVersionedBookingLifecycleDmMessage, parseDmBookingTimelineBookingId } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+
+  // The three stored formats are still produced, and are still the exact shape
+  // the hide-and-target machinery keys off.
+  const confirmed = formatBookingConfirmedDmMessage("Club 53", LIFECYCLE_BOOKING_ID);
+  const withdrawn = formatBookingCancelledDmMessage(
+    createRegressionBookingRequest({
+      id: LIFECYCLE_BOOKING_ID,
+      event_name: "Club 53",
+      cancelled_by: "dj-1",
+      recipient_id: "dj-1",
+    }),
+  );
+  const cancelled = formatBookingCancelledDmMessage(
+    createRegressionBookingRequest({
+      id: LIFECYCLE_BOOKING_ID,
+      event_name: "Club 53",
+      cancelled_by: "planner-1",
+      recipient_id: "dj-1",
+    }),
+  );
+
+  assert.equal(confirmed, `Booking confirmed · Club 53 · ${LIFECYCLE_BOOKING_ID}`);
+  assert.equal(withdrawn, `Booking withdrawn · Club 53 · ${LIFECYCLE_BOOKING_ID}`);
+  assert.equal(cancelled, `Booking cancelled · Club 53 · ${LIFECYCLE_BOOKING_ID}`);
+
+  for (const text of [confirmed, withdrawn, cancelled]) {
+    assert.equal(isVersionedBookingLifecycleDmMessage(text), true);
+    assert.equal(
+      parseDmBookingTimelineBookingId(text),
+      LIFECYCLE_BOOKING_ID,
+      "a hidden row must still yield its booking id, or its push has nothing to fall back to",
+    );
+  }
+
+  // The inserts themselves are untouched.
+  for (const helper of [
+    "insertBookingAcceptedDmMessageIfNeeded",
+    "insertBookingCancelledDmMessageIfNeeded",
+  ]) {
+    const start = source.indexOf(`async function ${helper}(`);
+    assert.ok(start > -1, `${helper} must still exist`);
+    const body = source.slice(start, start + 4000);
+    assert.match(
+      body,
+      /\.from\("messages"\)\s*\n?\s*\.insert\(/,
+      `${helper} must still insert a real messages row -- skipping the insert is exactly the ` +
+        `regression that cost the planner their unread and badge`,
+    );
+    assert.match(
+      body,
+      /\.select\("id"\)/,
+      `${helper} must still read the message id back for the push deep link`,
+    );
+  }
+
+  // Nothing in the write path may consult the render classifier.
+  assert.doesNotMatch(
+    source,
+    /classifyDmConversationMessageKind|shouldSuppressDmBookingTimelineNotice/,
+    "the write path must never gate on how the DM chooses to render a row",
+  );
+}
+
 async function testBookingCancellationNoticesAreUniquePerBookingAndAction() {
   const source = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),
@@ -21446,6 +22316,31 @@ function testDeepLinkTargetsSurviveImagesAndHiddenNotices() {
     dmPage,
     /parseDmBookingTimelineBookingId\(targetMessage\.text\)/,
     "the DM page must derive the booking id from the targeted timeline notice",
+  );
+  // The decisive property now that lifecycle rows are ALWAYS hidden: the
+  // fallback selector is derived from the loaded `messages` array, not from
+  // the DOM. If it ever reads the document, a hidden row yields no selector
+  // and every lifecycle push falls back to the bottom of the chat.
+  const fallbackBlock = dmPage.slice(
+    dmPage.indexOf("const messageTargetFallbackSelector = useMemo("),
+    dmPage.indexOf("useChatMessageTargetScroll({"),
+  );
+  assert.ok(fallbackBlock.length > 0, "the fallback selector memo must exist");
+  assert.match(
+    fallbackBlock,
+    /messages\.find\(\(item\) => item\.id === messageTargetId\)/,
+    "the fallback must resolve the targeted message from the loaded messages array, so it " +
+      "survives that message never being rendered",
+  );
+  assert.doesNotMatch(
+    fallbackBlock,
+    /document\.|querySelector/,
+    "reading the DOM here would defeat the whole point -- the target row is hidden",
+  );
+  assert.match(
+    fallbackBlock,
+    /\[messageTargetId, messages\]/,
+    "the memo must recompute when messages load, or the selector is null on first paint",
   );
   assert.match(
     dmPage,

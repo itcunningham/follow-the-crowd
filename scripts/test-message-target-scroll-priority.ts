@@ -142,7 +142,18 @@ function mockMessageRects(container: HTMLElement, heightById: Map<string, number
   });
 }
 
-type FakeMessage = { id: string; text: string; user_id: string; created_at: string };
+type FakeMessage = {
+  id: string;
+  text: string;
+  user_id: string;
+  created_at: string;
+  /** Renders the row as a booking card carrying the DM's booking-id attribute. */
+  bookingId?: string;
+  /** Classified "hidden" -- present in the messages array, never in the DOM. */
+  hidden?: boolean;
+};
+
+const CHAT_BOOKING_REQUEST_ID_ATTR = "data-chat-booking-request-id";
 
 function makeMessages(): FakeMessage[] {
   // 20 older messages, all above the fold of a 600px-tall viewport at
@@ -160,11 +171,13 @@ function Harness({
   loading,
   messages,
   targetMessageId,
+  fallbackTargetSelector,
   apiRef,
 }: {
   loading: boolean;
   messages: FakeMessage[];
   targetMessageId: string | null;
+  fallbackTargetSelector?: string | null;
   apiRef: { current: any };
 }) {
   const messageIds = messages.map((m) => m.id);
@@ -188,6 +201,7 @@ function Harness({
     onTargetMissing: chatScrollApi.scrollToBottomSmooth,
     suppressAutoScrollRef,
     pinnedToBottomRef: chatScrollApi.pinnedToBottomRef,
+    fallbackTargetSelector,
   });
 
   apiRef.current = chatScrollApi;
@@ -200,7 +214,22 @@ function Harness({
       : React.createElement(
           "ul",
           { "data-chat-content-root": "" },
-          messages.map((m) => React.createElement("li", { key: m.id, [CHAT_MESSAGE_ID_ATTR]: m.id }, m.text)),
+          // A hidden message is deliberately NOT rendered -- it stays in the
+          // messages array (where the DM page derives the fallback selector
+          // from) but never reaches the DOM, exactly like a lifecycle row.
+          messages
+            .filter((m) => !m.hidden)
+            .map((m) =>
+              React.createElement(
+                "li",
+                {
+                  key: m.id,
+                  [CHAT_MESSAGE_ID_ATTR]: m.id,
+                  ...(m.bookingId ? { [CHAT_BOOKING_REQUEST_ID_ATTR]: m.bookingId } : {}),
+                },
+                m.text,
+              ),
+            ),
         ),
   );
 }
@@ -211,7 +240,12 @@ async function withHarness(
     container: HTMLElement;
     doubles: ReturnType<typeof installDoubles>;
     apiRef: { current: any };
-    render: (props: { loading: boolean; messages: FakeMessage[]; targetMessageId: string | null }) => Promise<void>;
+    render: (props: {
+      loading: boolean;
+      messages: FakeMessage[];
+      targetMessageId: string | null;
+      fallbackTargetSelector?: string | null;
+    }) => Promise<void>;
   }) => Promise<void>,
 ) {
   const window = new Window();
@@ -236,7 +270,12 @@ async function withHarness(
   const root = createRoot(containerEl as unknown as HTMLElement);
   const apiRef: { current: any } = { current: null };
 
-  const render = async (props: { loading: boolean; messages: FakeMessage[]; targetMessageId: string | null }) => {
+  const render = async (props: {
+    loading: boolean;
+    messages: FakeMessage[];
+    targetMessageId: string | null;
+    fallbackTargetSelector?: string | null;
+  }) => {
     await act(async () => {
       root.render(React.createElement(Harness, { ...props, apiRef }));
     });
@@ -758,6 +797,97 @@ export async function testOwnMessageStillFollowsWhenPinnedToBottom(): Promise<vo
   });
 }
 
+/**
+ * Booking lifecycle rows are now ALWAYS hidden from the DM timeline, so every
+ * "DJ accepted" / "DJ withdrew" / "planner cancelled" push targets a message
+ * that is guaranteed never to be in the DOM. Landing at the bottom instead of
+ * the booking card would make the push useless -- and "the target isn't
+ * rendered" is precisely the condition under which the old code fell back to
+ * the bottom.
+ *
+ * Builds the real shape: a booking card up in the history, its lifecycle row
+ * just below it and NOT rendered, and the fallback selector the DM page
+ * derives from the (still present) messages array.
+ */
+async function runHiddenLifecycleTarget(withFallback: boolean) {
+  let result!: { atBottom: boolean; cardTopInViewport: number; targetInDom: boolean; scrollTop: number };
+
+  await withHarness(async ({ render, apiRef, doubles }) => {
+    const messages: FakeMessage[] = makeMessages();
+    // msg-5 becomes the booking card; msg-6 becomes its hidden lifecycle row.
+    messages[5] = { ...messages[5], text: "booking card", bookingId: "booking-1" };
+    messages[6] = { ...messages[6], text: "Booking withdrawn · Club 53 · booking-1", hidden: true };
+
+    const targetMessageId = "msg-6";
+    const fallbackTargetSelector = withFallback
+      ? `[${CHAT_BOOKING_REQUEST_ID_ATTR}="booking-1"]`
+      : null;
+
+    await render({ loading: true, messages: [], targetMessageId, fallbackTargetSelector });
+    const scroller = apiRef.current!.scrollRef.current as HTMLElement;
+    const metrics = mockScrollMetrics(scroller, { scrollHeight: 1520, clientHeight: 600 });
+
+    await render({ loading: false, messages, targetMessageId, fallbackTargetSelector });
+    // 19 rendered rows (msg-6 is hidden), 80px each.
+    mockMessageRects(
+      scroller,
+      new Map(messages.filter((m) => !m.hidden).map((m) => [m.id, 80])),
+    );
+    doubles.flushAllRaf();
+    // Let the retry loop exhaust in the no-fallback case, so its bottom
+    // fallback has actually run by the time we measure.
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    doubles.flushAllRaf();
+
+    const card = scroller.querySelector(
+      `[${CHAT_BOOKING_REQUEST_ID_ATTR}="booking-1"]`,
+    ) as HTMLElement | null;
+    assert.ok(card, "the booking card must be rendered");
+    const containerTop = scroller.getBoundingClientRect().top;
+
+    result = {
+      atBottom: metrics.getScrollTop() === metrics.getMaxScrollTop(),
+      cardTopInViewport: Math.round(card!.getBoundingClientRect().top - containerTop),
+      targetInDom: Boolean(
+        scroller.querySelector(`[${CHAT_MESSAGE_ID_ATTR}="${targetMessageId}"]`),
+      ),
+      scrollTop: metrics.getScrollTop(),
+    };
+  });
+
+  return result;
+}
+
+export async function testHiddenLifecycleTargetLandsOnItsBookingCard(): Promise<void> {
+  const withFallback = await runHiddenLifecycleTarget(true);
+
+  assert.equal(
+    withFallback.targetInDom,
+    false,
+    "the lifecycle row must genuinely be absent from the DOM, or this test proves nothing",
+  );
+  assert.equal(
+    withFallback.atBottom,
+    false,
+    "a lifecycle push must NOT dump the reader at the bottom just because its row is hidden",
+  );
+  // 80px card centred in a 600px viewport -> ~260px from the container top.
+  assert.ok(
+    Math.abs(withFallback.cardTopInViewport - 260) <= 8,
+    `the booking card must be centred in the viewport (was ${withFallback.cardTopInViewport}px from the top)`,
+  );
+
+  // The control that makes the assertion above mean something: identical
+  // setup, no fallback selector -> the old behaviour, straight to the bottom.
+  const withoutFallback = await runHiddenLifecycleTarget(false);
+  assert.equal(
+    withoutFallback.atBottom,
+    true,
+    "without the fallback selector the same hidden target must fall to the bottom -- if this " +
+      "passes too, the test above is not actually measuring the fallback",
+  );
+}
+
 export async function runMessageTargetScrollPriorityTests(): Promise<void> {
   await testTargetScrollSurvivesLayoutChangeAfterRelease();
   await testTargetSurvivesRepeatedLateLayoutChanges();
@@ -772,4 +902,5 @@ export async function runMessageTargetScrollPriorityTests(): Promise<void> {
   await testOwnMessageStillFollowsWhenPinnedToBottom();
   await testNoTargetStillLandsAtBottom();
   await testMissingTargetFallsBackToBottom();
+  await testHiddenLifecycleTargetLandsOnItsBookingCard();
 }
