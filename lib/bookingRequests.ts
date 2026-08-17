@@ -21,9 +21,10 @@ import {
   DM_BOOKING_CANCELLED_MESSAGE,
   formatBookingConfirmedDmMessage,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
-  DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
   DM_BOOKING_RATE_DECLINED_MESSAGE,
   formatRateProposedDmSystemMessage,
+  formatProposedRateAcceptedDmMessage,
+  formatRateProposalDeclinedDmMessage,
   formatDmBookingSystemMessageDisplay,
   isDmBookingSystemMessage,
   isLegacyRateProposedDmMessage,
@@ -32,7 +33,6 @@ import {
   LEGACY_BOOKING_CANCELLED_DM_PREFIX,
   LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
   LEGACY_RATE_PROPOSED_DM_PREFIX,
-  LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE,
   LEGACY_RATE_PROPOSAL_DECLINED_DM_PREFIX,
 } from "@/lib/dm/dmBookingSystemMessages";
 import { startDm } from "@/lib/startDm";
@@ -1347,19 +1347,35 @@ async function insertBookingCancelledDmMessageIfNeeded(
 
 export function formatRateProposedDmMessage(
   proposedRate: number | null | undefined,
+  eventName?: string | null,
+  bookingId?: string | null,
 ): string {
-  return formatRateProposedDmSystemMessage(proposedRate);
+  return formatRateProposedDmSystemMessage(proposedRate, eventName, bookingId);
 }
 
 async function insertRateProposedDmMessageIfNeeded(
   booking: BookingRequest,
-): Promise<{ inserted: boolean; messageText: string; warning: string | null }> {
-  const messageText = formatRateProposedDmMessage(booking.proposed_rate);
+): Promise<{
+  inserted: boolean;
+  messageText: string;
+  messageId: string | null;
+  warning: string | null;
+}> {
+  // Versioned per booking: "Rate proposed: $500 · <event> · <bookingId>". The
+  // bare "Rate proposed: $500" form is not an identity -- two bookings in one
+  // thread can carry the same figure, so its dedupe could return the other
+  // booking's row and hand create_notification a stale message_id.
+  const messageText = formatRateProposedDmMessage(
+    booking.proposed_rate,
+    booking.event_name,
+    booking.id,
+  );
 
   if (!booking.conversation_id) {
     return {
       inserted: false,
       messageText,
+      messageId: null,
       warning: "Your rate was submitted, but this booking has no DM thread to update",
     };
   }
@@ -1386,26 +1402,44 @@ async function insertRateProposedDmMessageIfNeeded(
       const existingAtMs = new Date(existing.created_at).getTime();
 
       if (Math.abs(existingAtMs - proposalAtMs) <= RATE_PROPOSED_DM_DUPLICATE_WINDOW_MS) {
-        return { inserted: false, messageText, warning: null };
+        // Deduped: return the id of THIS booking's own row (the exact versioned
+        // text was matched), so a retry threads the same target and
+        // create_notification collapses it to one push.
+        return {
+          inserted: false,
+          messageText,
+          messageId: existing.id as string,
+          warning: null,
+        };
       }
     }
   }
 
-  const { error: insertError } = await supabase.from("messages").insert({
-    conversation_id: booking.conversation_id,
-    user_id: booking.recipient_id,
-    text: messageText,
-  });
+  const { data: insertedRow, error: insertError } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: booking.conversation_id,
+      user_id: booking.recipient_id,
+      text: messageText,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     return {
       inserted: false,
       messageText,
+      messageId: null,
       warning: `Your rate was submitted, but the DM thread could not be updated. ${insertError.message}`,
     };
   }
 
-  return { inserted: true, messageText, warning: null };
+  return {
+    inserted: true,
+    messageText,
+    messageId: (insertedRow?.id as string) ?? null,
+    warning: null,
+  };
 }
 
 async function insertBookingAcceptedDmMessageIfNeeded(
@@ -1476,9 +1510,19 @@ export function isRateProposalDeclinedDmMessage(text: string): boolean {
 
 async function insertRateProposalDeclinedDmMessageIfNeeded(
   booking: BookingRequest,
-): Promise<{ inserted: boolean }> {
+): Promise<{ inserted: boolean; messageText: string; messageId: string | null }> {
+  // Versioned per booking+action: "Rate declined · <event> · <bookingId>" or
+  // "Original offer kept · <event> · <bookingId>". Both labels are bare
+  // non-unique constants, so this is the exact pair that reproduced the
+  // withdrawal-push bug when their ids were threaded naively.
+  const messageText = formatRateProposalDeclinedDmMessage(
+    getProposalDeclinedDmMessage(booking),
+    booking.event_name,
+    booking.id,
+  );
+
   if (!booking.conversation_id) {
-    return { inserted: false };
+    return { inserted: false, messageText, messageId: null };
   }
 
   const { data: recentRecipientRows, error: proposedError } = await supabase
@@ -1500,20 +1544,23 @@ async function insertRateProposalDeclinedDmMessageIfNeeded(
       row.text.trim().startsWith("DJ proposed a rate of "),
   )?.created_at;
 
-  const declineMessage = getProposalDeclinedDmMessage(booking);
-
   let declineQuery = supabase
     .from("messages")
     .select("id")
     .eq("conversation_id", booking.conversation_id)
     .eq("user_id", booking.sender_id)
-    .in("text", [
-      declineMessage,
-      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
-      DM_BOOKING_RATE_DECLINED_MESSAGE,
-      LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE,
-    ]);
+    // Exact versioned text only. This previously matched a SET of texts that
+    // included the generic legacy constants, so a decline on ANOTHER booking in
+    // the thread satisfied this dedupe and its message id got threaded into
+    // create_notification -- whose (user_id, message_id) dedupe then swallowed
+    // this booking's notification entirely. No prefix matching either, for the
+    // same reason.
+    .eq("text", messageText);
 
+  // Still scoped to the current proposal round. A decline is repeatable on one
+  // booking (propose -> decline -> propose -> decline), and the versioned text
+  // is identical across rounds, so without this gate round two would reuse
+  // round one's row id and create_notification would drop the second push.
   if (latestProposedAt) {
     declineQuery = declineQuery.gte("created_at", latestProposedAt);
   }
@@ -1525,30 +1572,37 @@ async function insertRateProposalDeclinedDmMessageIfNeeded(
   if (existingError) {
     console.error("[bookings] Failed to check proposal-declined DM duplicate:", existingError);
   } else if (existingDeclines?.[0]) {
-    return { inserted: false };
+    return { inserted: false, messageText, messageId: existingDeclines[0].id as string };
   }
 
-  const { error: insertError } = await supabase.from("messages").insert({
-    conversation_id: booking.conversation_id,
-    user_id: booking.sender_id,
-    text: declineMessage,
-  });
+  const { data: insertedRow, error: insertError } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: booking.conversation_id,
+      user_id: booking.sender_id,
+      text: messageText,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     console.error("[bookings] Failed to insert proposal-declined DM notice:", insertError);
-    return { inserted: false };
+    return { inserted: false, messageText, messageId: null };
   }
 
-  return { inserted: true };
+  return { inserted: true, messageText, messageId: (insertedRow?.id as string) ?? null };
 }
 
 async function insertAcceptProposedRateDmMessageIfNeeded(
   booking: BookingRequest,
-): Promise<{ inserted: boolean; messageText: string }> {
-  const messageText = DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE;
+): Promise<{ inserted: boolean; messageText: string; messageId: string | null }> {
+  // Versioned per booking: the bare "Proposed rate accepted" constant was
+  // conversation-wide, so a second booking in the same thread deduped onto the
+  // FIRST booking's row and inherited its message id.
+  const messageText = formatProposedRateAcceptedDmMessage(booking.event_name, booking.id);
 
   if (!booking.conversation_id) {
-    return { inserted: false, messageText };
+    return { inserted: false, messageText, messageId: null };
   }
 
   const { data: existingRows, error: existingError } = await supabase
@@ -1556,6 +1610,9 @@ async function insertAcceptProposedRateDmMessageIfNeeded(
     .select("id")
     .eq("conversation_id", booking.conversation_id)
     .eq("user_id", booking.sender_id)
+    // Exact versioned text -- never a prefix or an `.in()` set including the
+    // legacy bare constant, which is what let one booking's notice suppress
+    // another booking's push.
     .eq("text", messageText)
     .limit(1);
 
@@ -1565,21 +1622,28 @@ async function insertAcceptProposedRateDmMessageIfNeeded(
       existingError,
     );
   } else if (existingRows?.[0]) {
-    return { inserted: false, messageText };
+    // This booking's own existing row: still the right deep-link target, and
+    // threading it makes a retry collapse to one push instead of creating an
+    // untargeted second notification.
+    return { inserted: false, messageText, messageId: existingRows[0].id as string };
   }
 
-  const { error: insertError } = await supabase.from("messages").insert({
-    conversation_id: booking.conversation_id,
-    user_id: booking.sender_id,
-    text: messageText,
-  });
+  const { data: insertedRow, error: insertError } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: booking.conversation_id,
+      user_id: booking.sender_id,
+      text: messageText,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     console.error("[bookings] Failed to insert accepted-proposal DM message:", insertError);
-    return { inserted: false, messageText };
+    return { inserted: false, messageText, messageId: null };
   }
 
-  return { inserted: true, messageText };
+  return { inserted: true, messageText, messageId: (insertedRow?.id as string) ?? null };
 }
 
 const BOOKING_PREVIEW_LABELS: Record<BookingRequestStatus, string> = {
@@ -2172,6 +2236,48 @@ export function findDmMessageIdForBookingRequest(
   }
 
   return null;
+}
+
+/**
+ * The id of this booking's own "BOOKING REQUEST" DM message, or null.
+ *
+ * Exists for the declined-booking push, which writes no lifecycle row of its
+ * own. The booking-request row is unique per booking by construction and is
+ * exactly what renders the booking card, so `?message=<id>` lands on the card
+ * with no new targeting mechanism.
+ *
+ * Never throws: the booking status change has already committed by the time
+ * this runs, and a failed lookup must degrade to an untargeted push (the old
+ * behaviour), not fail the decline.
+ */
+async function findBookingRequestDmMessageId(
+  booking: BookingRequest,
+): Promise<string | null> {
+  if (!booking.conversation_id) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("messages")
+    .select("id, text")
+    .eq("conversation_id", booking.conversation_id)
+    // Narrowing only. `Booking ID: <uuid>` contains no LIKE wildcards, and the
+    // exact decision is made by findDmMessageIdForBookingRequest below -- the
+    // same parser the DM page's booking-target scroll uses -- so a loose match
+    // here can never yield another booking's row.
+    .like("text", `BOOKING REQUEST%Booking ID: ${booking.id}%`)
+    .order("created_at", { ascending: true })
+    .limit(20);
+
+  if (error) {
+    console.error("[bookings] Failed to look up booking-request DM message:", error);
+    return null;
+  }
+
+  return findDmMessageIdForBookingRequest(
+    (data ?? []) as BookingRequestMessageSource[],
+    booking.id,
+  );
 }
 
 export function isBookingRateProposalSchemaError(error: unknown): boolean {
@@ -3349,8 +3455,19 @@ export async function proposeBookingRate(
         booking.sender_id,
         "message",
         proposerName,
-        formatNotificationPreview(dmResult.messageText),
+        // The stored text now ends in the booking id. A push body and the
+        // in-app notification row are both user-facing, so the display form is
+        // what gets sent -- "Rate proposed: $500", never the raw UUID
+        // (FTC_WORKFLOW §7).
+        formatNotificationPreview(formatDmBookingSystemMessageDisplay(dmResult.messageText)),
         `/dm/${booking.conversation_id}`,
+        null,
+        // Deep-links the planner's push to the rate-proposal notice itself
+        // instead of the bottom of the DM. Without this the notification's
+        // message_id was NULL and push-send had nothing to append `?message=`
+        // from. The notice is hidden in the timeline, so the DM page's existing
+        // fallbackTargetSelector resolves it to the booking's card.
+        dmResult.messageId ?? undefined,
       );
     } catch (notificationError) {
       warnings.push(
@@ -3380,15 +3497,21 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
     throw new Error("Accepted booking could not be parsed");
   }
 
+  // The DM notice is written FIRST so its message id exists before either
+  // notification is created. Reversed (the shipped order) there is no id to
+  // thread, notifications.message_id stays NULL, and the DJ's push lands at the
+  // bottom of the thread instead of on the accepted booking.
+  const dmResult = await insertAcceptProposedRateDmMessageIfNeeded(booking);
+
   await createNotification(
     booking.recipient_id,
     "booking_update",
     "Proposed rate accepted",
     `${booking.event_name} · ${formatRateDisplay(booking.fee)}`,
     booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+    null,
+    dmResult.messageId ?? undefined,
   );
-
-  const dmResult = await insertAcceptProposedRateDmMessageIfNeeded(booking);
 
   if (dmResult.inserted && booking.conversation_id) {
     try {
@@ -3399,8 +3522,15 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
         booking.recipient_id,
         "message",
         accepterName,
-        formatNotificationPreview(dmResult.messageText),
+        // Display form only -- the stored text ends in the raw booking id.
+        formatNotificationPreview(formatDmBookingSystemMessageDisplay(dmResult.messageText)),
         `/dm/${booking.conversation_id}`,
+        null,
+        // Same target as the booking_update above, deliberately: one action
+        // gets one push. create_notification's (user_id, message_id) dedupe
+        // collapses the pair instead of double-pushing the DJ for a single
+        // accepted rate.
+        dmResult.messageId ?? undefined,
       );
     } catch (notificationError) {
       console.error(
@@ -3447,7 +3577,8 @@ export async function declineProposedBookingRate(
     throw new Error("Declined proposal could not be parsed");
   }
 
-  await insertRateProposalDeclinedDmMessageIfNeeded(booking);
+  // Written before the notification so there is a message id to thread.
+  const declinedDm = await insertRateProposalDeclinedDmMessageIfNeeded(booking);
 
   let warning: string | null = null;
   const isAskForRate = isAskForRateBooking(booking);
@@ -3461,6 +3592,12 @@ export async function declineProposedBookingRate(
         ? `${booking.event_name} · propose a new rate`
         : `${booking.event_name} · ${getBookingOfferRateLabel(booking)}`,
       booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+      null,
+      // The title is a bare non-unique constant, which is why the DM notice it
+      // points at had to be versioned per booking first: threading a generic
+      // row's id here is what made one booking's decline suppress another's
+      // push entirely.
+      declinedDm.messageId ?? undefined,
     );
   } catch (notificationError) {
     warning = isAskForRate
@@ -3540,13 +3677,25 @@ export async function updateBookingRequestStatus(
 
   const declinedDjProfile = await getUserProfileById(booking.recipient_id);
   const declinedDjName = resolveUserDisplayName(declinedDjProfile, { fallback: "A DJ" });
+  // A decline writes NO lifecycle row on purpose -- the booking card already
+  // shows "Declined", and adding a hidden row would be a second source of
+  // truth. It targets the booking-request message instead: that row is unique
+  // per booking by construction ("BOOKING REQUEST\nBooking ID: <id>") and its
+  // card already carries data-chat-booking-request-id, so no new targeting
+  // mechanism is needed.
+  const declinedMessageId = await findBookingRequestDmMessageId(booking);
 
   await createNotification(
     booking.sender_id,
     "booking_update",
     `${declinedDjName} · Booking declined`,
     booking.event_name,
-    "/bookings",
+    // Was "/bookings", which could not deep-link to anything. The DM is where
+    // the booking card lives, so this is the destination a `?message=` target
+    // can actually be applied to.
+    booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+    null,
+    declinedMessageId ?? undefined,
   );
 
   notifyBookingRequestsChanged();

@@ -895,7 +895,11 @@ function testDmBookingSystemMessages() {
   assert.match(bookingRequestsSource, /formatRateProposedDmSystemMessage/);
   assert.match(bookingRequestsSource, /DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_RATE_DECLINED_MESSAGE/);
-  assert.match(bookingRequestsSource, /DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE/);
+  // The accepted-proposal notice is now written through its versioned
+  // per-booking formatter rather than the bare constant -- see
+  // testRateProposalLifecycleNoticesAreVersionedPerBooking.
+  assert.match(bookingRequestsSource, /formatProposedRateAcceptedDmMessage/);
+  assert.match(bookingRequestsSource, /formatRateProposalDeclinedDmMessage/);
   // Acceptance inserts the per-booking form of the confirmed message; see
   // testBookingAcceptedDmMessageIsScopedToTheBooking for why the bare constant
   // (and event-name-only form) could not be used here.
@@ -18688,6 +18692,10 @@ async function main() {
   await testLifecycleToastRendersTheNeutralFeedbackSurface();
   await testBookingLifecycleTransitionIdentityIncludesTheActor();
   await testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget();
+  await testRateProposalLifecycleNoticesAreVersionedPerBooking();
+  await testTwoRateDeclinesInOneThreadDoNotCollide();
+  await testRateProposalPushesCarryTheirOwnMessageTarget();
+  await testDeclinedBookingPushTargetsTheBookingRequestMessage();
   testDmPageWiresMessageTargetScroll();
   testCrewChatPageWiresMessageTargetScroll();
   testChatMessageTargetScrollSuppressionIsAsymmetric();
@@ -22185,6 +22193,595 @@ async function testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget() {
   );
 }
 
+const RATE_PROPOSAL_BOOKING_A = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+const RATE_PROPOSAL_BOOKING_B = "9f8e7d6c-5b4a-4938-8271-6a5b4c3d2e1f";
+
+/**
+ * The four rate-proposal lifecycle notices are versioned per booking:
+ *
+ *   Rate proposed: $500 · <event> · <bookingId>
+ *   Proposed rate accepted · <event> · <bookingId>
+ *   Rate declined · <event> · <bookingId>
+ *   Original offer kept · <event> · <bookingId>
+ *
+ * They existed as bare non-unique constants ("Rate declined", "Original offer
+ * kept", "Proposed rate accepted"), which is why their message ids could not be
+ * threaded into create_notification: an exact-text dedupe on a constant returns
+ * SOME OTHER booking's row, and create_notification's (user_id, message_id)
+ * dedupe then swallows the legitimate notification -- no push at all. That is
+ * the shipped bug this format prevents, not a cosmetic change.
+ */
+async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
+  const {
+    formatProposedRateAcceptedDmMessage,
+    formatRateProposalDeclinedDmMessage,
+    formatRateProposedDmSystemMessage,
+    formatDmBookingSystemMessageDisplay,
+    isDmBookingSystemMessage,
+    isVersionedBookingLifecycleDmMessage,
+    parseDmBookingTimelineBookingId,
+    DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+    DM_BOOKING_RATE_DECLINED_MESSAGE,
+    DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
+  } = await import("../lib/dm/dmBookingSystemMessages.js");
+
+  // --- the exact stored formats -------------------------------------------
+  assert.equal(
+    formatRateProposedDmSystemMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    `Rate proposed: $500 · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
+  );
+  assert.equal(
+    formatProposedRateAcceptedDmMessage("Club 53", RATE_PROPOSAL_BOOKING_A),
+    `Proposed rate accepted · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
+  );
+  assert.equal(
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_RATE_DECLINED_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+    `Rate declined · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
+  );
+  assert.equal(
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+    `Original offer kept · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
+  );
+
+  const versionedTexts = [
+    formatRateProposedDmSystemMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatProposedRateAcceptedDmMessage("Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_RATE_DECLINED_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+  ];
+
+  // --- identity: distinct per booking, stable per booking+action ----------
+  // This is the property the dedupe (and therefore the push) depends on.
+  for (const label of [DM_BOOKING_RATE_DECLINED_MESSAGE, DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE]) {
+    assert.notEqual(
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_B),
+      `two "${label}" notices in the SAME thread must be different rows -- identical text is ` +
+        `what let one booking's decline suppress the other booking's push`,
+    );
+    // Same event name too: the event name alone is not an identity either.
+    assert.notEqual(
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_B),
+    );
+    // A retry of the same booking+action MUST collapse onto one row, or the
+    // planner double-taps and the DJ gets two pushes.
+    assert.equal(
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    );
+  }
+  assert.notEqual(
+    formatProposedRateAcceptedDmMessage("Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatProposedRateAcceptedDmMessage("Club 53", RATE_PROPOSAL_BOOKING_B),
+  );
+  // Same rate, same event, two bookings -- the figure is not an identity.
+  assert.notEqual(
+    formatRateProposedDmSystemMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatRateProposedDmSystemMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_B),
+  );
+
+  // --- classification, display, targeting --------------------------------
+  for (const text of versionedTexts) {
+    assert.equal(
+      isVersionedBookingLifecycleDmMessage(text),
+      true,
+      `"${text}" must be recognised as a versioned lifecycle row`,
+    );
+    assert.equal(
+      isDmBookingSystemMessage(text),
+      true,
+      `"${text}" must not render as ordinary chat -- that is how a raw UUID reaches the user`,
+    );
+    assert.equal(
+      classifyDmConversationMessageKind(text, { bookings: [], conversationId: "conversation-1" }),
+      "hidden",
+      `"${text}" must stay hidden from the visible DM timeline`,
+    );
+    assert.equal(
+      parseDmBookingTimelineBookingId(text),
+      RATE_PROPOSAL_BOOKING_A,
+      `"${text}" must yield its booking id, or its hidden row's push has no card to fall back to`,
+    );
+    assert.doesNotMatch(
+      formatDmBookingSystemMessageDisplay(text),
+      ANY_UUID,
+      `"${text}" leaks a raw booking id into the DM timeline`,
+    );
+    assert.doesNotMatch(
+      formatDmInboxMessagePreview(text) ?? "",
+      ANY_UUID,
+      `"${text}" leaks a raw booking id into the Messages inbox preview`,
+    );
+  }
+
+  // Display keeps the existing user-facing copy exactly.
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(versionedTexts[0]),
+    "Rate proposed: $500",
+    "the rate must survive display -- it is the informative half of the notice",
+  );
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(versionedTexts[1]),
+    DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
+  );
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(versionedTexts[2]),
+    DM_BOOKING_RATE_DECLINED_MESSAGE,
+  );
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(versionedTexts[3]),
+    DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+  );
+
+  // --- legacy rows are NOT migrated and must keep working -----------------
+  for (const legacy of [
+    "Rate proposed: $500",
+    "Rate proposed · $500",
+    "DJ proposed a rate of $500.",
+    DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
+    DM_BOOKING_RATE_DECLINED_MESSAGE,
+    DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+    "Planner kept the original offer.",
+    "Planner accepted the proposed rate.",
+    "Proposal declined · original offer still available",
+  ]) {
+    assert.equal(
+      isDmBookingSystemMessage(legacy),
+      true,
+      `legacy row "${legacy}" must still be recognised as a booking system message`,
+    );
+    assert.equal(
+      isVersionedBookingLifecycleDmMessage(legacy),
+      false,
+      `legacy row "${legacy}" must NOT be treated as versioned -- that is what keeps it out of ` +
+        `the exact-text dedupe`,
+    );
+    assert.equal(
+      classifyDmConversationMessageKind(legacy, { bookings: [], conversationId: "conversation-1" }),
+      "timeline",
+      `legacy row "${legacy}" must keep rendering in historical threads`,
+    );
+  }
+
+  // --- ordinary conversation must not be swept up -------------------------
+  for (const chat of [
+    "Rate declined by the venue, sorry",
+    `Rate declined for that one · ${RATE_PROPOSAL_BOOKING_A}`,
+    `Original offer kept in my notes · Club 53 · not-a-uuid`,
+    "Hey are you free Friday?",
+  ]) {
+    assert.equal(
+      classifyDmConversationMessageKind(chat, { bookings: [], conversationId: "conversation-1" }),
+      "chat",
+      `"${chat}" is ordinary conversation and must not vanish from the timeline`,
+    );
+  }
+}
+
+/**
+ * THE COLLISION CASE. Two rate-proposal declines on DIFFERENT bookings in the
+ * SAME DM must produce two distinct message rows and two distinct
+ * notifications.
+ *
+ * This models the only two DB behaviours that decide whether a push happens:
+ *   1. the helper's dedupe -- `.eq("text", messageText)` scoped to the thread
+ *   2. create_notification -- idempotent per (user_id, message_id), with NO
+ *      unread filter and NO time window (see
+ *      20260817000000_notification_message_identity_dedupe.sql)
+ *
+ * The negative control is the point: fed the BARE legacy label instead of the
+ * versioned formatter, the same model loses the second push entirely. That is
+ * the production failure, reproduced.
+ */
+async function testTwoRateDeclinesInOneThreadDoNotCollide() {
+  const { formatRateProposalDeclinedDmMessage, DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE } =
+    await import("../lib/dm/dmBookingSystemMessages.js");
+
+  type Row = { id: string; text: string };
+
+  function runThread(textFor: (bookingId: string) => string) {
+    const messages: Row[] = [];
+    const notifications: { userId: string; messageId: string | null }[] = [];
+    let nextId = 0;
+
+    for (const bookingId of [RATE_PROPOSAL_BOOKING_A, RATE_PROPOSAL_BOOKING_B]) {
+      const text = textFor(bookingId);
+      // (1) helper dedupe: exact text, conversation-scoped.
+      const existing = messages.find((row) => row.text === text);
+      const messageId = existing
+        ? existing.id
+        : (messages.push({ id: `message-${(nextId += 1)}`, text }), messages.at(-1)!.id);
+
+      // (2) create_notification: (user_id, message_id) identity dedupe.
+      if (!notifications.some((n) => n.userId === "dj-1" && n.messageId === messageId)) {
+        notifications.push({ userId: "dj-1", messageId });
+      }
+    }
+
+    return { messages, notifications };
+  }
+
+  const versioned = runThread((bookingId) =>
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      bookingId,
+    ),
+  );
+
+  assert.equal(
+    versioned.messages.length,
+    2,
+    "two declines on different bookings must write two distinct message rows",
+  );
+  assert.notEqual(
+    versioned.messages[0].id,
+    versioned.messages[1].id,
+    "the two declines must carry distinct message ids",
+  );
+  assert.equal(
+    versioned.notifications.length,
+    2,
+    "two declines on different bookings must produce two notifications -- one push each",
+  );
+  assert.notEqual(
+    versioned.notifications[0].messageId,
+    versioned.notifications[1].messageId,
+  );
+
+  // Negative control: the bare label, i.e. what shipped. Same model, one push
+  // lost. Without this the test above could pass for the wrong reason.
+  const bare = runThread(() => DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE);
+  assert.equal(
+    bare.messages.length,
+    1,
+    "control: the bare label deduped the second booking onto the first booking's row",
+  );
+  assert.equal(
+    bare.notifications.length,
+    1,
+    "control: create_notification then swallowed the second booking's notification -- no push. " +
+      "If this control ever reports 2, the model no longer reproduces the bug and the assertions " +
+      "above prove nothing",
+  );
+
+  // A genuine retry of the SAME booking+action must still collapse to one push.
+  const retry = runThread(() =>
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+  );
+  assert.equal(retry.messages.length, 1, "a retry must reuse the same row");
+  assert.equal(retry.notifications.length, 1, "a retry must produce exactly one push");
+}
+
+/**
+ * All four rate-proposal notification producers must thread their DM row's id
+ * as createNotification's 7th argument, and the accepted-rate path must write
+ * the DM row BEFORE creating the notification.
+ *
+ * Driving the helpers alone would not catch this: the wiring lives at the
+ * producers, and each producer is an independent place the id can be dropped.
+ */
+async function testRateProposalPushesCarryTheirOwnMessageTarget() {
+  const source = readFileSync(new URL("../lib/bookingRequests.ts", import.meta.url), "utf8");
+
+  function sliceFunction(header: string, endHeader: string): string {
+    const start = source.indexOf(header);
+    assert.ok(start > -1, `${header} must exist`);
+    const end = source.indexOf(endHeader, start);
+    assert.ok(end > start, `${endHeader} must follow ${header}`);
+    return source.slice(start, end);
+  }
+
+  // --- each helper's stored text must be VERSIONED BY BOOKING -------------
+  // The decisive property, and the one a purely formatter-level test misses:
+  // the helper has to actually pass `booking.id` into the formatter. Rewriting
+  // `const messageText = <versioned formatter>(...)` back to the bare
+  // `getProposalDeclinedDmMessage(booking)` constant leaves every other
+  // assertion in this test satisfied while restoring the collision in full.
+  for (const [helper, formatter] of [
+    ["insertRateProposedDmMessageIfNeeded", "formatRateProposedDmMessage"],
+    ["insertRateProposalDeclinedDmMessageIfNeeded", "formatRateProposalDeclinedDmMessage"],
+    ["insertAcceptProposedRateDmMessageIfNeeded", "formatProposedRateAcceptedDmMessage"],
+  ] as const) {
+    const start = source.indexOf(`async function ${helper}(`);
+    assert.ok(start > -1, `${helper} must exist`);
+    const messageTextAt = source.indexOf("const messageText = ", start);
+    assert.ok(messageTextAt > start, `${helper} must build a messageText`);
+    const expression = source.slice(messageTextAt, source.indexOf(");", messageTextAt) + 2);
+
+    assert.match(
+      expression,
+      new RegExp(`const messageText = ${formatter}\\(`),
+      `${helper} must build its notice through ${formatter} -- the versioned per-booking form`,
+    );
+    assert.match(
+      expression,
+      /booking\.id/,
+      `${helper}'s stored text must embed booking.id. Without it the text is a bare constant ` +
+        `shared by every booking in the thread, the exact-text dedupe returns another booking's ` +
+        `row, and create_notification's (user_id, message_id) dedupe drops this booking's push`,
+    );
+    assert.match(
+      expression,
+      /booking\.event_name/,
+      `${helper}'s stored text must carry the event name, matching the shipped ` +
+        `"<label> · <event> · <bookingId>" convention`,
+    );
+  }
+
+  // --- helpers return an id on BOTH branches ------------------------------
+  for (const helper of [
+    "insertRateProposedDmMessageIfNeeded",
+    "insertRateProposalDeclinedDmMessageIfNeeded",
+    "insertAcceptProposedRateDmMessageIfNeeded",
+  ]) {
+    const start = source.indexOf(`async function ${helper}(`);
+    assert.ok(start > -1, `${helper} must exist`);
+    const body = source.slice(start, start + 4200);
+
+    assert.match(
+      body,
+      /messageId: string \| null/,
+      `${helper} must report the DM row's id -- without it the notification's message_id is NULL`,
+    );
+    assert.match(
+      body,
+      /\.select\("id"\)\s*\n\s*\.single\(\)/,
+      `${helper} must read the inserted row's id back (fresh-insert branch)`,
+    );
+    assert.match(
+      body,
+      /messageId: (?:existing|insertedRow)/,
+      `${helper} must also return an id on the dedupe branch, or a retry loses its target`,
+    );
+    // Dedupe must be the exact versioned text. A set including the bare legacy
+    // constants, or any prefix match, reintroduces the cross-booking collision.
+    assert.match(
+      body,
+      /\.eq\("text", messageText\)/,
+      `${helper} must dedupe on the exact versioned text`,
+    );
+    assert.doesNotMatch(
+      body,
+      /\.in\("text",/,
+      `${helper} must not dedupe against a set including the generic legacy notices -- that is ` +
+        `precisely the bug`,
+    );
+    assert.doesNotMatch(
+      body,
+      /\.like\("text",/,
+      `${helper} must not prefix-match: one booking's notice would suppress another's push`,
+    );
+  }
+
+  // The decline helper must still bound its dedupe to the current proposal
+  // round -- a decline is repeatable on ONE booking, and the versioned text is
+  // identical across rounds.
+  const declineHelper = sliceFunction(
+    "async function insertRateProposalDeclinedDmMessageIfNeeded(",
+    "async function insertAcceptProposedRateDmMessageIfNeeded(",
+  );
+  assert.match(
+    declineHelper,
+    /declineQuery = declineQuery\.gte\("created_at", latestProposedAt\)/,
+    "without the per-round window, declining a re-proposed rate on the same booking reuses the " +
+      "previous round's row id and create_notification drops the second push",
+  );
+
+  // --- producer 1: proposeBookingRate ------------------------------------
+  const propose = sliceFunction(
+    "export async function proposeBookingRate(",
+    "export async function acceptProposedBookingRate(",
+  );
+  assert.match(
+    propose,
+    /dmResult\.messageId \?\? undefined,\s*\n\s*\);/,
+    "proposeBookingRate's 'message' notification must carry the rate-proposal row's id",
+  );
+  assert.doesNotMatch(
+    propose,
+    /formatNotificationPreview\(dmResult\.messageText\)/,
+    "the raw stored text ends in the booking id -- a push body and the notifications list are " +
+      "both user-facing, so the display form must be sent (FTC_WORKFLOW §7)",
+  );
+  assert.match(
+    propose,
+    /formatNotificationPreview\(formatDmBookingSystemMessageDisplay\(dmResult\.messageText\)\)/,
+  );
+
+  // --- producers 2 + 3: acceptProposedBookingRate ------------------------
+  const accept = sliceFunction(
+    "export async function acceptProposedBookingRate(",
+    "export type DeclineProposedBookingRateResult",
+  );
+  const acceptCalls = accept.match(/await createNotification\(/g) ?? [];
+  assert.equal(acceptCalls.length, 2, "the accepted-rate path still creates two notifications");
+  assert.equal(
+    (accept.match(/dmResult\.messageId \?\? undefined,/g) ?? []).length,
+    2,
+    "BOTH accepted-rate notifications must carry the DM row's id -- one per producer",
+  );
+  assert.doesNotMatch(
+    accept,
+    /formatNotificationPreview\(dmResult\.messageText\)/,
+    "the accepted-proposal push body must be the display form, not the versioned stored text",
+  );
+
+  // Ordering: the DM row must be written before either notification, or there
+  // is no id to thread and message_id silently goes back to NULL.
+  const insertAt = accept.indexOf("await insertAcceptProposedRateDmMessageIfNeeded(booking);");
+  const firstNotifyAt = accept.indexOf("await createNotification(");
+  assert.ok(insertAt > -1 && firstNotifyAt > -1);
+  assert.ok(
+    insertAt < firstNotifyAt,
+    "insertAcceptProposedRateDmMessageIfNeeded must run BEFORE the first createNotification -- " +
+      "moving it back after is exactly the shipped bug",
+  );
+
+  // --- producer 4: declineProposedBookingRate ----------------------------
+  const decline = sliceFunction(
+    "export async function declineProposedBookingRate(",
+    "export async function updateBookingRequestStatus(",
+  );
+  assert.match(
+    decline,
+    /const declinedDm = await insertRateProposalDeclinedDmMessageIfNeeded\(booking\);/,
+    "the decline path must capture the DM notice it writes",
+  );
+  assert.match(
+    decline,
+    /declinedDm\.messageId \?\? undefined,/,
+    "the 'Rate declined' / 'Original offer kept' notification must carry the DM notice's id",
+  );
+  const declineInsertAt = decline.indexOf("insertRateProposalDeclinedDmMessageIfNeeded(booking)");
+  const declineNotifyAt = decline.indexOf("await createNotification(");
+  assert.ok(
+    declineInsertAt > -1 && declineNotifyAt > -1 && declineInsertAt < declineNotifyAt,
+    "the decline notice must be written before its notification",
+  );
+}
+
+/**
+ * An ordinary booking decline (not a rate decline) writes no DM system message
+ * on purpose -- the booking card already reads "Declined". Its push used to
+ * hardcode "/bookings", which cannot deep-link to anything, so it targets the
+ * booking-request message instead: that row is unique per booking by
+ * construction and is what renders the card.
+ */
+async function testDeclinedBookingPushTargetsTheBookingRequestMessage() {
+  const source = readFileSync(new URL("../lib/bookingRequests.ts", import.meta.url), "utf8");
+  const { findDmMessageIdForBookingRequest, formatBookingRequestMessage } = await import(
+    "../lib/bookingRequests.js"
+  );
+
+  const start = source.indexOf("export async function updateBookingRequestStatus(");
+  const end = source.indexOf("export function resolveBookingForMessage(", start);
+  assert.ok(start > -1 && end > start);
+  const fn = source.slice(start, end);
+
+  assert.doesNotMatch(
+    fn,
+    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,\s*\n\s*"\/bookings",/,
+    "the declined push must not hardcode /bookings -- nothing there can be deep-linked",
+  );
+  assert.match(
+    fn,
+    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,\s*\n(?:\s*\/\/[^\n]*\n)*\s*booking\.conversation_id \? `\/dm\/\$\{booking\.conversation_id\}` : "\/bookings",\s*\n\s*null,\s*\n\s*declinedMessageId \?\? undefined,/,
+    "the declined push must open the DM and target the booking-request message, with /bookings " +
+      "kept only as the no-conversation fallback",
+  );
+  assert.match(
+    fn,
+    /const declinedMessageId = await findBookingRequestDmMessageId\(booking\);/,
+    "the lookup must happen before the notification is created",
+  );
+
+  // No lifecycle row may be introduced for a decline.
+  assert.doesNotMatch(
+    fn,
+    /\.from\("messages"\)\s*\n?\s*\.insert\(/,
+    "a decline must not write a DM lifecycle row -- the card is the source of truth",
+  );
+
+  // The lookup must reuse the existing parser, not a second matching scheme,
+  // and must never throw over the already-committed status change.
+  const lookupStart = source.indexOf("async function findBookingRequestDmMessageId(");
+  assert.ok(lookupStart > -1, "findBookingRequestDmMessageId must exist");
+  const lookup = source.slice(lookupStart, lookupStart + 1800);
+  assert.match(
+    lookup,
+    /return findDmMessageIdForBookingRequest\(/,
+    "the exact decision must come from the shared parser the DM page already uses",
+  );
+  assert.match(
+    lookup,
+    /if \(!booking\.conversation_id\) \{\s*\n\s*return null;/,
+    "a booking with no conversation must fall back, never throw",
+  );
+  assert.match(
+    lookup,
+    /if \(error\) \{[\s\S]{0,200}?return null;/,
+    "a failed lookup must degrade to an untargeted push, never fail the decline",
+  );
+
+  // Behaviour of the reused parser: the booking-request row is unique per
+  // booking, so two bookings in one thread resolve to their own cards.
+  const bookingA = createRegressionBookingRequest({ id: RATE_PROPOSAL_BOOKING_A });
+  const bookingB = createRegressionBookingRequest({
+    id: RATE_PROPOSAL_BOOKING_B,
+    event_name: "Summer Party",
+  });
+  const rows = [
+    { id: "message-a", text: formatBookingRequestMessage(bookingA) },
+    { id: "chat", text: "Hey are you free Friday?" },
+    { id: "message-b", text: formatBookingRequestMessage(bookingB) },
+  ];
+
+  assert.equal(findDmMessageIdForBookingRequest(rows, RATE_PROPOSAL_BOOKING_A), "message-a");
+  assert.equal(findDmMessageIdForBookingRequest(rows, RATE_PROPOSAL_BOOKING_B), "message-b");
+  assert.notEqual(
+    findDmMessageIdForBookingRequest(rows, RATE_PROPOSAL_BOOKING_A),
+    findDmMessageIdForBookingRequest(rows, RATE_PROPOSAL_BOOKING_B),
+    "two bookings in one thread must resolve to their own booking-request rows",
+  );
+  assert.equal(
+    findDmMessageIdForBookingRequest(rows, "6d0f2e5b-9a11-4c33-8f77-2b1c4d5e6f70"),
+    null,
+    "an unknown booking must yield no target rather than someone else's row",
+  );
+
+  // And the row it resolves to is the one that renders the card, so the
+  // existing `?message=` path lands on the card with no new mechanism.
+  assert.equal(
+    classifyDmConversationMessageKind(rows[0].text, {
+      bookings: [bookingA],
+      conversationId: "conversation-1",
+    }),
+    "booking_card",
+  );
+}
+
 async function testBookingCancellationNoticesAreUniquePerBookingAndAction() {
   const source = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),
@@ -22417,14 +23014,14 @@ function testBookingLifecyclePushesCarryAMessageTarget() {
   );
 
   // --- declined is deliberately different ---------------------------------
-  // It writes no DM system message and points at the Gigs list, so there is
-  // nothing to target. Pinned so that changing the destination is a conscious
-  // decision rather than an accident.
-  assert.match(
+  // It STILL writes no lifecycle row (the card already reads "Declined", and a
+  // second hidden row would be a second source of truth), but it no longer
+  // dead-ends at /bookings: it targets the booking-request message that renders
+  // the card. See testDeclinedBookingPushTargetsTheBookingRequestMessage.
+  assert.doesNotMatch(
     source,
-    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,\s*\n\s*"\/bookings",\s*\n\s*\);/,
-    "declined still links to /bookings with no message target -- if this changes, the " +
-      "deep-link behaviour needs re-reasoning, not just a message id",
+    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,\s*\n\s*"\/bookings",/,
+    "the declined push must not hardcode /bookings -- there is nothing there to deep-link to",
   );
 }
 

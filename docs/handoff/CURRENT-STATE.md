@@ -1,4 +1,93 @@
-# Current state (last updated: 2026-08-16)
+# Current state (last updated: 2026-08-17)
+
+## Rate-proposal pushes now target their own message (2026-08-17)
+
+**The last four `createNotification` calls in `lib/bookingRequests.ts` that passed five
+arguments now pass seven.** `notifications.message_id` was NULL for every rate-proposal
+notification, so `push-send` had nothing to append `?message=` from and the tap landed at the
+bottom of the DM. The four producers: `proposeBookingRate` (`message`), both notifications in
+`acceptProposedBookingRate`, and `declineProposedBookingRate`.
+
+**Threading the ids naively would have re-shipped the withdrawal bug.** `"Rate declined"`,
+`"Original offer kept"` and `"Proposed rate accepted"` were **bare non-unique constants** —
+identical text for every booking in a thread. An exact-text dedupe on a constant returns
+*another* booking's row, that stale id gets threaded, and `create_notification`'s
+`(user_id, message_id)` dedupe (no unread filter, no time window) swallows the legitimate
+notification: **no push at all**.
+
+**So all four are now versioned to the existing convention** `<label> · <event> · <bookingId>`:
+
+| Stored | Displayed |
+|---|---|
+| `Rate proposed: $500 · <event> · <bookingId>` | `Rate proposed: $500` |
+| `Proposed rate accepted · <event> · <bookingId>` | `Proposed rate accepted` |
+| `Rate declined · <event> · <bookingId>` | `Rate declined` |
+| `Original offer kept · <event> · <bookingId>` | `Original offer kept` |
+
+`Rate proposed` needed the id too, not just for card resolution: two bookings in one thread can
+carry the same figure, and the same figure can be re-proposed after a decline. One consistent
+internal format was the smallest safe design.
+
+**No new display, classification or targeting branch was needed.**
+`formatDmBookingSystemMessageDisplay` already slices a versioned row at the first `" · "`;
+`parseDmBookingTimelineBookingId` already matches the trailing `· <uuid>` structurally;
+`classifyDmConversationMessageKind` already hides anything
+`isVersionedBookingLifecycleDmMessage` recognises. Only the label list in that recogniser grew,
+and it now shares one uuid pattern with the parser so the two can never disagree. The DM page,
+`useChatMessageTargetScroll`, `fallbackTargetSelector` and `[data-chat-booking-request-id]` are
+untouched.
+
+**Dedupe is exact versioned text (`.eq("text", messageText)`) at all three helpers — no `.in()`
+set, no prefix match.** The decline helper keeps its `gte(latestProposedAt)` window because a
+decline is *repeatable* on one booking: without it, round two reuses round one's row id and the
+second push is dropped.
+
+**Ordering fixed.** `acceptProposedBookingRate` created its notification *before* the DM insert,
+so there was no id to thread. The insert now runs first.
+
+**Ordinary booking decline (`updateBookingRequestStatus`) no longer dead-ends at `/bookings`.**
+It writes no lifecycle row (the card already reads "Declined"); it links to `/dm/<conversationId>`
+and targets the existing `BOOKING REQUEST\nBooking ID: <id>` message, which is unique per booking
+and *is* the booking card. Lookup reuses `findDmMessageIdForBookingRequest`; it never throws.
+
+**Push bodies are sanitised.** The two `message`-type producers previously sent
+`formatNotificationPreview(dmResult.messageText)` — which would now have put a raw booking UUID
+on a lock screen. They send the display form.
+
+**Verified live against the production database, not by reading source.** Full planner↔DJ flow
+driven through the real library functions as the two QA accounts (Isaac's `30a8adcc` never
+touched), then a WebKit pass at 1280/390/375/320 against a local build of this branch:
+
+- two `$500` proposals on different bookings in one thread → **two rows, two notifications,
+  distinct `message_id`s**, bodies `Rate proposed: $500` (no UUID)
+- **the collision case**: two declines on different bookings → `Rate declined · A · <idA>` and
+  `Rate declined · B · <idB>`, **two notifications with distinct `message_id`s**, both titled the
+  bare `"Rate declined"`
+- repeat decline → **no second notification** (1 before, 1 after)
+- accepted rate → versioned row, `message_id` set, and **exactly one** notification (the two
+  accept producers now collapse — see caveat below)
+- declined booking → `message_id` = the booking-request row's id, `link = /dm/<convo>`
+- **every notification created in the run had a non-null `message_id`**
+- UI: 48/48 then 22/22. Lifecycle rows absent from the timeline and the inbox, **no UUID on any
+  surface**, and a `?message=` deep link to a hidden rate-proposal row on the *oldest* booking
+  scrolled to `scrollTop 0` with the card on screen while the no-param baseline sat at the bottom
+  with that card off screen — so the fallback demonstrably scrolled, it did not just happen to land
+- all QA data created for the run was deleted and the deletion confirmed
+
+**Behaviour change to know about:** accepting a proposed rate used to create **two** notifications
+for the DJ (a `booking_update` and a `message`). Both now carry the same `message_id`, so
+`create_notification` collapses them — **one action, one push**, one notification row.
+
+**Tests:** four new regressions. **Seven mutations, seven caught** — restoring the generic decline
+dedupe, removing `messageId` at each of the four producers individually, moving the accepted-rate
+notification back before the insert (in a form that still compiles and still threads an id), and
+pointing the declined booking back at `/bookings`. Two bonus mutations also caught: narrowing the
+versioned recogniser back to three verbs, and sending the raw versioned text as a push body. The
+first version of the decline test **escaped** its mutation and was rewritten to pin `booking.id`
+inside each helper's `messageText` expression.
+
+**Not touched:** `push-send`, RLS, `create_notification`, the service worker, scroll internals,
+schema. **No SQL.**
 
 ## The booking card is now the ONE visible source of truth (2026-08-16)
 
