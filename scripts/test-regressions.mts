@@ -18693,6 +18693,7 @@ async function main() {
   await testBookingLifecycleTransitionIdentityIncludesTheActor();
   await testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget();
   await testRateProposalLifecycleNoticesAreVersionedPerBooking();
+  await testNegotiationHistoryStaysVisibleInTheDmTimeline();
   await testTwoRateDeclinesInOneThreadDoNotCollide();
   await testRateProposalPushesCarryTheirOwnMessageTarget();
   await testDeclinedBookingPushTargetsTheBookingRequestMessage();
@@ -22164,14 +22165,14 @@ async function testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget() {
     );
   }
 
-  // The inserts themselves are untouched.
-  for (const helper of [
-    "insertBookingAcceptedDmMessageIfNeeded",
-    "insertBookingCancelledDmMessageIfNeeded",
-  ]) {
-    const start = source.indexOf(`async function ${helper}(`);
-    assert.ok(start > -1, `${helper} must still exist`);
-    const body = source.slice(start, start + 4000);
+  // The inserts themselves are untouched. Extracted at exact function
+  // boundaries -- the previous `slice(start, start + 4000)` window overshot into
+  // the following function, which independently satisfied both assertions.
+  for (const [helper, nextHeader] of [
+    ["insertBookingAcceptedDmMessageIfNeeded", "export const RATE_PROPOSAL_DECLINED_DM_PREFIX"],
+    ["insertBookingCancelledDmMessageIfNeeded", "export function formatRateProposedDmMessage("],
+  ] as const) {
+    const body = extractFunctionBody(source, `async function ${helper}(`, nextHeader);
     assert.match(
       body,
       /\.from\("messages"\)\s*\n?\s*\.insert\(/,
@@ -22196,8 +22197,80 @@ async function testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget() {
 const RATE_PROPOSAL_BOOKING_A = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 const RATE_PROPOSAL_BOOKING_B = "9f8e7d6c-5b4a-4938-8271-6a5b4c3d2e1f";
 
+const BOOKING_REQUESTS_SOURCE = readFileSync(
+  new URL("../lib/bookingRequests.ts", import.meta.url),
+  "utf8",
+);
+
 /**
- * The four rate-proposal lifecycle notices are versioned per booking:
+ * Exact function-boundary extraction from a source file.
+ *
+ * NEVER slice a fixed number of characters. A `source.slice(start, start + 4200)`
+ * window over insertRateProposedDmMessageIfNeeded (2592 chars) overshot 1608
+ * chars into insertBookingAcceptedDmMessageIfNeeded, which independently
+ * satisfied every assertion -- so all four of that helper's guards were vacuous
+ * and its mutations escaped while the identical mutations on its two siblings
+ * (whose windows happened not to overshoot) were caught.
+ */
+function extractFunctionBody(source: string, header: string, nextHeader: string): string {
+  const start = source.indexOf(header);
+  assert.ok(start > -1, `${header} must exist`);
+  const end = source.indexOf(nextHeader, start + header.length);
+  assert.ok(end > start, `${nextHeader} must follow ${header} (boundary for exact extraction)`);
+  const body = source.slice(start, end);
+
+  // The anti-vacuity guard, and it has to be a real one. `!body.includes(
+  // nextHeader)` is tautological -- the slice ends at nextHeader by
+  // construction -- and a tautological guard is the same class of bug it is
+  // meant to prevent. Counting TOP-LEVEL declarations (indented/nested ones
+  // don't match `^`) is the property that actually matters: if the window spans
+  // two functions, every assertion below can be satisfied by the neighbour.
+  const topLevelDeclarations = body.match(/^(?:export )?(?:async )?function \w+\(/gm) ?? [];
+  assert.equal(
+    topLevelDeclarations.length,
+    1,
+    `${header} must be extracted alone -- this window spans ${topLevelDeclarations.length} ` +
+      `top-level functions (${topLevelDeclarations.join(", ")}), so its assertions can be ` +
+      `satisfied by a neighbour instead of the function they name`,
+  );
+
+  return body;
+}
+
+/**
+ * `createNotification(userId, type, title, body, link, reactionId, messageId)`.
+ *
+ * The message id MUST be argument 7. `notifications.reaction_id` has no foreign
+ * key, so sliding the message id into the reactionId slot does NOT throw: the
+ * RPC takes its reaction branch, writes `reaction_id = <messageId>` and leaves
+ * `message_id` NULL -- silently recreating the exact untargeted-push bug, with
+ * no error anywhere. Pinning `null,` immediately before the message id is what
+ * makes an off-by-one argument shift a test failure instead of a silent
+ * production regression.
+ */
+function assertMessageIdIsSeventhArgument(
+  functionBody: string,
+  messageIdExpression: string,
+  siteLabel: string,
+): void {
+  const escaped = messageIdExpression.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  assert.match(
+    functionBody,
+    new RegExp(`\\n\\s*null,\\n(?:\\s*//[^\\n]*\\n)*\\s*${escaped},`),
+    `${siteLabel}: reactionId (argument 6) must be an explicit null immediately before the ` +
+      `message id, so the message id lands in argument 7. reaction_id has no FK -- a shift by ` +
+      `one writes the message id there instead and message_id stays NULL, with no error`,
+  );
+  assert.doesNotMatch(
+    functionBody,
+    new RegExp(`\`,\\n(?:\\s*//[^\\n]*\\n)*\\s*${escaped},`),
+    `${siteLabel}: the message id must not sit directly after the link argument -- that is ` +
+      `argument 6, the reactionId slot`,
+  );
+}
+
+/**
+ * The four rate-proposal notices are versioned per booking:
  *
  *   Rate proposed: $500 · <event> · <bookingId>
  *   Proposed rate accepted · <event> · <bookingId>
@@ -22208,17 +22281,21 @@ const RATE_PROPOSAL_BOOKING_B = "9f8e7d6c-5b4a-4938-8271-6a5b4c3d2e1f";
  * kept", "Proposed rate accepted"), which is why their message ids could not be
  * threaded into create_notification: an exact-text dedupe on a constant returns
  * SOME OTHER booking's row, and create_notification's (user_id, message_id)
- * dedupe then swallows the legitimate notification -- no push at all. That is
- * the shipped bug this format prevents, not a cosmetic change.
+ * dedupe then swallows the legitimate notification -- no push at all.
+ *
+ * The identity is INTERNAL. See
+ * testNegotiationHistoryStaysVisibleInTheDmTimeline for the visibility rule.
  */
 async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
   const {
     formatProposedRateAcceptedDmMessage,
     formatRateProposalDeclinedDmMessage,
     formatRateProposedDmSystemMessage,
+    formatVersionedRateProposedDmMessage,
+    formatVersionedBookingLifecycleDmMessage,
     formatDmBookingSystemMessageDisplay,
     isDmBookingSystemMessage,
-    isVersionedBookingLifecycleDmMessage,
+    isVersionedBookingIdentityDmMessage,
     parseDmBookingTimelineBookingId,
     DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
     DM_BOOKING_RATE_DECLINED_MESSAGE,
@@ -22227,7 +22304,7 @@ async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
 
   // --- the exact stored formats -------------------------------------------
   assert.equal(
-    formatRateProposedDmSystemMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatVersionedRateProposedDmMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
     `Rate proposed: $500 · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
   );
   assert.equal(
@@ -22251,8 +22328,23 @@ async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
     `Original offer kept · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
   );
 
+  // The bare label formatter is display-only and must NOT version anything.
+  assert.equal(formatRateProposedDmSystemMessage(500), "Rate proposed: $500");
+
+  // --- a missing booking id must FAIL LOUDLY ------------------------------
+  // Returning the bare label instead would hand back the collision-prone
+  // non-unique form at the one moment nobody is watching.
+  for (const missing of [null, undefined, "", "   "]) {
+    assert.throws(
+      () => formatVersionedBookingLifecycleDmMessage("Rate declined", "Club 53", missing),
+      /without a booking id/,
+      `a blank booking id (${JSON.stringify(missing)}) must throw, not silently degrade to the ` +
+        `bare label`,
+    );
+  }
+
   const versionedTexts = [
-    formatRateProposedDmSystemMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatVersionedRateProposedDmMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
     formatProposedRateAcceptedDmMessage("Club 53", RATE_PROPOSAL_BOOKING_A),
     formatRateProposalDeclinedDmMessage(
       DM_BOOKING_RATE_DECLINED_MESSAGE,
@@ -22267,7 +22359,6 @@ async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
   ];
 
   // --- identity: distinct per booking, stable per booking+action ----------
-  // This is the property the dedupe (and therefore the push) depends on.
   for (const label of [DM_BOOKING_RATE_DECLINED_MESSAGE, DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE]) {
     assert.notEqual(
       formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
@@ -22275,13 +22366,7 @@ async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
       `two "${label}" notices in the SAME thread must be different rows -- identical text is ` +
         `what let one booking's decline suppress the other booking's push`,
     );
-    // Same event name too: the event name alone is not an identity either.
-    assert.notEqual(
-      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
-      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_B),
-    );
-    // A retry of the same booking+action MUST collapse onto one row, or the
-    // planner double-taps and the DJ gets two pushes.
+    // A retry of the same booking+action MUST collapse onto one row.
     assert.equal(
       formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
       formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
@@ -22293,16 +22378,16 @@ async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
   );
   // Same rate, same event, two bookings -- the figure is not an identity.
   assert.notEqual(
-    formatRateProposedDmSystemMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
-    formatRateProposedDmSystemMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_B),
+    formatVersionedRateProposedDmMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatVersionedRateProposedDmMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_B),
   );
 
   // --- classification, display, targeting --------------------------------
   for (const text of versionedTexts) {
     assert.equal(
-      isVersionedBookingLifecycleDmMessage(text),
+      isVersionedBookingIdentityDmMessage(text),
       true,
-      `"${text}" must be recognised as a versioned lifecycle row`,
+      `"${text}" must be recognised as carrying the internal booking identity`,
     );
     assert.equal(
       isDmBookingSystemMessage(text),
@@ -22310,19 +22395,19 @@ async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
       `"${text}" must not render as ordinary chat -- that is how a raw UUID reaches the user`,
     );
     assert.equal(
-      classifyDmConversationMessageKind(text, { bookings: [], conversationId: "conversation-1" }),
-      "hidden",
-      `"${text}" must stay hidden from the visible DM timeline`,
-    );
-    assert.equal(
       parseDmBookingTimelineBookingId(text),
       RATE_PROPOSAL_BOOKING_A,
-      `"${text}" must yield its booking id, or its hidden row's push has no card to fall back to`,
+      `"${text}" must yield its booking id for push targeting`,
     );
     assert.doesNotMatch(
       formatDmBookingSystemMessageDisplay(text),
       ANY_UUID,
       `"${text}" leaks a raw booking id into the DM timeline`,
+    );
+    assert.doesNotMatch(
+      formatDmBookingSystemMessageDisplay(text),
+      /Club 53/,
+      `"${text}" leaks its internal event-name identity segment into the timeline`,
     );
     assert.doesNotMatch(
       formatDmInboxMessagePreview(text) ?? "",
@@ -22368,7 +22453,7 @@ async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
       `legacy row "${legacy}" must still be recognised as a booking system message`,
     );
     assert.equal(
-      isVersionedBookingLifecycleDmMessage(legacy),
+      isVersionedBookingIdentityDmMessage(legacy),
       false,
       `legacy row "${legacy}" must NOT be treated as versioned -- that is what keeps it out of ` +
         `the exact-text dedupe`,
@@ -22393,6 +22478,198 @@ async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
       `"${chat}" is ordinary conversation and must not vanish from the timeline`,
     );
   }
+}
+
+/**
+ * NEGOTIATION HISTORY IS CONVERSATION, NOT LIFECYCLE AUDIT NOISE.
+ *
+ * "Rate proposed: $500 / Rate declined / Rate proposed: $600" is the record of
+ * how a booking reached its price. Versioning those rows for push targeting must
+ * NOT make them disappear: an earlier attempt added them to
+ * isVersionedBookingLifecycleDmMessage, which classifies as "hidden", and an
+ * accepted $600 booking then showed nothing at all -- both
+ * BookingRateProposalPanel and BookingRateProposalNotice render null once no
+ * proposal is pending, so the card did not take over, and proposed_rate_note
+ * vanished with the rows.
+ *
+ * The split: the three lifecycle STATE verbs stay hidden (shipped f5b4cbd9,
+ * the card is the source of truth for state); the four NEGOTIATION notices stay
+ * visible with only their internal identity suffix stripped.
+ */
+async function testNegotiationHistoryStaysVisibleInTheDmTimeline() {
+  const {
+    formatVersionedRateProposedDmMessage,
+    formatProposedRateAcceptedDmMessage,
+    formatRateProposalDeclinedDmMessage,
+    formatDmBookingSystemMessageDisplay,
+    isVersionedBookingLifecycleDmMessage,
+    isVersionedRateProposalDmMessage,
+    DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+    DM_BOOKING_RATE_DECLINED_MESSAGE,
+  } = await import("../lib/dm/dmBookingSystemMessages.js");
+
+  const conversationId = "conversation-1";
+  const bookingId = RATE_PROPOSAL_BOOKING_A;
+
+  const negotiationRows = [
+    formatVersionedRateProposedDmMessage(500, "Club 53", bookingId),
+    formatRateProposalDeclinedDmMessage(DM_BOOKING_RATE_DECLINED_MESSAGE, "Club 53", bookingId),
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      bookingId,
+    ),
+    formatVersionedRateProposedDmMessage(600, "Club 53", bookingId),
+  ];
+
+  // A negotiation notice must NEVER be classified as a hidden lifecycle verb.
+  for (const text of negotiationRows) {
+    assert.equal(
+      isVersionedBookingLifecycleDmMessage(text),
+      false,
+      `"${text}" is negotiation history, not a lifecycle state verb -- adding it to the ` +
+        `lifecycle recogniser is what hid it`,
+    );
+    assert.equal(isVersionedRateProposalDmMessage(text), true);
+  }
+
+  // The three state verbs must STILL be hidden (f5b4cbd9 must not regress).
+  for (const label of LIFECYCLE_LABELS) {
+    const text = lifecycleNoticeText(label, "Club 53");
+    assert.equal(isVersionedBookingLifecycleDmMessage(text), true, `${label} must stay hidden`);
+    assert.equal(isVersionedRateProposalDmMessage(text), false);
+    assert.equal(
+      classifyDmConversationMessageKind(text, { bookings: [], conversationId }),
+      "hidden",
+      `${label} must stay hidden -- the booking card is the source of truth for state`,
+    );
+  }
+
+  // The measured regression, reproduced as an assertion: an ACCEPTED booking at
+  // $600 must still show its negotiation history.
+  const acceptedBooking = createRegressionBookingRequest({
+    id: bookingId,
+    status: "accepted",
+    fee: "600",
+    rate_mode: "open",
+    proposed_rate: null,
+    proposed_rate_status: "accepted",
+  });
+  const messages = [
+    {
+      id: "card",
+      created_at: "2026-07-27T12:00:00.000Z",
+      text: formatBookingRequestMessage(acceptedBooking),
+    },
+    ...negotiationRows.map((text, index) => ({
+      id: `negotiation-${index}`,
+      created_at: `2026-07-27T12:0${index + 1}:00.000Z`,
+      text,
+    })),
+  ];
+
+  const visible = messages.filter(
+    (message, messageIndex) =>
+      classifyDmConversationMessageKind(message.text, {
+        bookings: [acceptedBooking],
+        conversationId,
+        messages,
+        messageIndex,
+      }) !== "hidden",
+  );
+
+  assert.equal(
+    visible.length,
+    messages.length,
+    "every negotiation row on an accepted booking must stay visible -- this is the $600 case " +
+      "QA measured showing nothing at all",
+  );
+
+  const rendered = visible
+    .filter((message) => message.id.startsWith("negotiation-"))
+    .map((message) => formatDmBookingSystemMessageDisplay(message.text));
+  assert.deepEqual(
+    rendered,
+    ["Rate proposed: $500", "Rate declined", "Original offer kept", "Rate proposed: $600"],
+    "the readable label is what renders -- no event name, no booking id",
+  );
+  for (const line of rendered) {
+    assert.doesNotMatch(line, ANY_UUID, `"${line}" must not render a raw UUID`);
+    assert.doesNotMatch(line, /Club 53/, `"${line}" must not render the identity segment`);
+  }
+
+  // Timestamp clustering must include them (a visible row needs a layout entry).
+  const layout = buildDmConversationTimestampLayout(messages, {
+    bookings: [acceptedBooking],
+    conversationId,
+  });
+  for (const message of messages) {
+    assert.equal(
+      layout.has(message.id),
+      true,
+      `visible row ${message.id} must receive a timestamp-layout entry`,
+    );
+  }
+
+  // A live pending proposal is still suppressed by the card that shows it --
+  // that is the pre-existing rule, and it is not the same as hiding history.
+  const pendingBooking = createRegressionBookingRequest({
+    id: bookingId,
+    status: "pending",
+    rate_mode: "open",
+    proposed_rate: 500,
+    proposed_rate_status: "pending",
+    proposed_rate_at: "2026-07-27T12:01:00.000Z",
+  });
+  const pendingMessages = [
+    {
+      id: "card",
+      created_at: "2026-07-27T12:00:00.000Z",
+      text: formatBookingRequestMessage(pendingBooking),
+    },
+    { id: "proposal", created_at: "2026-07-27T12:01:00.000Z", text: negotiationRows[0] },
+  ];
+  assert.equal(
+    classifyDmConversationMessageKind(negotiationRows[0], {
+      bookings: [pendingBooking],
+      conversationId,
+      messages: pendingMessages,
+      messageIndex: 1,
+    }),
+    "hidden",
+    "a proposal the card is actively displaying is still suppressed -- unchanged behaviour",
+  );
+
+  // Inbox: label only, recency/authorship untouched.
+  const { formatDmInboxConversationPreview, isDmInboxSystemPreviewMessage } = await import(
+    "../lib/dm/messagePreview.js"
+  );
+  const preview = formatDmInboxConversationPreview({
+    latestPreview: negotiationRows[3],
+    latestMessageUserId: "dj-1",
+    currentUserId: "planner-1",
+    bookings: [acceptedBooking],
+  });
+  assert.equal(preview, "Rate proposed: $600");
+  assert.doesNotMatch(preview, ANY_UUID);
+  assert.equal(isDmInboxSystemPreviewMessage(negotiationRows[3]), true);
+  assert.equal(
+    pickDmInboxPreviewMessage(
+      [
+        {
+          id: "negotiation-3",
+          conversation_id: conversationId,
+          user_id: "dj-1",
+          text: negotiationRows[3],
+          created_at: "2026-07-27T12:04:00.000Z",
+        } as never,
+      ],
+      conversationId,
+      [acceptedBooking],
+    )?.id,
+    "negotiation-3",
+    "the negotiation row must still supply latestActivityAt/latestPreview/latestMessageUserId",
+  );
 }
 
 /**
@@ -22495,41 +22772,51 @@ async function testTwoRateDeclinesInOneThreadDoNotCollide() {
 }
 
 /**
- * All four rate-proposal notification producers must thread their DM row's id
- * as createNotification's 7th argument, and the accepted-rate path must write
+ * Every rate-proposal notification producer must thread its DM row's id as
+ * createNotification's SEVENTH argument, and the accepted-rate path must write
  * the DM row BEFORE creating the notification.
  *
- * Driving the helpers alone would not catch this: the wiring lives at the
- * producers, and each producer is an independent place the id can be dropped.
+ * Driving the helpers alone would not catch either: the wiring lives at the
+ * producers, and each producer is an independent place the id can be dropped or
+ * shifted into the reactionId slot.
  */
 async function testRateProposalPushesCarryTheirOwnMessageTarget() {
-  const source = readFileSync(new URL("../lib/bookingRequests.ts", import.meta.url), "utf8");
+  const source = BOOKING_REQUESTS_SOURCE;
 
-  function sliceFunction(header: string, endHeader: string): string {
-    const start = source.indexOf(header);
-    assert.ok(start > -1, `${header} must exist`);
-    const end = source.indexOf(endHeader, start);
-    assert.ok(end > start, `${endHeader} must follow ${header}`);
-    return source.slice(start, end);
-  }
+  // --- each helper, extracted at its exact boundaries ---------------------
+  const helpers = {
+    insertRateProposedDmMessageIfNeeded: extractFunctionBody(
+      source,
+      "async function insertRateProposedDmMessageIfNeeded(",
+      "async function insertBookingAcceptedDmMessageIfNeeded(",
+    ),
+    insertRateProposalDeclinedDmMessageIfNeeded: extractFunctionBody(
+      source,
+      "async function insertRateProposalDeclinedDmMessageIfNeeded(",
+      "async function insertAcceptProposedRateDmMessageIfNeeded(",
+    ),
+    insertAcceptProposedRateDmMessageIfNeeded: extractFunctionBody(
+      source,
+      "async function insertAcceptProposedRateDmMessageIfNeeded(",
+      "const BOOKING_PREVIEW_LABELS",
+    ),
+  } as const;
 
-  // --- each helper's stored text must be VERSIONED BY BOOKING -------------
-  // The decisive property, and the one a purely formatter-level test misses:
-  // the helper has to actually pass `booking.id` into the formatter. Rewriting
-  // `const messageText = <versioned formatter>(...)` back to the bare
-  // `getProposalDeclinedDmMessage(booking)` constant leaves every other
-  // assertion in this test satisfied while restoring the collision in full.
-  for (const [helper, formatter] of [
-    ["insertRateProposedDmMessageIfNeeded", "formatRateProposedDmMessage"],
-    ["insertRateProposalDeclinedDmMessageIfNeeded", "formatRateProposalDeclinedDmMessage"],
-    ["insertAcceptProposedRateDmMessageIfNeeded", "formatProposedRateAcceptedDmMessage"],
-  ] as const) {
-    const start = source.indexOf(`async function ${helper}(`);
-    assert.ok(start > -1, `${helper} must exist`);
-    const messageTextAt = source.indexOf("const messageText = ", start);
-    assert.ok(messageTextAt > start, `${helper} must build a messageText`);
-    const expression = source.slice(messageTextAt, source.indexOf(");", messageTextAt) + 2);
+  const expectedFormatter = {
+    insertRateProposedDmMessageIfNeeded: "formatVersionedRateProposedDmMessage",
+    insertRateProposalDeclinedDmMessageIfNeeded: "formatRateProposalDeclinedDmMessage",
+    insertAcceptProposedRateDmMessageIfNeeded: "formatProposedRateAcceptedDmMessage",
+  } as const;
 
+  for (const [helper, body] of Object.entries(helpers)) {
+    const formatter = expectedFormatter[helper as keyof typeof expectedFormatter];
+
+    // The stored text must be VERSIONED BY BOOKING. Rewriting
+    // `const messageText = <versioned formatter>(...)` back to a bare constant
+    // leaves every other assertion here satisfied while restoring the collision.
+    const messageTextAt = body.indexOf("const messageText = ");
+    assert.ok(messageTextAt > -1, `${helper} must build a messageText`);
+    const expression = body.slice(messageTextAt, body.indexOf(");", messageTextAt) + 2);
     assert.match(
       expression,
       new RegExp(`const messageText = ${formatter}\\(`),
@@ -22548,18 +22835,8 @@ async function testRateProposalPushesCarryTheirOwnMessageTarget() {
       `${helper}'s stored text must carry the event name, matching the shipped ` +
         `"<label> · <event> · <bookingId>" convention`,
     );
-  }
 
-  // --- helpers return an id on BOTH branches ------------------------------
-  for (const helper of [
-    "insertRateProposedDmMessageIfNeeded",
-    "insertRateProposalDeclinedDmMessageIfNeeded",
-    "insertAcceptProposedRateDmMessageIfNeeded",
-  ]) {
-    const start = source.indexOf(`async function ${helper}(`);
-    assert.ok(start > -1, `${helper} must exist`);
-    const body = source.slice(start, start + 4200);
-
+    // An id on BOTH branches.
     assert.match(
       body,
       /messageId: string \| null/,
@@ -22575,8 +22852,8 @@ async function testRateProposalPushesCarryTheirOwnMessageTarget() {
       /messageId: (?:existing|insertedRow)/,
       `${helper} must also return an id on the dedupe branch, or a retry loses its target`,
     );
-    // Dedupe must be the exact versioned text. A set including the bare legacy
-    // constants, or any prefix match, reintroduces the cross-booking collision.
+
+    // Dedupe on the exact versioned text -- never a set, never a prefix.
     assert.match(
       body,
       /\.eq\("text", messageText\)/,
@@ -22590,34 +22867,90 @@ async function testRateProposalPushesCarryTheirOwnMessageTarget() {
     );
     assert.doesNotMatch(
       body,
-      /\.like\("text",/,
-      `${helper} must not prefix-match: one booking's notice would suppress another's push`,
+      /\.like\("text", `\$\{[A-Z_]*PREFIX[^`]*%`\)/,
+      `${helper} must not dedupe by bare label prefix: one booking's notice would suppress ` +
+        `another's push`,
     );
   }
 
-  // The decline helper must still bound its dedupe to the current proposal
-  // round -- a decline is repeatable on ONE booking, and the versioned text is
-  // identical across rounds.
-  const declineHelper = sliceFunction(
-    "async function insertRateProposalDeclinedDmMessageIfNeeded(",
-    "async function insertAcceptProposedRateDmMessageIfNeeded(",
+  // --- FIX 5: the decline round boundary must be an IDENTITY lookup -------
+  const declineHelper = helpers.insertRateProposalDeclinedDmMessageIfNeeded;
+  assert.doesNotMatch(
+    declineHelper,
+    /\.limit\(20\)/,
+    "the round boundary must not come from scanning the 20 most recent DJ-authored rows. With " +
+      ">20 DJ messages between the re-proposal and the decline it resolved to nothing, the bound " +
+      "was dropped, an all-time exact-text match found round one's row, and the permanent " +
+      "(user_id, message_id) dedupe returned round one's notification: no push at all",
+  );
+  assert.doesNotMatch(
+    declineHelper,
+    /isLegacyRateProposedDmMessage|startsWith\("Rate proposed: "\)|startsWith\("DJ proposed a rate of "\)/,
+    "the round boundary must not be a text-shape heuristic over a page of recent messages",
   );
   assert.match(
     declineHelper,
-    /declineQuery = declineQuery\.gte\("created_at", latestProposedAt\)/,
-    "without the per-round window, declining a re-proposed rate on the same booking reuses the " +
-      "previous round's row id and create_notification drops the second push",
+    /\.like\("text", buildVersionedRateProposedDmMessageLikePattern\(booking\.id\)\)/,
+    "the round boundary must be THIS booking's own latest proposal row, selected by identity, so " +
+      "no volume of unrelated messages can hide it",
+  );
+  assert.match(
+    declineHelper,
+    /\.eq\("user_id", booking\.recipient_id\)/,
+    "the proposal lookup stays scoped to the DJ who authored it",
+  );
+  // And the dedupe must only run when that boundary is known: with no boundary,
+  // an unbounded exact-text match is exactly the push-losing path.
+  assert.match(
+    declineHelper,
+    /if \(latestProposedAt\) \{[\s\S]*?\.gte\("created_at", latestProposedAt\)/,
+    "the exact-text dedupe must run INSIDE the known-boundary branch -- an unbounded fallback " +
+      "reuses round one's row id and drops the push",
+  );
+  const boundaryBranchAt = declineHelper.indexOf("if (latestProposedAt) {");
+  const insertAt = declineHelper.indexOf('.from("messages")\n    .insert(');
+  assert.ok(
+    boundaryBranchAt > -1 && insertAt > boundaryBranchAt,
+    "with no known round boundary the helper must fall through to the INSERT (a redundant row " +
+      "costs a duplicate notice; a false dedupe costs the push outright)",
+  );
+
+  // The pattern itself must be anchored at both ends.
+  const { buildVersionedRateProposedDmMessageLikePattern } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const pattern = buildVersionedRateProposedDmMessageLikePattern(RATE_PROPOSAL_BOOKING_A);
+  assert.equal(pattern, `Rate proposed: %· ${RATE_PROPOSAL_BOOKING_A}`);
+  assert.ok(
+    pattern.endsWith(RATE_PROPOSAL_BOOKING_A),
+    "the pattern must END on this booking's id -- an unanchored trailing wildcard could match " +
+      "another booking's proposal",
+  );
+  assert.equal(
+    (pattern.match(/%/g) ?? []).length,
+    1,
+    "exactly one wildcard, and only where the rate lives",
+  );
+  assert.notEqual(
+    pattern,
+    buildVersionedRateProposedDmMessageLikePattern(RATE_PROPOSAL_BOOKING_B),
   );
 
   // --- producer 1: proposeBookingRate ------------------------------------
-  const propose = sliceFunction(
+  const propose = extractFunctionBody(
+    source,
     "export async function proposeBookingRate(",
     "export async function acceptProposedBookingRate(",
   );
   assert.match(
     propose,
-    /dmResult\.messageId \?\? undefined,\s*\n\s*\);/,
+    /dmResult\.messageId \?\? undefined,/,
     "proposeBookingRate's 'message' notification must carry the rate-proposal row's id",
+  );
+  assertMessageIdIsSeventhArgument(
+    propose,
+    "dmResult.messageId ?? undefined",
+    "proposeBookingRate",
   );
   assert.doesNotMatch(
     propose,
@@ -22630,37 +22963,63 @@ async function testRateProposalPushesCarryTheirOwnMessageTarget() {
     /formatNotificationPreview\(formatDmBookingSystemMessageDisplay\(dmResult\.messageText\)\)/,
   );
 
-  // --- producers 2 + 3: acceptProposedBookingRate ------------------------
-  const accept = sliceFunction(
+  // --- producer 2: acceptProposedBookingRate -----------------------------
+  const accept = extractFunctionBody(
+    source,
     "export async function acceptProposedBookingRate(",
     "export type DeclineProposedBookingRateResult",
   );
-  const acceptCalls = accept.match(/await createNotification\(/g) ?? [];
-  assert.equal(acceptCalls.length, 2, "the accepted-rate path still creates two notifications");
+  // FIX 4: ONE notification for one action. This path used to create two for the
+  // same DJ -- a booking_update and a redundant "message" one -- so accepting a
+  // rate double-pushed.
   assert.equal(
-    (accept.match(/dmResult\.messageId \?\? undefined,/g) ?? []).length,
-    2,
-    "BOTH accepted-rate notifications must carry the DM row's id -- one per producer",
+    (accept.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "accepting a proposed rate must create exactly ONE notification -- two is a double push, " +
+      "and relying on create_notification to collapse them makes correctness depend on both " +
+      "calls always deriving the same message_id",
   );
   assert.doesNotMatch(
     accept,
-    /formatNotificationPreview\(dmResult\.messageText\)/,
-    "the accepted-proposal push body must be the display form, not the versioned stored text",
+    /"message",/,
+    "the redundant 'message'-type notification must not come back",
+  );
+  assert.match(
+    accept,
+    /"booking_update",\s*\n\s*"Proposed rate accepted",/,
+    "the notification kept must be the booking_update naming the outcome and the agreed fee",
+  );
+  assert.equal(
+    (accept.match(/dmResult\.messageId \?\? undefined,/g) ?? []).length,
+    1,
+    "the surviving accepted-rate notification must carry the DM row's id",
+  );
+  assertMessageIdIsSeventhArgument(
+    accept,
+    "dmResult.messageId ?? undefined",
+    "acceptProposedBookingRate",
+  );
+  // The DM message itself must still be written -- it is thread history AND the
+  // deep-link target.
+  assert.match(
+    accept,
+    /const dmResult = await insertAcceptProposedRateDmMessageIfNeeded\(booking\);/,
+    "the accepted-proposal DM notice must still be written",
   );
 
-  // Ordering: the DM row must be written before either notification, or there
-  // is no id to thread and message_id silently goes back to NULL.
-  const insertAt = accept.indexOf("await insertAcceptProposedRateDmMessageIfNeeded(booking);");
-  const firstNotifyAt = accept.indexOf("await createNotification(");
-  assert.ok(insertAt > -1 && firstNotifyAt > -1);
+  // Ordering: the DM row must be written before the notification.
+  const acceptInsertAt = accept.indexOf("await insertAcceptProposedRateDmMessageIfNeeded(booking);");
+  const acceptNotifyAt = accept.indexOf("await createNotification(");
+  assert.ok(acceptInsertAt > -1 && acceptNotifyAt > -1);
   assert.ok(
-    insertAt < firstNotifyAt,
-    "insertAcceptProposedRateDmMessageIfNeeded must run BEFORE the first createNotification -- " +
-      "moving it back after is exactly the shipped bug",
+    acceptInsertAt < acceptNotifyAt,
+    "insertAcceptProposedRateDmMessageIfNeeded must run BEFORE createNotification -- moving it " +
+      "back after is exactly the shipped bug",
   );
 
-  // --- producer 4: declineProposedBookingRate ----------------------------
-  const decline = sliceFunction(
+  // --- producer 3: declineProposedBookingRate ----------------------------
+  const decline = extractFunctionBody(
+    source,
     "export async function declineProposedBookingRate(",
     "export async function updateBookingRequestStatus(",
   );
@@ -22673,6 +23032,11 @@ async function testRateProposalPushesCarryTheirOwnMessageTarget() {
     decline,
     /declinedDm\.messageId \?\? undefined,/,
     "the 'Rate declined' / 'Original offer kept' notification must carry the DM notice's id",
+  );
+  assertMessageIdIsSeventhArgument(
+    decline,
+    "declinedDm.messageId ?? undefined",
+    "declineProposedBookingRate",
   );
   const declineInsertAt = decline.indexOf("insertRateProposalDeclinedDmMessageIfNeeded(booking)");
   const declineNotifyAt = decline.indexOf("await createNotification(");
@@ -22690,15 +23054,16 @@ async function testRateProposalPushesCarryTheirOwnMessageTarget() {
  * construction and is what renders the card.
  */
 async function testDeclinedBookingPushTargetsTheBookingRequestMessage() {
-  const source = readFileSync(new URL("../lib/bookingRequests.ts", import.meta.url), "utf8");
+  const source = BOOKING_REQUESTS_SOURCE;
   const { findDmMessageIdForBookingRequest, formatBookingRequestMessage } = await import(
     "../lib/bookingRequests.js"
   );
 
-  const start = source.indexOf("export async function updateBookingRequestStatus(");
-  const end = source.indexOf("export function resolveBookingForMessage(", start);
-  assert.ok(start > -1 && end > start);
-  const fn = source.slice(start, end);
+  const fn = extractFunctionBody(
+    source,
+    "export async function updateBookingRequestStatus(",
+    "export function resolveBookingForMessage(",
+  );
 
   assert.doesNotMatch(
     fn,
@@ -22711,10 +23076,22 @@ async function testDeclinedBookingPushTargetsTheBookingRequestMessage() {
     "the declined push must open the DM and target the booking-request message, with /bookings " +
       "kept only as the no-conversation fallback",
   );
+  assertMessageIdIsSeventhArgument(
+    fn,
+    "declinedMessageId ?? undefined",
+    "updateBookingRequestStatus (declined)",
+  );
   assert.match(
     fn,
     /const declinedMessageId = await findBookingRequestDmMessageId\(booking\);/,
     "the lookup must happen before the notification is created",
+  );
+
+  // The accepted branch in the same function must keep its own arg-7 wiring.
+  assertMessageIdIsSeventhArgument(
+    fn,
+    "acceptedDm.messageId ?? undefined",
+    "updateBookingRequestStatus (accepted)",
   );
 
   // No lifecycle row may be introduced for a decline.
@@ -22726,9 +23103,11 @@ async function testDeclinedBookingPushTargetsTheBookingRequestMessage() {
 
   // The lookup must reuse the existing parser, not a second matching scheme,
   // and must never throw over the already-committed status change.
-  const lookupStart = source.indexOf("async function findBookingRequestDmMessageId(");
-  assert.ok(lookupStart > -1, "findBookingRequestDmMessageId must exist");
-  const lookup = source.slice(lookupStart, lookupStart + 1800);
+  const lookup = extractFunctionBody(
+    source,
+    "async function findBookingRequestDmMessageId(",
+    "export function isBookingRateProposalSchemaError(",
+  );
   assert.match(
     lookup,
     /return findDmMessageIdForBookingRequest\(/,

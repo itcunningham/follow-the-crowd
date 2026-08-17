@@ -57,7 +57,7 @@ const BOOKING_LIFECYCLE_ID_SOURCE =
   "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 
 /**
- * The ONE internal shape every per-booking lifecycle notice uses:
+ * The ONE internal shape every per-booking notice uses:
  * `<label> · <event name> · <bookingRequestId>`.
  *
  * The booking id is the whole point. A bare label ("Rate declined", "Original
@@ -66,6 +66,13 @@ const BOOKING_LIFECYCLE_ID_SOURCE =
  * threads that stale id into create_notification, and its (user_id, message_id)
  * dedupe swallows the legitimate notification -- no push at all. That is the
  * bug that broke withdrawal pushes for days.
+ *
+ * THROWS on a missing booking id rather than returning the bare label. A silent
+ * degrade would hand back exactly the collision-prone non-unique form this
+ * function exists to replace, and it would do so at the one moment nobody is
+ * looking. `booking.id` is non-null on every caller's path, so this can only
+ * fire on a programming error -- and every caller already runs inside a
+ * try/catch or a soft-failing helper.
  *
  * Event name falls back to "Event" (same as formatBookingAcceptedDmMessage)
  * rather than emitting an empty middle segment: an empty segment does not match
@@ -81,7 +88,9 @@ export function formatVersionedBookingLifecycleDmMessage(
   const trimmedId = bookingId?.trim();
 
   if (!trimmedId) {
-    return trimmedLabel;
+    throw new Error(
+      `Cannot version the DM notice "${trimmedLabel}" without a booking id -- the bare label is not unique per booking`,
+    );
   }
 
   return `${trimmedLabel} · ${eventName?.trim() || "Event"} · ${trimmedId}`;
@@ -175,29 +184,39 @@ export const DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE =
 /** @deprecated Use DM_BOOKING_CANCELLED_MESSAGE */
 export const DM_BOOKING_REQUEST_CANCELLED_MESSAGE = DM_BOOKING_CANCELLED_MESSAGE;
 
+/** The bare display/legacy label, e.g. "Rate proposed: $500". Not an identity --
+ *  use formatVersionedRateProposedDmMessage for anything stored. */
+export function formatRateProposedDmSystemMessage(
+  proposedRate: number | null | undefined,
+): string {
+  return `${DM_BOOKING_PROPOSED_RATE_PREFIX}${formatIntegerRateDisplay(proposedRate)}`;
+}
+
 /**
- * `Rate proposed: $500 · <event> · <bookingId>` once the booking is known.
+ * `Rate proposed: $500 · <event> · <bookingId>` -- the STORED form.
  *
  * The rate alone is not an identity: two bookings in one planner<->DJ thread
  * can be offered the same figure, and the same figure can be re-proposed after
  * a decline. Versioning it keeps the dedupe (and therefore the deep-link
- * target) per booking, and lets a hidden row resolve to its own booking card
- * via parseDmBookingTimelineBookingId. Display still shows "Rate proposed: $X".
+ * target) per booking, and lets the row resolve to its own booking card via
+ * parseDmBookingTimelineBookingId. Display still shows "Rate proposed: $X".
  */
-export function formatRateProposedDmSystemMessage(
+export function formatVersionedRateProposedDmMessage(
   proposedRate: number | null | undefined,
-  eventName?: string | null,
-  bookingId?: string | null,
+  eventName: string | null | undefined,
+  bookingId: string | null | undefined,
 ): string {
-  const label = `${DM_BOOKING_PROPOSED_RATE_PREFIX}${formatIntegerRateDisplay(proposedRate)}`;
-
-  return formatVersionedBookingLifecycleDmMessage(label, eventName, bookingId);
+  return formatVersionedBookingLifecycleDmMessage(
+    formatRateProposedDmSystemMessage(proposedRate),
+    eventName,
+    bookingId,
+  );
 }
 
 /** `Proposed rate accepted · <event> · <bookingId>`. */
 export function formatProposedRateAcceptedDmMessage(
-  eventName?: string | null,
-  bookingId?: string | null,
+  eventName: string | null | undefined,
+  bookingId: string | null | undefined,
 ): string {
   return formatVersionedBookingLifecycleDmMessage(
     DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
@@ -215,10 +234,22 @@ export function formatProposedRateAcceptedDmMessage(
  */
 export function formatRateProposalDeclinedDmMessage(
   label: string,
-  eventName?: string | null,
-  bookingId?: string | null,
+  eventName: string | null | undefined,
+  bookingId: string | null | undefined,
 ): string {
   return formatVersionedBookingLifecycleDmMessage(label, eventName, bookingId);
+}
+
+/**
+ * LIKE pattern selecting exactly one booking's stored rate-proposal rows.
+ *
+ * Anchored at BOTH ends -- the label prefix and this booking's own id -- so it
+ * cannot match another booking's proposal, a decline notice, or ordinary chat.
+ * That is the opposite of the unanchored prefix match that let one booking's
+ * notice suppress another's push: the wildcard sits only where the rate lives.
+ */
+export function buildVersionedRateProposedDmMessageLikePattern(bookingId: string): string {
+  return `${DM_BOOKING_PROPOSED_RATE_PREFIX}%· ${bookingId.trim()}`;
 }
 
 /** @deprecated Use formatRateProposedDmSystemMessage */
@@ -291,32 +322,66 @@ function isCanonicalDmBookingSystemMessage(text: string): boolean {
   );
 }
 
+function buildVersionedNoticePattern(labelAlternation: string): RegExp {
+  return new RegExp(`^(?:${labelAlternation}) · .+ · ${BOOKING_LIFECYCLE_ID_SOURCE}$`);
+}
+
 /**
- * Fixed labels that may carry the versioned `· <event> · <bookingId>` tail.
- *
- * `Rate proposed: $X` is handled separately because its label embeds the rate.
- * Every entry here is a bare constant in its legacy form, and every legacy form
- * stays recognised by isCanonicalDmBookingSystemMessage -- historical threads
- * are never migrated.
+ * Lifecycle STATE verbs. These are audit lines for state the booking card
+ * already shows, so they are hidden from the DM timeline (shipped f5b4cbd9).
  */
 const VERSIONED_BOOKING_LIFECYCLE_LABELS = [
   DM_BOOKING_CONFIRMED_MESSAGE,
   "Booking withdrawn",
   DM_BOOKING_CANCELLED_MESSAGE,
+] as const;
+
+/**
+ * NEGOTIATION labels. Deliberately NOT in the list above.
+ *
+ * These are conversation history, not lifecycle audit noise: "Rate proposed:
+ * $500 / Rate declined / Rate proposed: $600" is the record of how a booking got
+ * to its price, and the card only ever shows the current state -- both
+ * BookingRateProposalPanel and BookingRateProposalNotice render nothing once no
+ * proposal is pending, so hiding these rows erases the negotiation (and its
+ * proposed_rate_note) with nothing taking its place. They stay VISIBLE; only
+ * the internal `· <event> · <bookingId>` identity suffix is stripped for
+ * display. Product decision, measured: hiding them left an accepted $600
+ * booking showing nothing at all.
+ */
+const VERSIONED_RATE_PROPOSAL_LABELS = [
   DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
   DM_BOOKING_RATE_DECLINED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
 ] as const;
 
-const VERSIONED_BOOKING_LIFECYCLE_PATTERN = new RegExp(
-  `^(?:${VERSIONED_BOOKING_LIFECYCLE_LABELS.join("|")}|${DM_BOOKING_PROPOSED_RATE_PREFIX}[^·]+)` +
-    ` · .+ · ${BOOKING_LIFECYCLE_ID_SOURCE}$`,
+const VERSIONED_BOOKING_LIFECYCLE_PATTERN = buildVersionedNoticePattern(
+  VERSIONED_BOOKING_LIFECYCLE_LABELS.join("|"),
 );
 
-/** The versioned per-booking lifecycle notices, all of which carry a trailing
- *  booking id and must never render as ordinary chat. */
+const VERSIONED_RATE_PROPOSAL_PATTERN = buildVersionedNoticePattern(
+  // `Rate proposed: $X` embeds the rate in its label, so it is matched by
+  // prefix + "no separator until the first · " rather than as a fixed string.
+  `${VERSIONED_RATE_PROPOSAL_LABELS.join("|")}|${DM_BOOKING_PROPOSED_RATE_PREFIX}[^·]+`,
+);
+
+/** The versioned per-booking lifecycle notices -- the three state verbs, which
+ *  the booking card already reflects and which are hidden from the timeline. */
 export function isVersionedBookingLifecycleDmMessage(text: string): boolean {
   return VERSIONED_BOOKING_LIFECYCLE_PATTERN.test(text.trim());
+}
+
+/** The versioned per-booking negotiation notices. Visible in the timeline; only
+ *  their identity suffix is stripped for display. */
+export function isVersionedRateProposalDmMessage(text: string): boolean {
+  return VERSIONED_RATE_PROPOSAL_PATTERN.test(text.trim());
+}
+
+/** Any notice carrying the internal `· <event> · <bookingId>` identity, whether
+ *  it renders or not. Drives display stripping and system-message
+ *  classification -- never visibility. */
+export function isVersionedBookingIdentityDmMessage(text: string): boolean {
+  return isVersionedBookingLifecycleDmMessage(text) || isVersionedRateProposalDmMessage(text);
 }
 
 export function isDmBookingSystemMessage(text: string): boolean {
@@ -337,7 +402,10 @@ export function isDmBookingSystemMessage(text: string): boolean {
     // treated as a system message at all, so it renders as ordinary chat and
     // leaks the raw booking UUID into both the DM timeline and the Messages
     // inbox preview.
-    isVersionedBookingLifecycleDmMessage(trimmed) ||
+    // ...and the versioned negotiation notices for the same reason: they stay
+    // VISIBLE, but as system notices whose identity suffix is stripped, not as
+    // ordinary chat carrying a raw UUID.
+    isVersionedBookingIdentityDmMessage(trimmed) ||
     isLegacyRateProposalDeclinedDmMessage(trimmed) ||
     isLegacyBookingCancelledDmMessage(trimmed) ||
     isLegacyBookingAcceptedDmMessage(trimmed) ||
@@ -402,17 +470,20 @@ export function isEventCancellationDmActivityMessage(text: string): boolean {
 export function formatDmBookingSystemMessageDisplay(text: string): string {
   const trimmed = text.trim();
 
-  // Versioned lifecycle rows are hidden from the DM timeline, but they are
-  // still the newest `messages` row, so they remain the Messages inbox
-  // preview -- which is what keeps that conversation ordered and unread
-  // correctly. Only the label may be shown: the event name is redundant beside
-  // the conversation name, and the trailing booking id is a raw UUID, which
-  // must never be user-facing (FTC_WORKFLOW §7). One branch rather than one per
-  // verb so a newly versioned label cannot leak an id by being forgotten here --
-  // which is exactly why the four rate-proposal formats needed no new branch:
-  // slicing at the first " · " leaves "Rate proposed: $500", "Proposed rate
-  // accepted", "Rate declined" and "Original offer kept" untouched.
-  if (isVersionedBookingLifecycleDmMessage(trimmed)) {
+  // Every versioned row -- hidden lifecycle verb or VISIBLE negotiation notice --
+  // carries an internal `· <event> · <bookingId>` identity that exists purely so
+  // dedupe and push targeting can tell one booking from another. None of it may
+  // be user-facing: the event name is redundant beside the conversation name,
+  // and the booking id is a raw UUID (FTC_WORKFLOW §7). Slicing at the first
+  // " · " leaves exactly the readable label -- "Booking withdrawn", "Rate
+  // proposed: $500", "Rate declined", "Original offer kept". One branch rather
+  // than one per label, so a newly versioned notice cannot leak an id by being
+  // forgotten here.
+  //
+  // Note this is display only. Hidden rows are still the newest `messages` row
+  // and still supply the inbox preview, its timestamp and its author -- which is
+  // what keeps the conversation ordered and unread correctly.
+  if (isVersionedBookingIdentityDmMessage(trimmed)) {
     return trimmed.slice(0, trimmed.indexOf(" · "));
   }
 
