@@ -130,8 +130,9 @@ import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/c
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
 import {
-  formatDmBookingLifecycleToast,
+  buildDmBookingLifecycleSignatures,
   parseDmBookingTimelineBookingId,
+  pickDmBookingLifecycleToast,
 } from "@/lib/dm/dmBookingSystemMessages";
 import { InlineTabFeedbackMessage } from "@/app/components/feedback/InlineTabFeedbackMessage";
 import { useInlineTabFeedbackDismiss } from "@/lib/design/inlineTabFeedback";
@@ -615,18 +616,18 @@ export default function DmChatPage() {
    * Driving it off the resulting state (rather than the subscription callback)
    * also covers the other reload entry point, `ftc-notifications-updated`.
    *
-   * The signature map is what makes it a *transition* rather than a state
-   * check: the first snapshot only seeds it, an id seen for the first time is
-   * skipped, and an unrelated column change leaves the signature identical.
-   * formatDmBookingLifecycleToast then drops anything the current user did
-   * themselves.
+   * Transition detection and copy both live in pure helpers
+   * (buildDmBookingLifecycleSignatures / pickDmBookingLifecycleToast) so they
+   * are covered behaviourally rather than by a source regex -- a source regex
+   * over this effect is exactly what let a status-only signature, which cannot
+   * tell a DJ withdrawal from a planner cancellation, pass review.
    *
    * Presentation is the app's existing transient-feedback surface --
    * useInlineTabFeedbackDismiss + InlineTabFeedbackMessage, the same neutral
-   * muted copy and 2700ms/300ms fade Event Plans, Gigs History and the DJ
-   * availability calendar already use. It is deliberately NOT the `notice`
-   * line: that one is amber `--ftc-color-warning` and belongs to the booking
-   * action handlers' warnings, which must keep reading as warnings.
+   * muted copy and 2700ms/300ms fade Event Plans, Gigs History, Booking Plans
+   * and the DJ availability calendar already use. It is deliberately NOT the
+   * `notice` line: that one is amber `--ftc-color-warning` and belongs to the
+   * booking action handlers' warnings, which must keep reading as warnings.
    */
   const bookingLifecycleSignatureRef = useRef<Map<string, string> | null>(null);
   const [bookingLifecycleToast, setBookingLifecycleToast] = useState<string | null>(null);
@@ -638,37 +639,20 @@ export default function DmChatPage() {
 
   useEffect(() => {
     const previousSignatures = bookingLifecycleSignatureRef.current;
-    const nextSignatures = new Map(
-      bookings.map((booking) => [
-        booking.id,
-        `${booking.status}:${booking.cancelled_by ?? ""}`,
-      ]),
-    );
+    const nextSignatures = buildDmBookingLifecycleSignatures(bookings);
 
     bookingLifecycleSignatureRef.current = nextSignatures;
 
-    if (!previousSignatures || !currentUserId) {
-      return;
-    }
+    const toast = pickDmBookingLifecycleToast({
+      previousSignatures,
+      nextSignatures,
+      bookings,
+      currentUserId,
+      actorDisplayName: otherUserLabel,
+    });
 
-    for (const booking of bookings) {
-      const previousSignature = previousSignatures.get(booking.id);
-
-      if (
-        previousSignature === undefined ||
-        previousSignature === nextSignatures.get(booking.id)
-      ) {
-        continue;
-      }
-
-      const toast = formatDmBookingLifecycleToast(booking, currentUserId, otherUserLabel);
-
-      if (!toast) {
-        continue;
-      }
-
+    if (toast) {
       setBookingLifecycleToast(toast);
-      break;
     }
   }, [bookings, currentUserId, otherUserLabel]);
 
@@ -2400,10 +2384,14 @@ export default function DmChatPage() {
         <p className="px-4 pb-2 text-sm text-[var(--ftc-color-warning)]">{notice}</p>
       ) : null}
 
+      {/* wrap: a chat is not a fixed-height tab row, and the event name is the
+          informative half of "<DJ> withdrew from <event>" -- truncating eats
+          exactly the part worth reading. */}
       <InlineTabFeedbackMessage
         message={bookingLifecycleToast}
         fading={bookingLifecycleToastFading}
         className="w-full px-4 pb-2 text-center"
+        wrap
       />
 
       {showNewMessagesPill ? (

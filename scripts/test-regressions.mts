@@ -18685,6 +18685,8 @@ async function main() {
   await testHiddenLifecycleRowsStillDriveInboxRecencyAndUnread();
   await testNoBookingUuidIsEverUserFacing();
   await testDmBookingLifecycleToast();
+  await testLifecycleToastRendersTheNeutralFeedbackSurface();
+  await testBookingLifecycleTransitionIdentityIncludesTheActor();
   await testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget();
   testDmPageWiresMessageTargetScroll();
   testCrewChatPageWiresMessageTargetScroll();
@@ -21775,7 +21777,7 @@ async function testDmBookingLifecycleToast() {
   );
   assert.match(
     dmPage,
-    /formatDmBookingLifecycleToast\(booking, currentUserId, otherUserLabel\)/,
+    /actorDisplayName: otherUserLabel,/,
     "the toast must be attributed to the DM's other participant, who is the actor in a 1:1 thread",
   );
 
@@ -21786,10 +21788,27 @@ async function testDmBookingLifecycleToast() {
     /useInlineTabFeedbackDismiss\(\s*bookingLifecycleToast,\s*clearBookingLifecycleToast,\s*\)/,
     "the toast must use the shared transient-feedback lifecycle hook, not a hand-rolled timer",
   );
+  // The whole element, so prop presence is asserted against THIS call site
+  // rather than against a hand-built render in the sibling test.
+  const toastElementStart = dmPage.indexOf("<InlineTabFeedbackMessage");
+  assert.ok(toastElementStart > -1, "the toast must render through the shared feedback component");
+  const toastElement = dmPage.slice(toastElementStart, dmPage.indexOf("/>", toastElementStart) + 2);
   assert.match(
-    dmPage,
-    /<InlineTabFeedbackMessage\s+message=\{bookingLifecycleToast\}/,
+    toastElement,
+    /message=\{bookingLifecycleToast\}/,
     "the toast must render through the shared neutral feedback component",
+  );
+  assert.match(
+    toastElement,
+    /fading=\{bookingLifecycleToastFading\}/,
+    "the toast must be driven by the shared fade lifecycle",
+  );
+  // Without `wrap` the shared component truncates, and the event name -- the
+  // informative half of "<DJ> withdrew from <event>" -- is what gets cut.
+  assert.match(
+    toastElement,
+    /\bwrap\b/,
+    "the DM toast must opt into wrapping; the default is the fixed-height tab-row truncation",
   );
   assert.match(
     dmPage,
@@ -21820,32 +21839,10 @@ async function testDmBookingLifecycleToast() {
     INLINE_TAB_FEEDBACK_CLEAR_MS > INLINE_TAB_FEEDBACK_FADE_MS,
     "the message must clear only after the opacity transition finishes, or it disappears mid-fade",
   );
-  const feedbackClass = readFileSync(
-    new URL("../lib/design/inlineTabFeedback.ts", import.meta.url),
-    "utf8",
-  );
-  assert.match(
-    feedbackClass,
-    /INLINE_TAB_FEEDBACK_TEXT_CLASS =\s*\n?\s*"[^"]*text-ftc-text-muted[^"]*"/,
-    "the shared feedback surface must stay neutral -- if it gains a status colour the toast " +
-      "inherits it",
-  );
-
-  // The transition guard: a plain state check would re-toast on every reload.
-  assert.match(
-    dmPage,
-    /previousSignature === undefined \|\|\s*previousSignature === nextSignatures\.get\(booking\.id\)/,
-    "the toast must fire on a CHANGE only -- a first sighting or an unchanged signature must be skipped",
-  );
-  assert.match(
-    dmPage,
-    /if \(!previousSignatures \|\| !currentUserId\) \{\s*return;/,
-    "the first snapshot must only seed the signature map, never toast",
-  );
   // It must never become a message.
   assert.doesNotMatch(
     dmPage,
-    /formatDmBookingLifecycleToast[\s\S]{0,400}?from\("messages"\)\s*\.insert/,
+    /pickDmBookingLifecycleToast[\s\S]{0,400}?from\("messages"\)\s*\.insert/,
     "the toast must add no chat line",
   );
 }
@@ -21856,6 +21853,266 @@ async function testDmBookingLifecycleToast() {
  * hands it to create_notification -- that row is what makes the conversation
  * recent, unread, badged and deep-linkable.
  */
+/**
+ * QA escape #1. The colour guard asserted on INLINE_TAB_FEEDBACK_TEXT_CLASS,
+ * which had ZERO production consumers -- its only reference in the repo was the
+ * assertion itself. The component actually renders
+ * EVENTS_LIST_TAB_FEEDBACK_CLASS, so QA painted the real class amber and the
+ * whole suite still passed. The orphan is now deleted, and this asserts on
+ * what the component *renders* rather than on any constant by name, so it
+ * survives the component switching constants again.
+ */
+async function testLifecycleToastRendersTheNeutralFeedbackSurface() {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const React = (await import("react")).default;
+  const { InlineTabFeedbackMessage } = await import(
+    "../app/components/feedback/InlineTabFeedbackMessage.js"
+  );
+
+  const renderClassName = (props: Record<string, unknown>): string => {
+    const markup = renderToStaticMarkup(
+      React.createElement(InlineTabFeedbackMessage, {
+        message: "Dj2 withdrew from Club 53",
+        fading: false,
+        ...props,
+      } as never),
+    );
+    return markup.match(/class="([^"]*)"/)?.[1] ?? "";
+  };
+
+  // The DM lifecycle toast renders with wrap -- this is the exact call the page
+  // makes, so a colour regression anywhere in its class chain lands here.
+  const toastClass = renderClassName({ className: "w-full px-4 pb-2 text-center", wrap: true });
+  const tabRowClass = renderClassName({});
+
+  for (const [label, className] of [
+    ["the DM lifecycle toast", toastClass],
+    ["the tab-row feedback", tabRowClass],
+  ] as const) {
+    assert.match(
+      className,
+      /\btext-ftc-text-muted\b/,
+      `${label} must render the neutral muted colour`,
+    );
+    // The actual regression: "Alice accepted your booking" painted like a warning.
+    assert.doesNotMatch(
+      className,
+      /--ftc-color-(warning|danger|error|success)|\btext-(amber|yellow|orange|red|rose|green|emerald)-/,
+      `${label} must not render a status colour -- a lifecycle confirmation is not a warning`,
+    );
+    assert.match(className, /\btransition-opacity\b/, `${label} must keep the shared fade`);
+    assert.match(className, /\bduration-300\b/);
+  }
+
+  // --- the wrap opt-out, and its blast radius --------------------------------
+  assert.doesNotMatch(
+    toastClass,
+    /\btruncate\b/,
+    "the toast must not ellipsise -- the event name is the informative half of " +
+      '"<DJ> withdrew from <event>"',
+  );
+  assert.doesNotMatch(
+    toastClass,
+    /\bmin-w-0\b/,
+    "min-w-0 exists to let the tab row shrink the message; a chat toast must not inherit it",
+  );
+  assert.match(toastClass, /\bbreak-words\b/, "a long event name must be able to break");
+  assert.doesNotMatch(
+    toastClass,
+    /\bleading-none\b/,
+    "leading-none is unreadable once copy wraps to a second line",
+  );
+
+  // Default is the untouched slot-constrained behaviour, so the four existing
+  // consumers (Event Plans, Gigs History, Booking Plans, DJ availability, all
+  // via PlannerWorkspaceTitleFeedback) are byte-identical.
+  assert.match(
+    tabRowClass,
+    /\btruncate\b/,
+    "wrap must default OFF -- the tab row is fixed height and must keep truncating",
+  );
+  assert.match(tabRowClass, /\bmin-w-0\b/);
+  assert.match(tabRowClass, /\bleading-none\b/);
+  assert.equal(
+    tabRowClass,
+    "min-w-0 truncate text-[11px] font-normal leading-none text-ftc-text-muted " +
+      "transition-opacity duration-300 sm:text-xs w-full text-center opacity-100",
+    "the default rendering must be exactly what every existing consumer already got",
+  );
+
+  // Blast radius: the only other consumer of the component is the planner
+  // title-feedback slot, which fans out to Event Plans, Gigs History, Booking
+  // Plans and the DJ availability calendar. It must NOT opt into wrapping --
+  // those live in fixed-height rows.
+  const plannerSlot = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceTitleFeedback.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(plannerSlot, /<InlineTabFeedbackMessage /);
+  assert.doesNotMatch(
+    plannerSlot,
+    /\bwrap\b/,
+    "the planner title-feedback slot sits in a fixed-height row and must keep truncating",
+  );
+  // HistoryTabRowFeedbackCell uses the base class directly, so it cannot be
+  // reached by the prop at all -- pin that it still uses the constrained one.
+  const historyCell = readFileSync(
+    new URL("../app/components/history/HistoryTabRowFeedbackCell.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    historyCell,
+    /EVENTS_LIST_TAB_FEEDBACK_CLASS/,
+    "the history tab row must keep the slot-constrained class, not the wrap variant",
+  );
+  assert.doesNotMatch(historyCell, /EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS/);
+
+  // The derived class must not silently lose its derivation. It is built by
+  // string-replacing the base class, so a reorder of the base would make the
+  // replace a no-op and quietly reinstate truncate.
+  const { EVENTS_LIST_TAB_FEEDBACK_CLASS, EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS } = await import(
+    "../lib/design/ftcDesignSystem.js"
+  );
+  assert.match(EVENTS_LIST_TAB_FEEDBACK_CLASS, /\bmin-w-0 truncate\b/);
+  assert.doesNotMatch(EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS, /\btruncate\b|\bmin-w-0\b/);
+  assert.equal(
+    EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS.includes("text-ftc-text-muted"),
+    true,
+    "the wrap variant must inherit the base colour, not restate it",
+  );
+}
+
+/**
+ * QA escape #2. The transition identity was guarded only by a source regex over
+ * the DM page, so QA reduced the signature from
+ * `${status}:${cancelled_by}` to `${status}` and the suite passed.
+ *
+ * That single field is what separates a DJ withdrawal from a planner
+ * cancellation: both are `status: "cancelled"`, so a status-only signature sees
+ * no change between them and emits nothing -- and the planner-cancellation path
+ * is the one the live device evidence actually exercised.
+ *
+ * Behavioural: drive the real helpers through real snapshot sequences.
+ */
+async function testBookingLifecycleTransitionIdentityIncludesTheActor() {
+  const { buildDmBookingLifecycleSignatures, pickDmBookingLifecycleToast } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const planner = "planner-1";
+  const dj = "dj-1";
+  const base = createRegressionBookingRequest({
+    id: "booking-1",
+    event_name: "Club 53",
+    sender_id: planner,
+    recipient_id: dj,
+  });
+  const withdrawnByDj = { ...base, status: "cancelled" as const, cancelled_by: dj };
+  const cancelledByPlanner = { ...base, status: "cancelled" as const, cancelled_by: planner };
+
+  const step = (
+    from: typeof base | null,
+    to: typeof base,
+    viewer: string,
+    actorDisplayName: string,
+  ) =>
+    pickDmBookingLifecycleToast({
+      previousSignatures: from ? buildDmBookingLifecycleSignatures([from]) : null,
+      nextSignatures: buildDmBookingLifecycleSignatures([to]),
+      bookings: [to],
+      currentUserId: viewer,
+      actorDisplayName,
+    });
+
+  // THE decisive pair: identical `status`, different actor, different feedback.
+  // A status-only signature makes both of these null.
+  assert.equal(
+    step(withdrawnByDj, cancelledByPlanner, dj, "Planner1"),
+    "Planner1 cancelled your booking",
+    "a planner cancellation replacing a DJ withdrawal is a real transition -- status alone " +
+      "cannot see it",
+  );
+  assert.equal(
+    step(cancelledByPlanner, withdrawnByDj, planner, "Dj2"),
+    "Dj2 withdrew from Club 53",
+    "and the reverse must report the withdrawal, with the event name intact",
+  );
+
+  // The ordinary pending -> terminal transitions still work.
+  assert.equal(
+    step(base, { ...base, status: "accepted" }, planner, "Dj2"),
+    "Dj2 accepted your booking",
+  );
+  assert.equal(step(base, withdrawnByDj, planner, "Dj2"), "Dj2 withdrew from Club 53");
+  assert.equal(step(base, cancelledByPlanner, dj, "Planner1"), "Planner1 cancelled your booking");
+
+  // --- and the things that must stay silent ---------------------------------
+  assert.equal(
+    step(null, cancelledByPlanner, dj, "Planner1"),
+    null,
+    "the first snapshot only seeds the map -- opening a DM onto a settled booking must say nothing",
+  );
+  assert.equal(
+    step(cancelledByPlanner, cancelledByPlanner, dj, "Planner1"),
+    null,
+    "an unchanged signature is not a transition",
+  );
+  assert.equal(
+    pickDmBookingLifecycleToast({
+      previousSignatures: new Map(),
+      nextSignatures: buildDmBookingLifecycleSignatures([cancelledByPlanner]),
+      bookings: [cancelledByPlanner],
+      currentUserId: dj,
+      actorDisplayName: "Planner1",
+    }),
+    null,
+    "a booking id seen for the first time is a new booking, not a transition",
+  );
+  assert.equal(
+    step(withdrawnByDj, cancelledByPlanner, planner, "Dj2"),
+    null,
+    "the planner cancelled -- they must not be told about their own action",
+  );
+
+  // An unrelated column change must not move the signature at all.
+  const withUnrelatedEdits: BookingRequest = {
+    ...cancelledByPlanner,
+    proposed_rate: 400,
+    lineup_hidden_at: "2026-08-01T00:00:00.000Z",
+  };
+  assert.equal(
+    buildDmBookingLifecycleSignatures([cancelledByPlanner]).get("booking-1"),
+    buildDmBookingLifecycleSignatures([withUnrelatedEdits]).get("booking-1"),
+    "rate/hide columns must not look like a lifecycle transition",
+  );
+  assert.equal(
+    step(cancelledByPlanner, withUnrelatedEdits, dj, "Planner1"),
+    null,
+    "editing a rate on a settled booking must not re-announce the cancellation",
+  );
+
+  // The signature must actually carry the actor, stated directly so the reason
+  // for the field is not merely implied by the cases above.
+  assert.notEqual(
+    buildDmBookingLifecycleSignatures([withdrawnByDj]).get("booking-1"),
+    buildDmBookingLifecycleSignatures([cancelledByPlanner]).get("booking-1"),
+    "two cancellations by different actors must not share a signature",
+  );
+
+  // And the page must use these helpers rather than reimplementing them inline,
+  // which is how the untested version got in.
+  const dmPage = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmPage, /buildDmBookingLifecycleSignatures\(bookings\)/);
+  assert.match(dmPage, /pickDmBookingLifecycleToast\(\{/);
+  assert.doesNotMatch(
+    dmPage,
+    /\$\{booking\.status\}/,
+    "the signature must not be rebuilt inline in the page -- it belongs to the tested helper",
+  );
+}
+
 async function testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget() {
   const source = readFileSync(new URL("../lib/bookingRequests.ts", import.meta.url), "utf8");
   const { formatBookingCancelledDmMessage } = await import("../lib/bookingRequests.js");

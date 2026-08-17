@@ -451,3 +451,76 @@ export function formatDmBookingLifecycleToast(
 
   return null;
 }
+
+type DmBookingLifecycleBooking = Pick<
+  BookingRequest,
+  "id" | "status" | "event_name" | "sender_id" | "recipient_id" | "cancelled_by"
+>;
+
+/**
+ * The per-booking identity a lifecycle transition is detected against.
+ *
+ * `cancelled_by` is load-bearing, not decoration. A DJ withdrawal and a planner
+ * cancellation are BOTH `status: "cancelled"`, so a status-only signature makes
+ * them indistinguishable -- one replacing the other yields no detected change
+ * and therefore no toast, which is precisely the path the live "planner
+ * cancelled" verification exercises. Keyed by id so an unrelated column change
+ * (rate proposal fields, hide flags) leaves the signature identical.
+ */
+export function buildDmBookingLifecycleSignatures(
+  bookings: readonly DmBookingLifecycleBooking[],
+): Map<string, string> {
+  return new Map(
+    bookings.map((booking) => [
+      booking.id,
+      `${booking.status}:${booking.cancelled_by ?? ""}`,
+    ]),
+  );
+}
+
+/**
+ * The toast for the first reportable transition between two signature
+ * snapshots, or null.
+ *
+ * A null `previousSignatures` means this is the first snapshot: it only seeds
+ * the map, so opening a DM onto an already-accepted booking says nothing. An id
+ * absent from the previous snapshot is a booking seen for the first time, not a
+ * transition. Whatever survives both gates still has to get past
+ * formatDmBookingLifecycleToast, which drops anything the current user did.
+ */
+export function pickDmBookingLifecycleToast(options: {
+  previousSignatures: Map<string, string> | null;
+  nextSignatures: Map<string, string>;
+  bookings: readonly DmBookingLifecycleBooking[];
+  currentUserId: string | null;
+  actorDisplayName: string;
+}): string | null {
+  const { previousSignatures, nextSignatures, bookings } = options;
+
+  if (!previousSignatures || !options.currentUserId) {
+    return null;
+  }
+
+  for (const booking of bookings) {
+    const previousSignature = previousSignatures.get(booking.id);
+
+    if (
+      previousSignature === undefined ||
+      previousSignature === nextSignatures.get(booking.id)
+    ) {
+      continue;
+    }
+
+    const toast = formatDmBookingLifecycleToast(
+      booking,
+      options.currentUserId,
+      options.actorDisplayName,
+    );
+
+    if (toast) {
+      return toast;
+    }
+  }
+
+  return null;
+}

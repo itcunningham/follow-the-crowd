@@ -83,9 +83,40 @@ hand-rolled timer plus `DM_BOOKING_LIFECYCLE_TOAST_MS` are gone; the shared hook
 The amber `notice` line is untouched and still amber for real warnings.
 
 Measured on device at 1280 / 390 / 320: colour `rgb(100, 116, 139)` (was `#fbbf24`),
-`transition: opacity 0.3s`, no truncation, no page overflow, self-clears, adds no chat line. Two
-more mutations caught — routing the toast back through `setNotice`, and giving the shared feedback
-class a status colour.
+`transition: opacity 0.3s`, no page overflow, self-clears, adds no chat line.
+
+**QA caught two guards that protected nothing — both are now behavioural.**
+
+1. **The colour guard asserted on a dead constant.** `INLINE_TAB_FEEDBACK_TEXT_CLASS` had **zero**
+   production consumers; its only reference in the repo was the assertion itself. The component
+   renders `EVENTS_LIST_TAB_FEEDBACK_CLASS`, so QA painted the *real* class amber and the whole
+   suite passed. The orphan is deleted, and the test now renders the component through
+   `react-dom/server` and asserts on the **rendered className** — so it survives the component
+   switching constants again.
+2. **The transition signature had only a source regex.** QA reduced
+   `` `${status}:${cancelled_by}` `` → `` `${status}` `` and the suite passed — yet that field is
+   the only thing separating a DJ withdrawal from a planner cancellation, since both are
+   `status: "cancelled"`. Detection now lives in pure, exported helpers
+   (`buildDmBookingLifecycleSignatures` / `pickDmBookingLifecycleToast`) driven through real
+   snapshot sequences, including the decisive pair: same status, different actor, different copy.
+
+**The toast wraps instead of ellipsising (product decision).** `EVENTS_LIST_TAB_FEEDBACK_CLASS` is
+slot-constrained (`truncate`) for a fixed-height tab row; in a chat it cut the event name — the
+informative half of "<DJ> withdrew from <event>". QA measured `scrollWidth 437 > clientWidth 390`.
+A narrowly scoped `wrap` prop on `InlineTabFeedbackMessage` (**default off**) selects
+`EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS`, **derived from the base class** by dropping `min-w-0
+truncate` and relaxing `leading-none` — so colour, size and transition can never drift from the
+shared surface. No new colour or token.
+
+Measured with an 85-char message at 390 / 375 / 320: **27/27** — not ellipsised, `scrollWidth ==
+clientWidth`, grows 23px → 38px, no horizontal overflow, composer still reachable. The four other
+consumers (Event Plans, Gigs History, Booking Plans, DJ availability, all via
+`PlannerWorkspaceTitleFeedback`) plus `HistoryTabRowFeedbackCell` were A/B render-diffed pre vs
+post change: **byte-identical markup**.
+
+Five mutations caught this round, including both QA escapes repeated independently. A sixth — the
+DM page dropping `wrap` — **escaped my first attempt** and is now covered by asserting on the
+call-site element itself.
 
 **Known nit, not fixed:** the effect adds one instance of `react-hooks/set-state-in-effect`, a rule
 the same file already violates three times.
