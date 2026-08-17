@@ -1,4 +1,159 @@
-# Current state (last updated: 2026-08-16)
+# Current state (last updated: 2026-08-17)
+
+## Rate-proposal and declined-booking pushes target their own message (2026-08-17)
+
+**The remaining `createNotification` calls in `lib/bookingRequests.ts` that passed five arguments
+now pass seven.** `notifications.message_id` was NULL for every rate-proposal notification, so
+`push-send` had nothing to append `?message=` from and the tap landed at the bottom of the DM.
+
+**Threading the ids naively would have re-shipped the withdrawal bug.** `"Rate declined"`,
+`"Original offer kept"` and `"Proposed rate accepted"` were **bare non-unique constants** —
+identical text for every booking in a thread. An exact-text dedupe on a constant returns
+*another* booking's row, that stale id gets threaded, and `create_notification`'s
+`(user_id, message_id)` dedupe (no unread filter, no time window) swallows the legitimate
+notification: **no push at all**.
+
+**So the stored text is versioned** to the existing convention `<label> · <event> · <bookingId>`:
+
+| Stored (internal identity) | Displayed everywhere |
+|---|---|
+| `Rate proposed: $500 · <event> · <bookingId>` | `Rate proposed: $500` |
+| `Proposed rate accepted · <event> · <bookingId>` | `Proposed rate accepted` |
+| `Rate declined · <event> · <bookingId>` | `Rate declined` |
+| `Original offer kept · <event> · <bookingId>` | `Original offer kept` |
+
+`Rate proposed` needed the id too: two bookings in one thread can carry the same figure, and the
+same figure can be re-proposed after a decline.
+
+### Negotiation history is no longer hidden as lifecycle noise — the identity is internal only
+
+The first attempt added these four to `isVersionedBookingLifecycleDmMessage`, which classifies as
+`"hidden"`. **That was wrong and QA caught it.** An accepted $600 booking then showed *nothing*:
+the rows were gone and both `BookingRateProposalPanel` and `BookingRateProposalNotice` return null
+once no proposal is pending, so the card did not take over either — `proposed_rate_note` vanished
+with them.
+
+The recognisers are now split:
+
+- `isVersionedBookingLifecycleDmMessage` — the three **state verbs**
+  (`Booking confirmed | withdrawn | cancelled`). Hidden, exactly as shipped in `f5b4cbd9`.
+- `isVersionedRateProposalDmMessage` — the four **negotiation notices**. Not unconditionally
+  hidden; visibility remains gated by the card.
+- `isVersionedBookingIdentityDmMessage` — either. Drives display stripping and system-message
+  classification, never visibility.
+
+`formatDmBookingSystemMessageDisplay` slices any versioned row at the first `" · "`, so the
+readable label is all that renders — no event name, no UUID, on any surface.
+
+**"Not unconditionally hidden" is not "always rendered", and the earlier wording here overstated
+it.** The pre-existing `shouldSuppressDmBookingTimelineNotice` card rule is unchanged and still
+hides a notice whose state the card is currently displaying: `Proposed rate accepted` once the
+booking is accepted, and `Rate declined` / `Original offer kept` while pending with no live
+proposal. What changed is only that these rows are no longer swept up by the unconditional
+lifecycle-verb hide. Both halves of the distinction are now asserted, each with the no-card control
+that proves the suppression came from the card rule rather than from lifecycle hiding.
+
+### Argument position is now pinned, because reaction_id has no FK
+
+`createNotification(userId, type, title, body, link, reactionId, messageId)`. QA verified live that
+`notifications.reaction_id` has **no foreign key**, so sliding the message id into argument 6 does
+not throw — the RPC takes its reaction branch, writes `reaction_id = <messageId>`, leaves
+`message_id` NULL, and silently recreates the bug with no error anywhere. Every producer now has an
+explicit `null,` in slot 6, and a shared `assertMessageIdIsSeventhArgument` guard pins it per call
+site.
+
+### The other four fixes
+
+- **Ordering.** `acceptProposedBookingRate` created its notification *before* the DM insert, so
+  there was no id to thread. The insert runs first.
+- **One action, one push.** That path used to create two notifications for the same DJ — a
+  `booking_update` and a redundant `message` whose only extra content was the planner's name. The
+  `booking_update` is kept; the DM row is still written (thread history *and* the deep-link
+  target). Not left to `create_notification` to collapse: that would make correctness depend on
+  both calls always deriving the same `message_id`.
+- **Declined bookings** no longer dead-end at `/bookings`. They write no lifecycle row (the card
+  already reads "Declined"); the push links to `/dm/<conversationId>` and targets the existing
+  `BOOKING REQUEST\nBooking ID: <id>` message, which is unique per booking and *is* the card.
+  Lookup reuses `findDmMessageIdForBookingRequest`; it never throws.
+- **The decline round boundary is an identity lookup, not a heuristic.** It came from scanning the
+  20 most recent DJ-authored rows for something that *looked like* a proposal. With >20 DJ messages
+  between a re-proposal and the decline it resolved to nothing, the bound was dropped, an all-time
+  exact-text match found round one's row, and the permanent `(user_id, message_id)` dedupe returned
+  round one's notification — **no row, no push, no unread bump**. QA reproduced it at 3 pushes out
+  of 4. Worse than base, where `message_id` was NULL and the time-boxed content dedupe still let
+  the push through. It now selects this booking's own latest proposal row with a pattern anchored
+  on the booking id at both ends, and the dedupe only runs when that boundary is known — with no
+  boundary it inserts, because a redundant row costs a duplicate notice while a false dedupe costs
+  the push outright.
+
+`formatVersionedBookingLifecycleDmMessage` now **throws** on a blank booking id instead of
+returning the bare label; a silent degrade handed back the collision-prone form.
+
+### Verified live, then on device
+
+Full planner↔DJ flow driven through the real library functions as the two QA accounts (Isaac's
+`30a8adcc` never touched), then WebKit at 1280/390/375/320 against a local build of this branch:
+
+- two `$500` proposals on different bookings in one thread → two rows, two notifications, distinct
+  `message_id`s, bodies `Rate proposed: $500`
+- **the collision case**: two declines → `Rate declined · A · <idA>` / `Rate declined · B · <idB>`,
+  two notifications with distinct `message_id`s, both titled the bare `"Rate declined"`
+- **the >20-message case**: re-propose on A, 25 unrelated DJ messages, decline → round two wrote
+  its **own** row and its **own** notification targeting that new row
+- accepting a rate → **exactly one** notification, `booking_update`, non-null `message_id` pointing
+  at the accepted-proposal row
+- declined booking → `message_id` = the booking-request row, `link = /dm/<convo>`
+- **every notification created in the run had a non-null `message_id`; no UUID in any title or body**
+- **UI 52/52**: negotiation history reads `Rate proposed: $500 / Rate declined / Rate proposed:
+  $650`, the state verbs stay hidden, no UUID and no identity suffix in the DM or the inbox, a
+  targeted negotiation row renders on screen, and a hidden lifecycle target is absent from the DOM
+  yet still resolves to its booking card (2223–2397px from the bottom)
+- all QA data created for the run was deleted and the deletion confirmed
+
+### Tests
+
+Five regressions. **15 mutations, 15 caught**: argument 7 → 6 at each of the five call sites;
+generic decline text; bare rate-proposed text; dropping `.select("id")`; nulling the dedupe-branch
+id; accepted-rate ordering; `/bookings` decline destination; the `.limit(20)` heuristic; hiding
+negotiation history; restoring the double push; silent degrade on a missing booking id.
+
+Two of this round's fixes were **my own vacuous tests**, both found by probing rather than assumed:
+
+1. `source.slice(start, start + 4200)` overshot 1608 chars past
+   `insertRateProposedDmMessageIfNeeded` into the next function, which independently satisfied every
+   assertion — so all four of that helper's guards were dead while the identical mutations on its
+   siblings were caught. All source windows now use `extractFunctionBody` at exact boundaries.
+2. That helper's first anti-overshoot guard (`!body.includes(nextHeader)`) was **tautological** —
+   the slice ends at `nextHeader` by construction. It now counts top-level function declarations in
+   the extracted window and fails if there is more than one. Probed: widening a window back out
+   fails with "spans 3 top-level functions".
+
+### Second QA pass (PASS on code, tests and logic) added two assertions
+
+QA independently proved the new overshoot guard is load-bearing — it restored the old tautological
+guard, widened a window, watched it escape, then confirmed the count guard catches it. It also
+confirmed the >20-message push loss is fixed against live Postgres, and that the duplicate-push
+inverse **cannot** occur: `decline_proposed_booking_rate` requires `proposed_rate_status =
+'pending'` and atomically sets `'declined'`, so the DB gate serialises repeat declines. The
+insert-when-boundary-unknown tradeoff is therefore safer than originally claimed.
+
+It found two **missing** assertions (shipped code was correct in both):
+
+1. **The boundary sort direction was unpinned.** `.order("created_at", { ascending: false })` on the
+   new round-boundary lookup is load-bearing — QA flipped it and proved against real Postgres that
+   the boundary resolves to round *one's* proposal, round two's decline dedupes onto round one's
+   row, and the permanent `(user_id, message_id)` dedupe swallows the push. Now pinned.
+2. **`cancelBookingRequest` was the one remaining unguarded `messageId` site** — the
+   withdrawal/cancellation push, the exact bug this line of work exists to fix. The arg-6 slide
+   escaped there. `assertMessageIdIsSeventhArgument` now covers all **six** sites.
+
+**Known, not fixed (pre-existing, flagged not introduced):** one fixed-width source window survives
+in `testBookingRequestPushDeepLinksToTheBookingCard` (`slice(start, start + 800)`) — same vacuity
+class as the windows corrected here, but it predates this work and guards an unrelated assertion.
+Worth converting to `extractFunctionBody` in a follow-up.
+
+**Not touched:** `push-send`, RLS, `create_notification`, the service worker, deep-link scroll
+internals, booking card UI, schema. **No SQL.**
 
 ## The booking card is now the ONE visible source of truth (2026-08-16)
 
