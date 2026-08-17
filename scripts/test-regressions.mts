@@ -22492,9 +22492,14 @@ async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
  * proposal is pending, so the card did not take over, and proposed_rate_note
  * vanished with the rows.
  *
- * The split: the three lifecycle STATE verbs stay hidden (shipped f5b4cbd9,
- * the card is the source of truth for state); the four NEGOTIATION notices stay
- * visible with only their internal identity suffix stripped.
+ * The split: the three lifecycle STATE verbs are hidden UNCONDITIONALLY (shipped
+ * f5b4cbd9, the card is the source of truth for state); the four NEGOTIATION
+ * notices are not, and render with only their internal identity suffix stripped.
+ *
+ * "Not unconditionally hidden" is not "always rendered" -- visibility stays
+ * gated by the pre-existing card rule (shouldSuppressDmBookingTimelineNotice),
+ * which still hides a notice whose state the card is currently displaying. Both
+ * halves of that distinction are asserted below.
  */
 async function testNegotiationHistoryStaysVisibleInTheDmTimeline() {
   const {
@@ -22522,8 +22527,12 @@ async function testNegotiationHistoryStaysVisibleInTheDmTimeline() {
     formatVersionedRateProposedDmMessage(600, "Club 53", bookingId),
   ];
 
+  const acceptedNoticeRow = formatProposedRateAcceptedDmMessage("Club 53", bookingId);
+
   // A negotiation notice must NEVER be classified as a hidden lifecycle verb.
-  for (const text of negotiationRows) {
+  // That is the whole distinction: lifecycle verbs are hidden unconditionally,
+  // negotiation notices are only ever gated by the card rule below.
+  for (const text of [...negotiationRows, acceptedNoticeRow]) {
     assert.equal(
       isVersionedBookingLifecycleDmMessage(text),
       false,
@@ -22608,6 +22617,63 @@ async function testNegotiationHistoryStaysVisibleInTheDmTimeline() {
       layout.has(message.id),
       true,
       `visible row ${message.id} must receive a timestamp-layout entry`,
+    );
+  }
+
+  // --- visibility is GATED BY THE CARD, not unconditional -----------------
+  // Precision matters here: "not hidden as a lifecycle verb" is not the same as
+  // "always rendered". The pre-existing shouldSuppressDmBookingTimelineNotice
+  // rule still hides a notice whose state the card is currently displaying, and
+  // that rule is unchanged. Pinned so the distinction cannot quietly drift into
+  // either "always visible" or "always hidden".
+  assert.equal(
+    classifyDmConversationMessageKind(acceptedNoticeRow, {
+      bookings: [acceptedBooking],
+      conversationId,
+      messages: [
+        { text: formatBookingRequestMessage(acceptedBooking) },
+        { text: acceptedNoticeRow },
+      ],
+      messageIndex: 1,
+    }),
+    "hidden",
+    "'Proposed rate accepted' beside an accepted card is suppressed by the CARD rule -- correct, " +
+      "and not the same mechanism as hiding a lifecycle verb",
+  );
+  // The same row with no card to lean on still renders -- proof the suppression
+  // above came from the card rule and not from lifecycle hiding.
+  assert.equal(
+    classifyDmConversationMessageKind(acceptedNoticeRow, { bookings: [], conversationId }),
+    "timeline",
+    "with no card reflecting the state, the negotiation notice must render",
+  );
+  for (const declineLabel of [DM_BOOKING_RATE_DECLINED_MESSAGE, DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE]) {
+    const pendingNoProposal = createRegressionBookingRequest({
+      id: bookingId,
+      status: "pending",
+      rate_mode: "open",
+      proposed_rate: null,
+      proposed_rate_status: "declined",
+    });
+    const declineRow = formatRateProposalDeclinedDmMessage(declineLabel, "Club 53", bookingId);
+    assert.equal(
+      classifyDmConversationMessageKind(declineRow, {
+        bookings: [pendingNoProposal],
+        conversationId,
+        messages: [
+          { text: formatBookingRequestMessage(pendingNoProposal) },
+          { text: declineRow },
+        ],
+        messageIndex: 1,
+      }),
+      "hidden",
+      `"${declineLabel}" beside a pending card with no live proposal is suppressed by the card ` +
+        `rule -- unchanged pre-existing behaviour`,
+    );
+    assert.equal(
+      classifyDmConversationMessageKind(declineRow, { bookings: [], conversationId }),
+      "timeline",
+      `"${declineLabel}" must render when no card reflects that state`,
     );
   }
 
@@ -22898,6 +22964,17 @@ async function testRateProposalPushesCarryTheirOwnMessageTarget() {
     declineHelper,
     /\.eq\("user_id", booking\.recipient_id\)/,
     "the proposal lookup stays scoped to the DJ who authored it",
+  );
+  // The sort direction is load-bearing, not incidental. Proven against real
+  // Postgres: ascending resolves the boundary to round ONE's proposal, round
+  // two's decline then dedupes onto round one's decline row, and
+  // create_notification's permanent (user_id, message_id) dedupe swallows the
+  // push -- the exact lost-push failure this lookup was rewritten to eliminate.
+  assert.match(
+    declineHelper,
+    /\.like\("text", buildVersionedRateProposedDmMessageLikePattern\(booking\.id\)\)\s*\n\s*\.order\("created_at", \{ ascending: false \}\)\s*\n\s*\.limit\(1\)/,
+    "the boundary must be the LATEST proposal for this booking -- ascending picks the earliest, " +
+      "which bounds the dedupe to round one and loses round two's push entirely",
   );
   // And the dedupe must only run when that boundary is known: with no boundary,
   // an unbounded exact-text match is exactly the push-losing path.
@@ -23369,6 +23446,18 @@ function testBookingLifecyclePushesCarryAMessageTarget() {
     source,
     /notificationTitle,[\s\S]{0,500}?cancelledDm\?\.messageId \?\? undefined,/,
     "the withdrawal/cancellation notification must carry the DM notice's message id",
+  );
+  // ...in argument SEVEN. This is the withdrawal/cancellation push -- the exact
+  // bug this whole line of work exists to fix -- and it was the one messageId
+  // call site with no argument-position guard, so an arg-6 slide here escaped.
+  assertMessageIdIsSeventhArgument(
+    extractFunctionBody(
+      source,
+      "export async function cancelBookingRequest(",
+      "export type CancelAcceptedBookingRequestResult",
+    ),
+    "cancelledDm?.messageId ?? undefined",
+    "cancelBookingRequest",
   );
 
   // Ordering is load-bearing: the notice must be written before the

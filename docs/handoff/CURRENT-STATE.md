@@ -25,7 +25,7 @@ notification: **no push at all**.
 `Rate proposed` needed the id too: two bookings in one thread can carry the same figure, and the
 same figure can be re-proposed after a decline.
 
-### Negotiation history stays VISIBLE — the identity is internal only
+### Negotiation history is no longer hidden as lifecycle noise — the identity is internal only
 
 The first attempt added these four to `isVersionedBookingLifecycleDmMessage`, which classifies as
 `"hidden"`. **That was wrong and QA caught it.** An accepted $600 booking then showed *nothing*:
@@ -37,12 +37,21 @@ The recognisers are now split:
 
 - `isVersionedBookingLifecycleDmMessage` — the three **state verbs**
   (`Booking confirmed | withdrawn | cancelled`). Hidden, exactly as shipped in `f5b4cbd9`.
-- `isVersionedRateProposalDmMessage` — the four **negotiation notices**. Visible.
+- `isVersionedRateProposalDmMessage` — the four **negotiation notices**. Not unconditionally
+  hidden; visibility remains gated by the card.
 - `isVersionedBookingIdentityDmMessage` — either. Drives display stripping and system-message
   classification, never visibility.
 
 `formatDmBookingSystemMessageDisplay` slices any versioned row at the first `" · "`, so the
 readable label is all that renders — no event name, no UUID, on any surface.
+
+**"Not unconditionally hidden" is not "always rendered", and the earlier wording here overstated
+it.** The pre-existing `shouldSuppressDmBookingTimelineNotice` card rule is unchanged and still
+hides a notice whose state the card is currently displaying: `Proposed rate accepted` once the
+booking is accepted, and `Rate declined` / `Original offer kept` while pending with no live
+proposal. What changed is only that these rows are no longer swept up by the unconditional
+lifecycle-verb hide. Both halves of the distinction are now asserted, each with the no-card control
+that proves the suppression came from the card rule rather than from lifecycle hiding.
 
 ### Argument position is now pinned, because reaction_id has no FK
 
@@ -118,6 +127,30 @@ Two of this round's fixes were **my own vacuous tests**, both found by probing r
    the slice ends at `nextHeader` by construction. It now counts top-level function declarations in
    the extracted window and fails if there is more than one. Probed: widening a window back out
    fails with "spans 3 top-level functions".
+
+### Second QA pass (PASS on code, tests and logic) added two assertions
+
+QA independently proved the new overshoot guard is load-bearing — it restored the old tautological
+guard, widened a window, watched it escape, then confirmed the count guard catches it. It also
+confirmed the >20-message push loss is fixed against live Postgres, and that the duplicate-push
+inverse **cannot** occur: `decline_proposed_booking_rate` requires `proposed_rate_status =
+'pending'` and atomically sets `'declined'`, so the DB gate serialises repeat declines. The
+insert-when-boundary-unknown tradeoff is therefore safer than originally claimed.
+
+It found two **missing** assertions (shipped code was correct in both):
+
+1. **The boundary sort direction was unpinned.** `.order("created_at", { ascending: false })` on the
+   new round-boundary lookup is load-bearing — QA flipped it and proved against real Postgres that
+   the boundary resolves to round *one's* proposal, round two's decline dedupes onto round one's
+   row, and the permanent `(user_id, message_id)` dedupe swallows the push. Now pinned.
+2. **`cancelBookingRequest` was the one remaining unguarded `messageId` site** — the
+   withdrawal/cancellation push, the exact bug this line of work exists to fix. The arg-6 slide
+   escaped there. `assertMessageIdIsSeventhArgument` now covers all **six** sites.
+
+**Known, not fixed (pre-existing, flagged not introduced):** one fixed-width source window survives
+in `testBookingRequestPushDeepLinksToTheBookingCard` (`slice(start, start + 800)`) — same vacuity
+class as the windows corrected here, but it predates this work and guards an unrelated assertion.
+Worth converting to `extractFunctionBody` in a follow-up.
 
 **Not touched:** `push-send`, RLS, `create_notification`, the service worker, deep-link scroll
 internals, booking card UI, schema. **No SQL.**

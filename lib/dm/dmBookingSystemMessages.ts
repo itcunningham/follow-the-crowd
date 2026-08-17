@@ -344,10 +344,16 @@ const VERSIONED_BOOKING_LIFECYCLE_LABELS = [
  * to its price, and the card only ever shows the current state -- both
  * BookingRateProposalPanel and BookingRateProposalNotice render nothing once no
  * proposal is pending, so hiding these rows erases the negotiation (and its
- * proposed_rate_note) with nothing taking its place. They stay VISIBLE; only
- * the internal `· <event> · <bookingId>` identity suffix is stripped for
- * display. Product decision, measured: hiding them left an accepted $600
- * booking showing nothing at all.
+ * proposed_rate_note) with nothing taking its place. Product decision, measured:
+ * hiding them left an accepted $600 booking showing nothing at all.
+ *
+ * They are therefore NOT unconditionally hidden as lifecycle verbs -- but that
+ * is not the same as "always rendered". Visibility remains gated by the card:
+ * shouldSuppressDmBookingTimelineNotice still hides a notice whose state the
+ * booking card is currently displaying (`Proposed rate accepted` once the
+ * booking is accepted; `Rate declined` / `Original offer kept` while pending
+ * with no live proposal). That rule is pre-existing and unchanged. Only the
+ * internal `· <event> · <bookingId>` identity suffix is stripped for display.
  */
 const VERSIONED_RATE_PROPOSAL_LABELS = [
   DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
@@ -402,9 +408,9 @@ export function isDmBookingSystemMessage(text: string): boolean {
     // treated as a system message at all, so it renders as ordinary chat and
     // leaks the raw booking UUID into both the DM timeline and the Messages
     // inbox preview.
-    // ...and the versioned negotiation notices for the same reason: they stay
-    // VISIBLE, but as system notices whose identity suffix is stripped, not as
-    // ordinary chat carrying a raw UUID.
+    // ...and the versioned negotiation notices for the same reason: whenever
+    // they do render, they must render as system notices whose identity suffix
+    // is stripped, not as ordinary chat carrying a raw UUID.
     isVersionedBookingIdentityDmMessage(trimmed) ||
     isLegacyRateProposalDeclinedDmMessage(trimmed) ||
     isLegacyBookingCancelledDmMessage(trimmed) ||
@@ -470,8 +476,8 @@ export function isEventCancellationDmActivityMessage(text: string): boolean {
 export function formatDmBookingSystemMessageDisplay(text: string): string {
   const trimmed = text.trim();
 
-  // Every versioned row -- hidden lifecycle verb or VISIBLE negotiation notice --
-  // carries an internal `· <event> · <bookingId>` identity that exists purely so
+  // Every versioned row -- lifecycle verb or negotiation notice -- carries an
+  // internal `· <event> · <bookingId>` identity that exists purely so
   // dedupe and push targeting can tell one booking from another. None of it may
   // be user-facing: the event name is redundant beside the conversation name,
   // and the booking id is a raw UUID (FTC_WORKFLOW §7). Slicing at the first
