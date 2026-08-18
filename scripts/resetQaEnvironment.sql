@@ -234,6 +234,16 @@ delete from public.user_blocks ub
 where ub.blocker_id in (select user_id from _qa_user_ids)
    or ub.blocked_id in (select user_id from _qa_user_ids);
 
+-- QA test devices' push subscriptions and any in-flight "actively viewing
+-- this thread" presence rows. Both are leaf tables (nothing references
+-- them), scoped straight off auth.users(id) rather than the text user_id
+-- used elsewhere, hence the ::text cast to compare against _qa_user_ids.
+delete from public.push_subscriptions ps
+where ps.user_id::text in (select user_id from _qa_user_ids);
+
+delete from public.active_chat_presence acp
+where acp.user_id::text in (select user_id from _qa_user_ids);
+
 commit;
 
 -- ---------------------------------------------------------------------------
@@ -422,6 +432,14 @@ where ur.reporter_id in (select user_id from _qa_user_ids)
    or ur.reported_user_id in (select user_id from _qa_user_ids)
    or ur.conversation_id in (select conversation_id from _qa_only_conversations)
    or ur.message_id in (select id from _qa_messages)
+union all
+select 'qa_push_subscriptions', count(*)
+from public.push_subscriptions ps
+where ps.user_id::text in (select user_id from _qa_user_ids)
+union all
+select 'qa_active_chat_presence', count(*)
+from public.active_chat_presence acp
+where acp.user_id::text in (select user_id from _qa_user_ids)
 order by scope;
 
 select '--- QA accounts still present (profiles preserved) ---' as section;
@@ -459,4 +477,12 @@ union all
 select 'non_qa_notifications', count(*)
 from public.notifications n
 where n.user_id not in (select user_id from _qa_user_ids)
+union all
+select 'non_qa_push_subscriptions', count(*)
+from public.push_subscriptions ps
+where ps.user_id::text not in (select user_id from _qa_user_ids)
+union all
+select 'non_qa_active_chat_presence', count(*)
+from public.active_chat_presence acp
+where acp.user_id::text not in (select user_id from _qa_user_ids)
 order by scope;
