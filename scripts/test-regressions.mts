@@ -18793,6 +18793,7 @@ async function main() {
   testDmAndCrewChatPagesWireActiveChatPresence();
   testPushSendSuppressesActivePushForExactThread();
   testActiveChatPresenceMigrationScopesAccessToOwnRow();
+  testServiceWorkerProviderSilentlyReconcilesStaleSubscription();
   console.log("All regression checks passed.");
 }
 
@@ -24036,6 +24037,57 @@ function testActiveChatPresenceMigrationScopesAccessToOwnRow() {
   }
 
   assert.match(migrationSource, /grant all on table public\.active_chat_presence to service_role;/);
+}
+
+/**
+ * A device with a stale/mismatched push subscription (browser silently
+ * rotated its endpoint, or the DB row went missing) previously required the
+ * user to notice and manually re-toggle notifications in Settings --
+ * detectNotificationState()'s "reconnect" state was only ever checked there.
+ * ServiceWorkerProvider now checks it on every app launch and silently
+ * re-subscribes (no user gesture needed once permission is already
+ * "granted"), so this self-heals without requiring a manual re-toggle.
+ */
+function testServiceWorkerProviderSilentlyReconcilesStaleSubscription() {
+  const providerSource = readFileSync(
+    new URL("../app/components/ServiceWorkerProvider.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    providerSource,
+    /import \{ detectNotificationState, enableNotifications, setupNotificationClickListener \} from "@\/lib\/push\/client";/,
+  );
+  assert.match(
+    providerSource,
+    /import \{ getCurrentUserId \} from "@\/lib\/user\/currentUser";/,
+  );
+
+  assert.match(
+    providerSource,
+    /const state = await detectNotificationState\(\);\s*\n\s*\n\s*if \(state !== "reconnect"\) \{\s*\n\s*return;\s*\n\s*\}/,
+    "must only act on the reconnect state -- never attempt this for prompt/denied/unsupported",
+  );
+
+  // Must confirm real auth before attempting to subscribe, or a
+  // not-yet-authenticated "reconnect" reading wastes an enableNotifications()
+  // call that's doomed to fail (savePushSubscription needs a real user id).
+  const reconcileStart = providerSource.indexOf("async function reconcileStalePushSubscription()");
+  assert.ok(reconcileStart > -1);
+  const reconcileBody = providerSource.slice(reconcileStart, reconcileStart + 900);
+  assert.match(reconcileBody, /await getCurrentUserId\(\);\s*\n\s*await enableNotifications\(\);/);
+
+  // Best-effort: must never let a reconcile failure propagate/crash the app.
+  assert.match(
+    reconcileBody,
+    /catch \(error\) \{\s*\n\s*console\.error\("\[push\] Silent subscription reconcile did not complete:", error\);\s*\n\s*\}/,
+  );
+
+  assert.match(
+    providerSource,
+    /registerServiceWorker\(\);\s*\n\s*reconcileStalePushSubscription\(\);/,
+    "must actually run on mount, not just be defined",
+  );
 }
 
 main().catch((error) => {
