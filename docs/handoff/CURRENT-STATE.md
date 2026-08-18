@@ -1,5 +1,21 @@
 # Current state (last updated: 2026-08-17)
 
+## Beta blocker fixed: event Save could hang on "Saving" forever (`40ee5af8` on `main`, 2026-08-17)
+
+**Symptom:** creating an event with a DJ selected could leave Save stuck on "Saving" indefinitely.
+
+**Root cause:** `withEventFieldsFallback` (`lib/events/eventQueryFields.ts`) retried in a `while` loop as long as `markMissingOptionalEventColumn(error)` returned `true` -- but that function returns `true` purely from an error-pattern match (Postgres code `42703` + the column name in the message), regardless of whether the flag it sets actually changed. If a column was already marked missing (e.g. from an earlier call in the same browser session/module lifetime) and the query errored again with that same pattern, `selectEventFields()` came back byte-identical to what was just tried -- the loop retried the exact same query forever. The `await createEvent(...)` promise never settled, so `EventsPageClient.tsx`'s existing (and already-correct) `try/catch/finally` around it never ran, and `setSaving(false)` never fired.
+
+**Fix:** track the projection used for each attempt and only retry when the next computed projection actually differs from it; otherwise stop and let the real error surface. Mutation-tested: temporarily reverted the fix and confirmed a new regression test genuinely hangs (`timeout` killed it), then restored it and confirmed the test passes.
+
+**Duplicate-event check:** no direct DB access from this sandbox to confirm. Reasoned from the mechanism: `createEvent` does a single `.insert().select(fields).single()` call, so each failed retry attempt is one atomic `INSERT ... RETURNING (missing_col)` -- Postgres rolls that back entirely on a column-not-found error, so the retry loop itself should not have committed duplicate rows. Handed the user a read-only SQL query (group `events` by `owner_id, name, venue, event_date, set_time` having `count > 1`, ordered by `created_at`) to confirm directly, since a frustrated manual re-click during the hang is a separate, real possibility this reasoning can't rule out.
+
+**No global Supabase timeout added.** `lib/supabaseClient.ts` has none today; the root-cause fix alone makes the promise settle, so a timeout wasn't necessary and per the task's explicit instruction was not added "automatically."
+
+**Not touched:** `eventCreateInviteMessages.ts` (pure message-formatting helpers, no query logic -- nothing to fix) and `EventsPageClient.tsx` (its save/invite flow's error handling was already correct). No relevant salvaged/uncommitted work found in any stash.
+
+**Verified:** `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round (`testWorkspaceGigsPendingDisplayCountPreservesLastKnown`); both new tests verified in isolation, including mutation-testing the primary fix itself. No separate QA pass this round per the task's explicit "one agent only" instruction.
+
 ## Rate-proposal and declined-booking pushes target their own message (2026-08-17)
 
 **The remaining `createNotification` calls in `lib/bookingRequests.ts` that passed five arguments
