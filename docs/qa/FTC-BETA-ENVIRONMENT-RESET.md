@@ -107,6 +107,7 @@ Sign up QA accounts in the **app** (not via SQL). Use display names `FTC QA Plan
 | QA-only DM threads (all members QA) | Mixed DMs — only QA messages removed |
 | QA-authored crew/group chat messages | Non-QA crew chat messages on shared events |
 | QA notifications, calendar, blocks | Non-QA notifications and data |
+| QA push subscriptions and active-chat presence | Non-QA subscriptions and presence rows |
 | QA event covers and DM attachments | Non-QA storage files and avatars |
 
 **Mixed DM example:** If a QA account messaged a real beta tester, the beta tester's messages and thread remain; only the QA user's messages and inbox membership are cleared.

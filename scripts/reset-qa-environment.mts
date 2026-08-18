@@ -14,6 +14,8 @@ const REQUIRED_MARKERS = [
   "delete from public.notifications",
   "delete from public.booking_requests",
   "delete from public.events",
+  "delete from public.push_subscriptions",
+  "delete from public.active_chat_presence",
   "insert into public.users",
   "non_qa_events",
   "FTC QA Environment Reset",
@@ -49,6 +51,7 @@ function printRunbookSummary(): void {
   console.log("  • DMs, group/crew chat messages, attachments, reactions, reads");
   console.log("  • Bookings, plans, events, run sheets, notifications");
   console.log("  • DJ availability, blocks, reports, QA-only conversations");
+  console.log("  • Push subscriptions and active-chat presence for QA devices");
   console.log("  • QA event covers and DM attachment storage (avatars preserved)");
   console.log("");
   console.log("Preserved:");
