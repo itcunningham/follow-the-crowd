@@ -329,7 +329,14 @@ import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation, addEventBrandTag, parseStoredEventBrands, serializeEventBrands, MAX_PROMOTER_EVENT_BRANDS, MAX_EVENT_BRAND_NAME_LENGTH, PROFILE_GENRE_OPTIONS, applyDisplayNameInputLimit, MAX_PROFILE_DISPLAY_NAME_LENGTH, applyBioInputLimit, MAX_PROFILE_BIO_LENGTH, MAX_PROFILE_BIO_LINES } from "../lib/user/profileFormUtils";
 import { mapEventInputToRow, type EventInput } from "../lib/events";
-import { markEventBrandColumnMissing, resetEventBrandColumnMissingFlag } from "../lib/events/eventQueryFields";
+import {
+  markEventBrandColumnMissing,
+  resetEventBrandColumnMissingFlag,
+  markHistoryHiddenAtColumnMissing,
+  resetHistoryHiddenAtColumnMissingFlag,
+  resetCrewChatStartedAtColumnMissingFlag,
+  withEventFieldsFallback,
+} from "../lib/events/eventQueryFields";
 import { PROPOSE_RATE_HELPER_MAX_OPENS } from "../lib/booking/proposeRateHelperPreference";
 import {
   applyCappedMultilineInputLimit,
@@ -4488,6 +4495,85 @@ function testMapEventInputToRowEventBrandFallback() {
     const withBrandColumnMissing = mapEventInputToRow({ ...baseInput, eventBrand: "Synergy" });
     assert.ok(!("event_brand" in withBrandColumnMissing));
   } finally {
+    resetEventBrandColumnMissingFlag();
+  }
+}
+
+/**
+ * Beta-blocker: event Save could get stuck on "Saving" forever.
+ * withEventFieldsFallback's while loop kept retrying as long as
+ * markMissingOptionalEventColumn(error) returned true -- but that function
+ * returns true purely on error-pattern match, not on whether the flag
+ * actually changed. If a column was already marked missing (e.g. from an
+ * earlier call in the same browser session) and the query errors again with
+ * that same pattern, selectEventFields() comes back byte-identical and the
+ * loop retried the exact same query forever: the promise never settled, no
+ * catch/finally ever ran, and setSaving(false) never fired.
+ */
+function testWithEventFieldsFallbackStopsWhenProjectionCannotNarrowFurther() {
+  resetHistoryHiddenAtColumnMissingFlag();
+  resetCrewChatStartedAtColumnMissingFlag();
+  resetEventBrandColumnMissingFlag();
+
+  try {
+    // Simulates the column already being marked missing from an earlier
+    // call in this session, so this call's very first projection already
+    // excludes it -- yet the query keeps erroring with that same pattern.
+    markHistoryHiddenAtColumnMissing();
+
+    const staleColumnError = { code: "42703", message: 'column "history_hidden_at" does not exist' };
+    let callCount = 0;
+    const alwaysFailingQuery = async (_fields: string) => {
+      callCount += 1;
+      return { data: null, error: staleColumnError };
+    };
+
+    return withEventFieldsFallback(alwaysFailingQuery).then(
+      () => {
+        throw new Error("withEventFieldsFallback must reject, not resolve, when the query never succeeds");
+      },
+      (error) => {
+        assert.equal(error, staleColumnError, "the real error must surface, not be swallowed");
+        assert.ok(
+          callCount <= 2,
+          `must stop retrying once the projection can't narrow further -- query was called ${callCount} times`,
+        );
+      },
+    );
+  } finally {
+    resetHistoryHiddenAtColumnMissingFlag();
+    resetCrewChatStartedAtColumnMissingFlag();
+    resetEventBrandColumnMissingFlag();
+  }
+}
+
+/** Genuine narrowing must still work: each real 42703 makes real progress. */
+function testWithEventFieldsFallbackStillNarrowsOnGenuineMissingColumns() {
+  resetHistoryHiddenAtColumnMissingFlag();
+  resetCrewChatStartedAtColumnMissingFlag();
+  resetEventBrandColumnMissingFlag();
+
+  try {
+    const seenFields: string[] = [];
+    const query = async (fields: string) => {
+      seenFields.push(fields);
+
+      if (fields.includes("event_brand")) {
+        return { data: null, error: { code: "42703", message: 'column "event_brand" does not exist' } };
+      }
+
+      return { data: { id: "evt-1" }, error: null };
+    };
+
+    return withEventFieldsFallback(query).then((data) => {
+      assert.deepEqual(data, { id: "evt-1" });
+      assert.equal(seenFields.length, 2, "must retry exactly once after genuinely narrowing the projection");
+      assert.notEqual(seenFields[0], seenFields[1], "the retried projection must actually be different");
+      assert.ok(!seenFields[1].includes("event_brand"));
+    });
+  } finally {
+    resetHistoryHiddenAtColumnMissingFlag();
+    resetCrewChatStartedAtColumnMissingFlag();
     resetEventBrandColumnMissingFlag();
   }
 }
@@ -18564,6 +18650,8 @@ async function main() {
   testEventBrandEditFormHydration();
   testEventBrandSafeSave();
   testMapEventInputToRowEventBrandFallback();
+  await testWithEventFieldsFallbackStopsWhenProjectionCannotNarrowFurther();
+  await testWithEventFieldsFallbackStillNarrowsOnGenuineMissingColumns();
   testQaEnvironmentResetScript();
   testLoginScreenPolish();
   testEventNotesTextareaScrollsWhenContentExceedsCap();
