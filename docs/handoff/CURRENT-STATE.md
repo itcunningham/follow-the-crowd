@@ -1,5 +1,56 @@
 # Current state (last updated: 2026-08-17)
 
+## Push hardening: silently self-heal a stale subscription on app launch (`main`, 2026-08-17) — root cause NOT confirmed, needs a session with live access
+
+**Report:** a normal DM sent to one specific iPhone produced no push notification at all (not a click/scroll problem — no banner ever appeared). That device has a known history of a stale browser/DB push-subscription endpoint mismatch.
+
+**This sandbox has no live Supabase project access and no real device access** (`.env.local`'s URL is still the `https://example.supabase.co` placeholder) — the same limitation recorded in every round of this project. The task asked for hard live evidence at every stage (message row, notification row + `message_id`, `active_chat_presence` row + freshness, live subscription count/staleness, push-send's actual delivery result). **None of that could be produced here.** A session with real Supabase access should run the checks below to actually land on one of categories A–G before assuming this round's fix was sufficient.
+
+**Full source verification of the whole pipeline, done instead:**
+- DM message → notification creation (`lib/dm/resolveDmOtherUserId.ts` → `lib/notifications.ts`): `message_id` threaded correctly, `link` stays bare. Unregressed.
+- `active_chat_presence` dispatch (`lib/chat/useActiveChatPresence.ts`): already fixed in an earlier round (the `void`-on-a-thenable bug), confirmed live in Production per that round's entry below. push-send's suppression check is exact-`thread_link`-match only, gated to `type === "message"`, and fails open (try/catch) on any error.
+- push-send (`supabase/functions/push-send/index.ts`): subscription fetch selects every `is_active` row for the recipient with no filtering bug; a dead endpoint (404/410 from the push service) is already deactivated server-side reactively.
+
+**The one concrete, provable-from-source gap:** that 404/410 deactivation only fires once a push is *actually attempted* against a dead endpoint — there was no code path that proactively detected a stale/mismatched subscription and re-registered it. `detectNotificationState()` already computes exactly that state (`"reconnect"`: browser permission granted, but either the browser's own `PushSubscription` is gone or there's no matching active DB row for the signed-in user) — but the only place it was ever checked was the Settings page, so recovery required the user to notice and manually re-toggle notifications there.
+
+**Fix:** `ServiceWorkerProvider` (already mounted once per app launch) now calls `detectNotificationState()` itself, and when it reads `"reconnect"` **and** the user is actually signed in, silently calls `enableNotifications()` — no user gesture is required to re-subscribe once permission is already `"granted"` (only the original prompt needs one). Best-effort, never surfaced to the user; the Settings page's own reconnect banner is still the fallback.
+
+**This is a real, safe hardening for the exact failure mode described — not a confirmed root cause.** If a session with live access finds the actual break was elsewhere (categories A, B, D, E, F, or G below), this fix should stay (it's still correct and low-risk) but won't be the whole story.
+
+**Diagnostic queries for the next session with real Supabase access**, run in order, using the fresh DM's actual ids:
+```sql
+-- 1. The message row
+select id, conversation_id, sender_id, recipient_id, created_at
+from public.messages
+where conversation_id = '<conversation_id>'
+order by created_at desc
+limit 1;
+
+-- 2. The notification row for it (expect message_id to equal the message id above)
+select id, type, title, body, link, message_id, created_at
+from public.notifications
+where user_id = '<recipient_user_id>'
+order by created_at desc
+limit 3;
+
+-- 3. Active chat presence for the recipient at send time
+select thread_link, updated_at, extract(epoch from (now() - updated_at)) as age_seconds
+from public.active_chat_presence
+where user_id = '<recipient_user_id>';
+
+-- 4. Subscription health for the recipient (never expose endpoint/keys)
+select id, is_active, last_used_at, created_at,
+       (endpoint = (select endpoint from public.push_subscriptions where user_id = '<recipient_user_id>' and is_active = true order by last_used_at desc nulls last limit 1)) as is_the_one_push_send_would_pick
+from public.push_subscriptions
+where user_id = '<recipient_user_id>'
+order by created_at desc;
+```
+Then check the Supabase Edge Function logs for `push-send` around the notification's `created_at` for the exact `[push-send]` log lines (suppressed / no subscriptions / delivered N/M / send failed) to land on the category directly, and confirm the deployed `push-send` version matches `main`'s current commit — this project has been bitten before (a prior round) by the deployed Edge Function silently lagging behind a merged commit, since Vercel deploys never touch Supabase Edge Functions.
+
+**Not touched:** VAPID keys, `pg_net`, badge logic, run-sheet pushes, message dedupe SQL, the presence/scroll-target features from prior rounds.
+
+**Verified:** `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round; the new wiring test verified in isolation.
+
 ## Beta blocker fixed: event Save could hang on "Saving" forever (`40ee5af8` on `main`, 2026-08-17)
 
 **Symptom:** creating an event with a DJ selected could leave Save stuck on "Saving" indefinitely.
