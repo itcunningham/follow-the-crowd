@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { setupNotificationClickListener } from "@/lib/push/client";
+import { detectNotificationState, enableNotifications, setupNotificationClickListener } from "@/lib/push/client";
+import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export default function ServiceWorkerProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -22,7 +23,42 @@ export default function ServiceWorkerProvider({ children }: { children: React.Re
       }
     }
 
+    // A device that previously granted permission can end up with a stale
+    // or mismatched subscription -- the browser silently drops/rotates its
+    // PushSubscription, or a DB row goes missing -- and detectNotificationState()
+    // already recognises that exact shape as "reconnect". Until now the only
+    // place that state was ever checked was the Settings page, so recovery
+    // required the user to notice and manually re-toggle notifications there.
+    // Re-subscribing needs no user gesture once permission is already
+    // "granted" (only the initial prompt does), so this silently self-heals
+    // on every app launch instead. Best-effort: never surfaced to the user,
+    // and the Settings page's own reconnect banner remains the fallback if
+    // this can't resolve it (e.g. genuinely not signed in yet).
+    async function reconcileStalePushSubscription() {
+      if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+        return;
+      }
+
+      try {
+        const state = await detectNotificationState();
+
+        if (state !== "reconnect") {
+          return;
+        }
+
+        // Only worth attempting once actually signed in -- otherwise
+        // "reconnect" just means auth hasn't loaded yet, not a real stale
+        // subscription, and enableNotifications() would fail pointlessly.
+        await getCurrentUserId();
+        await enableNotifications();
+        console.log("[push] Silently reconciled a stale push subscription");
+      } catch (error) {
+        console.error("[push] Silent subscription reconcile did not complete:", error);
+      }
+    }
+
     registerServiceWorker();
+    reconcileStalePushSubscription();
 
     // Listen for navigation messages from service worker
     const unlistener = setupNotificationClickListener((link) => {
