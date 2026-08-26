@@ -373,7 +373,10 @@ function MobileNavTab({
 
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
-      if (activatedThisGestureRef.current) {
+      const wasActivatedThisGesture = activatedThisGestureRef.current;
+      activatedThisGestureRef.current = false;
+
+      if (wasActivatedThisGesture) {
         event.preventDefault();
         return;
       }
