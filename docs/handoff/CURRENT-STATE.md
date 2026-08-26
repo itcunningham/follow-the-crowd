@@ -1,5 +1,19 @@
 # Current state (last updated: 2026-08-26)
 
+## Navigation gesture ref blocking fix (2026-08-26)
+
+**Bug:** Bottom navigation tabs (Messages, Profile, Events) would become unresponsive after certain navigation patterns. Specifically, after navigating Events → Messages → Events, attempting to navigate back to Messages would fail.
+
+**Root cause:** `MobileNavTab` in `app/components/AppNavigation.tsx` uses `activatedThisGestureRef` to prevent double-handling of touch+click event sequences. The ref was set to true in `handlePointerUp` when a touch gesture completed, but only reset to false in `handlePointerDown` for the next gesture. If there was any timing issue or if pointer events didn't fire in the expected order, the ref could persist with a stale true value, causing `handleClick` to skip navigation entirely.
+
+**Fix:** Reset `activatedThisGestureRef` to false immediately after checking it in `handleClick`. This ensures the ref doesn't persist with a stale value across interactions, even if there are timing issues with pointer events. The fix maintains the gesture deduplication logic while preventing ref state from getting stuck.
+
+**Code:** `app/components/AppNavigation.tsx` line 374-385. Commit on `claude/nav-events-regression`.
+
+**Test:** Manual regression test: Events → Messages → Events → Messages should all navigate successfully with no blocking.
+
+---
+
 ## Email confirmation redirect bug fixed (2026-08-26)
 
 **Bug:** New user signup confirmation emails (and all auth emails: password reset, magic link, email change) redirected to old `https://follow-the-crowd.vercel.app` instead of canonical `https://followthecrowd.com.au`. Returning 404 DEPLOYMENT_NOT_FOUND when clicked.
