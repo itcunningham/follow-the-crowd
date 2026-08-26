@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useRef, type ReactNode } from "react";
 import { clearGigsListTabPending } from "@/lib/bookings/gigsListTabPending";
 import { clearEventsListTabCache } from "@/lib/events/eventsListTabCache";
@@ -38,22 +38,37 @@ export default function PlannerWorkspaceSubNavLink({
   children,
   interceptNavigate,
 }: PlannerWorkspaceSubNavLinkProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const destinationHref = buildWorkspaceSubNavDestinationHref(href, pathname);
   const navigatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{ pointerId: number; cancelled: boolean } | null>(null);
 
+  const isDocumentActive = useCallback(() => {
+    if (typeof window === "undefined") {
+      return isActive;
+    }
+
+    try {
+      return window.location.pathname === new URL(destinationHref, window.location.origin).pathname;
+    } catch {
+      return window.location.pathname === (destinationHref.split("?")[0] ?? destinationHref);
+    }
+  }, [destinationHref, isActive]);
+
   const shouldLeaveCalendarViaNativeLink = useCallback(() => {
+    const currentPath =
+      typeof window !== "undefined" ? window.location.pathname : pathname;
     return (
-      isCalendarWorkspacePath(pathname) &&
+      isCalendarWorkspacePath(currentPath) &&
       !interceptNavigate &&
-      !isCalendarCreateWorkspaceLocation(pathname)
+      !isCalendarCreateWorkspaceLocation(currentPath)
     );
   }, [interceptNavigate, pathname]);
 
   const shouldCommitNavigationGesture = useCallback(() => {
-    return Boolean(interceptNavigate) || isCalendarCreateWorkspaceLocation(pathname);
+    const currentPath =
+      typeof window !== "undefined" ? window.location.pathname : pathname;
+    return Boolean(interceptNavigate) || isCalendarCreateWorkspaceLocation(currentPath);
   }, [interceptNavigate, pathname]);
 
   const commitNavigation = useCallback(
@@ -63,7 +78,21 @@ export default function PlannerWorkspaceSubNavLink({
         return;
       }
 
-      if (navigatedThisGestureRef.current || isActive) {
+      if (navigatedThisGestureRef.current) {
+        return;
+      }
+
+      const currentPath =
+        typeof window !== "undefined" ? window.location.pathname : pathname;
+      let destinationPath = destinationHref;
+      try {
+        destinationPath = new URL(destinationHref, window.location.origin).pathname;
+      } catch {
+        destinationPath = destinationHref.split("?")[0] ?? destinationHref;
+      }
+
+      // Already on this workspace tab per the real URL — ignore stale React isActive.
+      if (currentPath === destinationPath) {
         return;
       }
 
@@ -74,29 +103,31 @@ export default function PlannerWorkspaceSubNavLink({
       }
 
       if (
-        isEventsWorkspacePath(pathname) &&
+        isEventsWorkspacePath(currentPath) &&
         href !== EVENTS_AREA_SUB_NAV.events.href
       ) {
         clearEventsListTabCache();
       }
 
-      if (isCalendarCreateWorkspaceLocation(pathname)) {
+      if (isCalendarCreateWorkspaceLocation(currentPath)) {
         navigateAwayFromCalendarCreateWorkspace(destinationHref);
         return;
       }
 
-      router.push(destinationHref, { scroll: false });
+      // Hard navigate between workspace tabs. Soft router.push silently fails
+      // after Active/History history.pushState desyncs the App Router.
+      window.location.assign(destinationHref);
     },
-    [destinationHref, href, interceptNavigate, isActive, pathname, router],
+    [destinationHref, href, interceptNavigate, pathname],
   );
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLAnchorElement>) => {
-      if (shouldLeaveCalendarViaNativeLink() && !isActive) {
+      if (shouldLeaveCalendarViaNativeLink() && !isDocumentActive()) {
         return;
       }
 
-      if (isActive && !shouldCommitNavigationGesture()) {
+      if (isDocumentActive() && !shouldCommitNavigationGesture()) {
         event.preventDefault();
         return;
       }
@@ -111,19 +142,19 @@ export default function PlannerWorkspaceSubNavLink({
         cancelled: false,
       };
     },
-    [isActive, shouldCommitNavigationGesture, shouldLeaveCalendarViaNativeLink],
+    [isDocumentActive, shouldCommitNavigationGesture, shouldLeaveCalendarViaNativeLink],
   );
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLAnchorElement>) => {
-      if (shouldLeaveCalendarViaNativeLink() && !isActive) {
+      if (shouldLeaveCalendarViaNativeLink() && !isDocumentActive()) {
         return;
       }
 
       const gesture = activeGestureRef.current;
 
       if (
-        (!shouldCommitNavigationGesture() && isActive) ||
+        (!shouldCommitNavigationGesture() && isDocumentActive()) ||
         !gesture ||
         event.pointerId !== gesture.pointerId ||
         gesture.cancelled
@@ -137,7 +168,7 @@ export default function PlannerWorkspaceSubNavLink({
         commitNavigation();
       }
     },
-    [commitNavigation, isActive, shouldCommitNavigationGesture, shouldLeaveCalendarViaNativeLink],
+    [commitNavigation, isDocumentActive, shouldCommitNavigationGesture, shouldLeaveCalendarViaNativeLink],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -151,13 +182,15 @@ export default function PlannerWorkspaceSubNavLink({
 
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
-      if (shouldLeaveCalendarViaNativeLink() && !isActive) {
+      if (shouldLeaveCalendarViaNativeLink() && !isDocumentActive()) {
         if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
           clearGigsListTabPending();
         }
 
+        const currentPath =
+          typeof window !== "undefined" ? window.location.pathname : pathname;
         if (
-          isEventsWorkspacePath(pathname) &&
+          isEventsWorkspacePath(currentPath) &&
           href !== EVENTS_AREA_SUB_NAV.events.href
         ) {
           clearEventsListTabCache();
@@ -176,7 +209,7 @@ export default function PlannerWorkspaceSubNavLink({
         return;
       }
 
-      if (isActive) {
+      if (isDocumentActive()) {
         event.preventDefault();
         return;
       }
@@ -189,7 +222,14 @@ export default function PlannerWorkspaceSubNavLink({
       event.preventDefault();
       commitNavigation();
     },
-    [commitNavigation, href, isActive, shouldCommitNavigationGesture, shouldLeaveCalendarViaNativeLink],
+    [
+      commitNavigation,
+      href,
+      isDocumentActive,
+      pathname,
+      shouldCommitNavigationGesture,
+      shouldLeaveCalendarViaNativeLink,
+    ],
   );
 
   return (

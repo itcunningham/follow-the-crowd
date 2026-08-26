@@ -1,5 +1,18 @@
 # Current state (last updated: 2026-08-26)
 
+## Event Plans / History workspace tab fix (2026-08-26)
+
+**Bug:** From Events Active, Event Plans often did nothing; History could leave the UI stuck on Event Plans.
+
+**Cause:**
+1. `PlannerEventsSubNav` preferred stale `usePathname()` whenever it looked like any planner-area path — including `/booking-plans` — so after returning to `/events`, Event Plans could stay “active” and ignore taps.
+2. `PlannerWorkspaceSubNavLink` gated navigation on that React `isActive` and used soft `router.push`, which silently fails after Active/History `history.pushState(window.history.state, …)` desyncs the App Router.
+3. Active/History copied `window.history.state` into `pushState`, preserving a prior route’s router entry.
+
+**Fix:** Document URL for sub-nav active/path; hard `location.assign` between workspace tabs; Active/History `pushState(null, …)`.
+
+---
+
 ## Bottom-nav leave-Events fix (hard nav + document URL gate) — 2026-08-26
 
 **Bug:** After Events → Messages|Profile → Events → Messages|Profile, the second leave from Events could fail (Chrome included). Gesture-ref and z-index fixes on Production did not stop it.

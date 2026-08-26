@@ -36,12 +36,11 @@ export default function PlannerEventsSubNav({
   interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
 }) {
   const pathname = usePathname();
+  // Document URL wins. Preferring usePathname() whenever it looks like a planner
+  // area path kept a stale /booking-plans active after returning to /events, so
+  // Event Plans looked selected and further taps no-op'd.
   const pathnameForSubNav =
-    pathname && isPlannerEventsAreaPath(pathname)
-      ? pathname
-      : typeof window !== "undefined" && isPlannerEventsAreaPath(window.location.pathname)
-        ? window.location.pathname
-        : pathname;
+    typeof window !== "undefined" ? window.location.pathname : pathname;
   const router = useRouter();
   const guardProfile = useGuardProfile();
   const [cachedNavigation] = useState(readCachedNavigation);

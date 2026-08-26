@@ -6242,9 +6242,10 @@ function testEventsCreateFlowTabPillNavigation() {
   assert.match(tabLinkHandler, /createOpen && !isCalendarCreateFlow/);
   assert.match(
     tabLinkHandler,
-    /if \(!isTargetTab\) \{\s*const href = buildEventsListHref\(tab\);\s*window\.history\.pushState\(window\.history\.state, "", href\);\s*handleEventsListTabChange\(\);\s*\}\s*closeCreateFlow\(\);/,
+    /if \(!isTargetTab\) \{\s*const href = buildEventsListHref\(tab\);\s*window\.history\.pushState\(null, "", href\);\s*handleEventsListTabChange\(\);\s*\}\s*closeCreateFlow\(\);/,
   );
-  assert.match(tabLinkHandler, /window\.history\.pushState\(window\.history\.state, "", href\)/);
+  assert.match(tabLinkHandler, /window\.history\.pushState\(null, "", href\)/);
+  assert.doesNotMatch(tabLinkHandler, /pushState\(window\.history\.state/);
   assert.doesNotMatch(tabLinkHandler, /router\.(push|replace)\(/);
   assert.match(
     source,
@@ -6343,8 +6344,9 @@ function testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
   assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
   assert.match(
     tabLinkHandler,
-    /event\.preventDefault\(\);[\s\S]*window\.history\.pushState\(window\.history\.state, "", href\)/,
+    /event\.preventDefault\(\);[\s\S]*window\.history\.pushState\(null, "", href\)/,
   );
+  assert.doesNotMatch(tabLinkHandler, /pushState\(window\.history\.state/);
   assert.doesNotMatch(tabLinkHandler, /router\.(push|replace)\(/);
   assert.match(
     source,
@@ -6735,7 +6737,7 @@ function testCalendarScrollStabilityOnTabSwitch() {
 
   assert.match(calendarPageSource, /pendingCalendarViewScrollYRef/);
   assert.match(calendarPageSource, /window\.scrollTo\(0, scrollY\)/);
-  assert.match(subNavLinkSource, /if \(isActive\) \{\s*event\.preventDefault\(\)/);
+  assert.match(subNavLinkSource, /if \(isDocumentActive\(\)\) \{\s*event\.preventDefault\(\)/);
 }
 
 function testCalendarRouteLoadingSkipsFullSkeletonCard() {
@@ -7244,11 +7246,13 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
     readFileSync(new URL("../app/components/AppNavigation.tsx", import.meta.url), "utf8"),
     /MOBILE_NAV_Z_CLASS = "z-50"/,
   );
-  assert.match(subNavLinkSource, /router\.push\(destinationHref/);
+  assert.match(subNavLinkSource, /window\.location\.assign\(destinationHref\)/);
   assert.match(subNavLinkSource, /commitNavigation\(/);
   assert.match(subNavLinkSource, /shouldLeaveCalendarViaNativeLink/);
-  assert.match(subNavLinkSource, /isCalendarWorkspacePath\(pathname\)/);
-  assert.doesNotMatch(subNavLinkSource, /window\.location\.assign\(destinationHref\)/);
+  assert.match(subNavLinkSource, /isCalendarWorkspacePath\(currentPath\)/);
+  assert.match(subNavLinkSource, /isDocumentActive/);
+  assert.doesNotMatch(subNavLinkSource, /router\.push\(destinationHref/);
+  assert.doesNotMatch(subNavLinkSource, /navigatedThisGestureRef\.current \|\| isActive/);
   assert.match(bothCalendarSource, /relative isolate z-0 flex flex-col/);
   assert.match(monthNavSource, /grid-cols-1 grid-rows-1/);
   assert.match(monthNavSource, /\[&_\*\]:pointer-events-none/);

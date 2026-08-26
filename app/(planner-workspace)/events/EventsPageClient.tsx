@@ -1405,7 +1405,9 @@ function EventsPageClientView({
     if (closeEventsOriginatedCreate) {
       if (!isTargetTab) {
         const href = buildEventsListHref(tab);
-        window.history.pushState(window.history.state, "", href);
+        // Do not reuse window.history.state — that can keep a prior route's App
+        // Router entry (e.g. /booking-plans) and break later workspace tab taps.
+        window.history.pushState(null, "", href);
         handleEventsListTabChange();
       }
 
@@ -1418,7 +1420,7 @@ function EventsPageClientView({
     }
 
     const href = buildEventsListHref(tab);
-    window.history.pushState(window.history.state, "", href);
+    window.history.pushState(null, "", href);
     handleEventsListTabChange();
 
     if (createOpen) {
