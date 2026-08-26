@@ -315,37 +315,31 @@ function MobileNavTab({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const activatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{
     pointerId: number;
     cancelled: boolean;
+    touchHandled: boolean;
   } | null>(null);
 
   const navigate = useCallback(() => {
     // Pop-to-root only when already on the landing href; nested workspace
     // paths (e.g. /events/[id] after View Event from crew chat) must navigate.
     if (isWorkspaceSelector && isActive && pathname === href) {
-      if (typeof window !== "undefined") {
-        console.log(`[FTC-NAV-DEBUG] ${label}: no-op (pop-to-root already here)`);
-      }
       return;
     }
 
-    if (typeof window !== "undefined") {
-      console.log(`[FTC-NAV-DEBUG] ${label}: navigate ${pathname}→${href}`);
-    }
     router.push(href, { scroll: false });
-  }, [href, isActive, isWorkspaceSelector, pathname, router, label]);
+  }, [href, isActive, isWorkspaceSelector, pathname, router]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
     if (!event.isPrimary) {
       return;
     }
 
-    activatedThisGestureRef.current = false;
     activeGestureRef.current = {
       pointerId: event.pointerId,
       cancelled: false,
+      touchHandled: false,
     };
   }, []);
 
@@ -357,18 +351,15 @@ function MobileNavTab({
         return;
       }
 
-      activeGestureRef.current = null;
-
       if (event.pointerType === "touch") {
-        if (typeof window !== "undefined") {
-          console.log(`[FTC-NAV-DEBUG] ${label}: pointerUp(touch) → set activatedThisGestureRef=true`);
-        }
-        activatedThisGestureRef.current = true;
+        gesture.touchHandled = true;
         event.preventDefault();
         navigate();
       }
+
+      activeGestureRef.current = null;
     },
-    [navigate, label],
+    [navigate],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -382,32 +373,18 @@ function MobileNavTab({
 
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
-      const wasActivatedThisGesture = activatedThisGestureRef.current;
-      activatedThisGestureRef.current = false;
+      const gesture = activeGestureRef.current;
 
-      if (wasActivatedThisGesture) {
-        if (typeof window !== "undefined") {
-          console.log(`[FTC-NAV-DEBUG] ${label}: click blocked (activatedThisGestureRef was true)`);
-        }
+      // Skip click if we just handled a touch from this same gesture
+      if (gesture && gesture.touchHandled && gesture.pointerId >= 0) {
         event.preventDefault();
         return;
       }
 
-      if (typeof window !== "undefined") {
-        console.log(`[FTC-NAV-DEBUG] ${label}: click → navigate()`);
-        // Hit-test to detect if another element is blocking the tap
-        const elemAtPoint = document.elementFromPoint(event.clientX, event.clientY);
-        if (elemAtPoint && elemAtPoint !== event.currentTarget && !event.currentTarget.contains(elemAtPoint)) {
-          const tag = elemAtPoint.tagName.toLowerCase();
-          const classes = elemAtPoint.className ? elemAtPoint.className.split(" ").slice(0, 3).join(" ") : "";
-          const role = elemAtPoint.getAttribute("role") || "";
-          console.log(`[FTC-NAV-DEBUG] ${label}: element at tap point: <${tag}${classes ? ` class="${classes}"` : ""}${role ? ` role="${role}"` : ""}>`);
-        }
-      }
       event.preventDefault();
       navigate();
     },
-    [navigate, label],
+    [navigate],
   );
 
   return (
