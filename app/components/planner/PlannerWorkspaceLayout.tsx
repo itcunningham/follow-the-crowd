@@ -267,7 +267,6 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
   return (
     <WorkspaceHeaderContext.Provider value={headerContextValue}>
       <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-        <AppNavigation />
         <PlannerWorkspacePageHeader
           title={title}
           initialRole={workspaceRole}
@@ -276,6 +275,8 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
           actions={actions}
         />
         <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>{children}</div>
+        {/* Nav last so same-z siblings cannot paint over bottom/top chrome. */}
+        <AppNavigation />
       </div>
     </WorkspaceHeaderContext.Provider>
   );
@@ -423,7 +424,6 @@ export function PlannerWorkspacePage({
 
   return (
     <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-      <AppNavigation />
       <PlannerWorkspacePageHeader
         title={title}
         initialRole={initialRole}
@@ -431,6 +431,7 @@ export function PlannerWorkspacePage({
         actions={actions}
       />
       <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>{content}</div>
+      <AppNavigation />
     </div>
   );
 }

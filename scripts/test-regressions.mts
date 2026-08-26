@@ -7233,10 +7233,17 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
 
   assert.match(layoutSource, /workspaceIntercept/);
   assert.match(layoutSource, /interceptWorkspaceTabNavigation=\{workspaceIntercept\}/);
-  assert.match(tokensSource, /PLANNER_WORKSPACE_HEADER_CLASS[\s\S]*sticky top-0 z-50/);
+  assert.match(tokensSource, /PLANNER_WORKSPACE_HEADER_CLASS[\s\S]*sticky top-0 z-40/);
   assert.match(tokensSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS[\s\S]*relative z-0/);
   assert.match(layoutSource, /PLANNER_WORKSPACE_HEADER_CLASS/);
   assert.match(layoutSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS/);
+  // Mobile nav must stay above the sticky workspace header (same-z + earlier DOM used to
+  // let the header win hit-testing and block Messages/Profile after returning to Events).
+  assert.match(layoutSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS\}>\{children\}<\/div>[\s\S]*?<AppNavigation\s*\/>/);
+  assert.match(
+    readFileSync(new URL("../app/components/AppNavigation.tsx", import.meta.url), "utf8"),
+    /MOBILE_NAV_Z_CLASS = "z-50"/,
+  );
   assert.match(subNavLinkSource, /router\.push\(destinationHref/);
   assert.match(subNavLinkSource, /commitNavigation\(/);
   assert.match(subNavLinkSource, /shouldLeaveCalendarViaNativeLink/);

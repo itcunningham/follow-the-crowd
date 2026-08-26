@@ -18,7 +18,8 @@ export const PLANNER_WORKSPACE_SHELL_WIDE_CLASS = `mx-auto w-full max-w-6xl bg-f
 
 export const PLANNER_WORKSPACE_PAGE_INSET_CLASS = "px-4 sm:px-6";
 
-export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header sticky top-0 z-50 isolate bg-ftc-bg ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pt-4 md:pt-4`;
+/** Above page content (`z-0`); below mobile bottom nav (`z-50`) so chrome never covers tab taps. */
+export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header sticky top-0 z-40 isolate bg-ftc-bg ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pt-4 md:pt-4`;
 
 export const PLANNER_WORKSPACE_TITLE_CLASS = "text-xl font-semibold leading-tight text-ftc-text";
 

@@ -24,8 +24,8 @@ export {
 export function AppPageShell({ children }: { children: ReactNode }) {
   return (
     <div className={`${APP_PAGE_SHELL_CLASS} flex flex-col`}>
-      <AppNavigation />
       {children}
+      <AppNavigation />
     </div>
   );
 }

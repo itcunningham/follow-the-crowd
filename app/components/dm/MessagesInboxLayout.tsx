@@ -89,7 +89,6 @@ export default function MessagesInboxLayout({
       <div
         className={`flex min-h-[100dvh] w-full flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
-        <AppNavigation />
         <div className={`${APP_DM_CONTENT_WIDTH_CLASS} flex min-h-0 flex-1 flex-col`}>
           <header className={APP_PAGE_HEADER_CLASS}>
             <div className={APP_PAGE_TITLE_ROW_CLASS}>
@@ -142,6 +141,7 @@ export default function MessagesInboxLayout({
             <AppPageDesktopSurface>{children}</AppPageDesktopSurface>
           </div>
         </div>
+        <AppNavigation />
       </div>
 
       <HelpBetaSheet open={helpOpen} onClose={() => setHelpOpen(false)} context={activeTab === "dm" ? "messages" : "crew-chat"} />
