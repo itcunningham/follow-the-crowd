@@ -1698,8 +1698,8 @@ function testAuthRedirectUrlUsesLoginPath() {
   const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
 
   try {
-    process.env.NEXT_PUBLIC_APP_URL = "https://follow-the-crowd.vercel.app";
-    assert.equal(getAuthRedirectUrl("/login"), "https://follow-the-crowd.vercel.app/login");
+    process.env.NEXT_PUBLIC_APP_URL = "https://followthecrowd.com.au";
+    assert.equal(getAuthRedirectUrl("/login"), "https://followthecrowd.com.au/login");
   } finally {
     if (previousAppUrl === undefined) {
       delete process.env.NEXT_PUBLIC_APP_URL;

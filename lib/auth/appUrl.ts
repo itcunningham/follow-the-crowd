@@ -1,6 +1,6 @@
-// Legacy fallback; production should use NEXT_PUBLIC_APP_URL env var.
-// This is only hit if env var is unset and code runs server-side.
-export const FTC_APP_URL_FALLBACK = "https://follow-the-crowd.vercel.app";
+// Fallback used when NEXT_PUBLIC_APP_URL is unset and running server-side.
+// Production uses https://followthecrowd.com.au (canonical domain).
+export const FTC_APP_URL_FALLBACK = "https://followthecrowd.com.au";
 
 function normalizeOrigin(url: string): string {
   return url.trim().replace(/\/+$/, "");

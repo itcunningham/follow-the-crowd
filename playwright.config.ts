@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import path from "node:path";
 
 const AUTH_DIR = path.join("test-results", ".auth");
-const PRODUCTION_BASE_URL = "https://follow-the-crowd.vercel.app";
+const PRODUCTION_BASE_URL = "https://followthecrowd.com.au";
 
 export default defineConfig({
   testDir: path.join("e2e"),
