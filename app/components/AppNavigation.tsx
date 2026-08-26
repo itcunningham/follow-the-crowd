@@ -315,10 +315,10 @@ function MobileNavTab({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const activatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{
     pointerId: number;
     cancelled: boolean;
+    touchHandled: boolean;
   } | null>(null);
 
   const navigate = useCallback(() => {
@@ -336,10 +336,10 @@ function MobileNavTab({
       return;
     }
 
-    activatedThisGestureRef.current = false;
     activeGestureRef.current = {
       pointerId: event.pointerId,
       cancelled: false,
+      touchHandled: false,
     };
   }, []);
 
@@ -351,13 +351,13 @@ function MobileNavTab({
         return;
       }
 
-      activeGestureRef.current = null;
-
       if (event.pointerType === "touch") {
-        activatedThisGestureRef.current = true;
+        gesture.touchHandled = true;
         event.preventDefault();
         navigate();
       }
+
+      activeGestureRef.current = null;
     },
     [navigate],
   );
@@ -373,10 +373,10 @@ function MobileNavTab({
 
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
-      const wasActivatedThisGesture = activatedThisGestureRef.current;
-      activatedThisGestureRef.current = false;
+      const gesture = activeGestureRef.current;
 
-      if (wasActivatedThisGesture) {
+      // Skip click if we just handled a touch from this same gesture
+      if (gesture && gesture.touchHandled && gesture.pointerId >= 0) {
         event.preventDefault();
         return;
       }
