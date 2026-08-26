@@ -325,11 +325,17 @@ function MobileNavTab({
     // Pop-to-root only when already on the landing href; nested workspace
     // paths (e.g. /events/[id] after View Event from crew chat) must navigate.
     if (isWorkspaceSelector && isActive && pathname === href) {
+      if (typeof window !== "undefined") {
+        console.log(`[FTC-NAV-DEBUG] ${label}: pop-to-root no-op. href=${href}, pathname=${pathname}, isActive=${isActive}, window.location.pathname=${window.location.pathname}`);
+      }
       return;
     }
 
+    if (typeof window !== "undefined") {
+      console.log(`[FTC-NAV-DEBUG] ${label}: calling router.push(${href}). pathname=${pathname}, window.location.pathname=${window.location.pathname}, isActive=${isActive}`);
+    }
     router.push(href, { scroll: false });
-  }, [href, isActive, isWorkspaceSelector, pathname, router]);
+  }, [href, isActive, isWorkspaceSelector, pathname, router, label]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
     if (!event.isPrimary) {
@@ -354,12 +360,15 @@ function MobileNavTab({
       activeGestureRef.current = null;
 
       if (event.pointerType === "touch") {
+        if (typeof window !== "undefined") {
+          console.log(`[FTC-NAV-DEBUG] ${label}: pointerUp(touch) → preventDefault + navigate`);
+        }
         activatedThisGestureRef.current = true;
         event.preventDefault();
         navigate();
       }
     },
-    [navigate],
+    [navigate, label],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -377,14 +386,20 @@ function MobileNavTab({
       activatedThisGestureRef.current = false;
 
       if (wasActivatedThisGesture) {
+        if (typeof window !== "undefined") {
+          console.log(`[FTC-NAV-DEBUG] ${label}: click → blocked (activatedThisGesture=true)`);
+        }
         event.preventDefault();
         return;
       }
 
+      if (typeof window !== "undefined") {
+        console.log(`[FTC-NAV-DEBUG] ${label}: click → navigate`);
+      }
       event.preventDefault();
       navigate();
     },
-    [navigate],
+    [navigate, label],
   );
 
   return (
