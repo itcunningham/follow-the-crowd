@@ -13,13 +13,61 @@ export type Notification = {
   body: string | null;
   link: string | null;
   read: boolean;
+  message_id: string | null;
 };
+
+/**
+ * The notification's stored `link` column stays a bare path
+ * (`markNotificationsReadForLink` does an exact-string match against it), so
+ * the message-id query param used to deep-link into the exact chat message is
+ * appended only at the point of navigation, never persisted.
+ */
+export function buildNotificationTargetHref(
+  link: string,
+  messageId?: string | null,
+): string {
+  if (!messageId) {
+    return link;
+  }
+
+  const separator = link.includes("?") ? "&" : "?";
+  return `${link}${separator}message=${encodeURIComponent(messageId)}`;
+}
 
 export type NavBadgeCounts = {
   messages: number;
   bookings: number;
   total: number;
 };
+
+const NOTIFICATION_PREVIEW_MAX_LENGTH = 120;
+
+/**
+ * Collapses newlines/whitespace and truncates so a long message can't produce
+ * a huge lock-screen push body. Reused by every message-type notification.
+ */
+export function formatNotificationPreview(
+  text: string,
+  maxLength: number = NOTIFICATION_PREVIEW_MAX_LENGTH,
+): string {
+  const collapsed = text.replace(/\s+/g, " ").trim();
+
+  if (collapsed.length <= maxLength) {
+    return collapsed;
+  }
+
+  return `${collapsed.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+/**
+ * "<event name> at <venue>" for push bodies -- venue can be an empty string
+ * (planner left it blank), and "<event> at " reads as broken copy. Falls
+ * back to the event name alone rather than showing an empty/awkward venue.
+ */
+export function formatEventVenueLine(eventName: string, venue: string): string {
+  const trimmedVenue = venue.trim();
+  return trimmedVenue ? `${eventName} at ${trimmedVenue}` : eventName;
+}
 
 export function notifyNavigationBadgesRefresh(): void {
   if (typeof window !== "undefined") {
@@ -84,6 +132,13 @@ export async function createNotification(
   body: string | null,
   link: string | null,
   reactionId?: string | null,
+  // The triggering chat message's own id, when one exists (a real DM/crew
+  // message, not a synthetic notification like a booking update). Lets the
+  // dedupe key be "this exact message" instead of a title/body/link content
+  // fingerprint -- two image-only sends with no caption both render the
+  // identical generic "Sent a photo" body, so without this a second one
+  // collided with the first's still-unread row and never pushed.
+  messageId?: string | null,
 ): Promise<string> {
   const context: NotificationCreateContext = {
     type,
@@ -98,9 +153,11 @@ export async function createNotification(
     p_title: title,
     p_body: body,
     p_link: link,
-    // Always send p_reaction_id (null for non-reactions). Omitting it makes
-    // Postgres fail when both the legacy 5-arg and 6-arg overloads exist.
+    // Always send p_reaction_id/p_message_id (null when not applicable).
+    // Omitting either makes Postgres fail to resolve the call when more than
+    // one create_notification overload exists in the DB at once.
     p_reaction_id: reactionId ?? null,
+    p_message_id: messageId ?? null,
   });
 
   if (error) {
@@ -278,19 +335,26 @@ export async function getTotalUnreadCount(userId: string): Promise<number> {
   return data?.length ?? 0;
 }
 
+// Both types are always relevant to whoever owns the row: booking_request's
+// recipient is always the DJ, booking_update goes to whichever party the
+// action affects. getUnreadNotifications already scopes to this user's own
+// rows, so querying both for every role finds nothing for the type a given
+// role never receives -- it was never a role distinction worth making. A
+// prior version skipped this query entirely for role === "dj" (nothing in
+// the DJ nav bar reads badgeCounts.bookings, so it looked like a safe no-op),
+// which silently zeroed a DJ's unread booking_request/booking_update count --
+// invisible in the old DJ-only nav-badge use, but wrong the moment
+// badgeCounts.total started feeding the OS Home Screen badge too, since a DJ
+// getting a new booking request is exactly the case that badge must reflect.
 export async function getNavBadgeCounts(
   userId: string,
   role: UserRole | null,
 ): Promise<NavBadgeCounts> {
-  const bookingTypes: NotificationType[] = ["booking_update"];
-
-  if (role !== "dj") {
-    bookingTypes.unshift("booking_request");
-  }
+  const bookingTypes: NotificationType[] = ["booking_request", "booking_update"];
 
   const [inboxUnread, bookingNotifications] = await Promise.all([
     getInboxUnreadCounts(userId, role),
-    role === "dj" ? Promise.resolve([] as Notification[]) : getUnreadNotifications(userId, bookingTypes),
+    getUnreadNotifications(userId, bookingTypes),
   ]);
 
   const counts: NavBadgeCounts = {

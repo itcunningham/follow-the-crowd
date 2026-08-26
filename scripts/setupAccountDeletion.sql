@@ -4,6 +4,8 @@
 -- Auth user removal is handled inside delete_account_data().
 -- Storage files are removed via the Storage API before this RPC runs.
 
+BEGIN;
+
 -- ---------------------------------------------------------------------------
 -- Profile soft-delete marker
 -- ---------------------------------------------------------------------------
@@ -50,7 +52,7 @@ begin
     v_warnings := array_append(
       v_warnings,
       format(
-        '%s pending booking request%s will be cancelled automatically.',
+        '%s pending booking request%s will be cancelled',
         v_pending_count,
         case when v_pending_count = 1 then '' else 's' end
       )
@@ -73,9 +75,10 @@ begin
     v_warnings := array_append(
       v_warnings,
       format(
-        '%s accepted booking%s on upcoming events will be cancelled automatically.',
+        '%s accepted booking%s on %s will be cancelled',
         v_accepted_count,
-        case when v_accepted_count = 1 then '' else 's' end
+        case when v_accepted_count = 1 then '' else 's' end,
+        case when v_accepted_count = 1 then 'an upcoming event' else 'upcoming events' end
       )
     );
   end if;
@@ -90,7 +93,7 @@ begin
     v_warnings := array_append(
       v_warnings,
       format(
-        '%s draft or upcoming event%s you own will be cancelled or removed automatically.',
+        '%s draft or upcoming event%s you own will be cancelled or removed',
         v_owned_event_count,
         case when v_owned_event_count = 1 then '' else 's' end
       )
@@ -219,6 +222,16 @@ begin
   delete from public.booking_plans
   where owner_id = v_user_id;
 
+  -- Private profile data: owner-only contact field stored separately in user_private_data.
+  -- Guarded and dynamic on purpose. If setupPrivateProfileFieldsTable.sql has not
+  -- been applied yet, account deletion should still succeed. EXECUTE defers resolution,
+  -- and to_regclass makes the branch skip cleanly. That keeps script order-independence.
+  if to_regclass('public.user_private_data') is not null then
+    execute
+      'delete from public.user_private_data where user_id = $1'
+      using v_user_id;
+  end if;
+
   -- Private planner->DJ roster, BOTH directions. The dj_id half is the one that
   -- is easy to forget: without it a deleted DJ leaves a stale row on every
   -- planner's roster forever, invisible in the UI but permanent.
@@ -237,6 +250,7 @@ begin
 
   update public.users
   set
+    username = NULL,
     display_name = 'Deleted User',
     bio = '',
     genre = '',
@@ -253,13 +267,12 @@ begin
     -- users their name, images, links and other profile details are cleared,
     -- and artist_name is a name while tiktok_url and website_url are links, so
     -- the policy described something the function did not do.
-    -- dj_booking_contact_name and full_name matter most: they are the fields
-    -- treated as private, and leaving them on an anonymised row meant the one
-    -- category of data a deleted user most expects to be gone was not.
-    -- username is still deliberately kept - it carries a unique index, and
-    -- clearing it would collide the moment a second account is deleted.
-    full_name = '',
-    dj_booking_contact_name = '',
+    -- dj_booking_contact_name and full_name are the fields treated as private,
+    -- and must be set to NULL (not '') to preserve the zero-non-null invariant.
+    -- username is set to NULL (safe per unique index WHERE clause) rather than
+    -- a tombstone, to avoid exposing the internal user_id and creating linkability.
+    full_name = NULL,
+    dj_booking_contact_name = NULL,
     artist_name = '',
     tiktok_url = '',
     website_url = '',
@@ -273,18 +286,21 @@ begin
   if not found then
     insert into public.users (
       user_id,
+      username,
       display_name,
       onboarding_complete,
       deleted_at
     )
     values (
       v_user_id,
+      NULL,
       'Deleted User',
       false,
       now()
     )
     on conflict (user_id) do update
     set
+      username = NULL,
       display_name = excluded.display_name,
       onboarding_complete = excluded.onboarding_complete,
       deleted_at = excluded.deleted_at;
@@ -295,10 +311,27 @@ begin
 end;
 $$;
 
+-- Explicit permission hardening: revoke all from public, anon, and authenticated first,
+-- then grant only the necessary execute permissions. This ensures idempotency in
+-- production: a re-run will not leave stale permissions if roles were previously granted.
 revoke all on function public.check_account_deletion_blockers() from public;
+revoke all on function public.check_account_deletion_blockers() from anon;
+revoke all on function public.check_account_deletion_blockers() from authenticated;
+
 revoke all on function public.cleanup_account_deletion_dependencies() from public;
+revoke all on function public.cleanup_account_deletion_dependencies() from anon;
+revoke all on function public.cleanup_account_deletion_dependencies() from authenticated;
+
 revoke all on function public.delete_account_data() from public;
+revoke all on function public.delete_account_data() from anon;
+revoke all on function public.delete_account_data() from authenticated;
+
+-- Grant only the intended permissions.
+-- check_account_deletion_blockers() and delete_account_data() are directly callable by authenticated users.
+-- cleanup_account_deletion_dependencies() is internal only, called by delete_account_data().
 grant execute on function public.check_account_deletion_blockers() to authenticated;
 grant execute on function public.delete_account_data() to authenticated;
 
-notify pgrst, 'reload schema';
+COMMIT;
+
+NOTIFY pgrst, 'reload schema';

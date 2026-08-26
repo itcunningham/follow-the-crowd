@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import FtcAppVersionFooter from "@/app/components/settings/FtcAppVersionFooter";
-import RequestAccountDeletionSection from "@/app/components/settings/RequestAccountDeletionSection";
+import DeleteAccountSection from "@/app/components/settings/DeleteAccountSection";
+import PushNotificationsSection from "@/app/components/settings/PushNotificationsSection";
 import {
   getCurrentAuthUser,
   getCurrentUserId,
@@ -24,7 +25,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [passwordResetCooldown, setPasswordResetCooldown] = useState(false);
@@ -40,7 +40,6 @@ export default function SettingsPage() {
       .then(([authUser, userId, profile]) => {
         setCurrentUserId(userId);
         setAccountEmail(authUser?.email?.trim() || null);
-        setUsername(profile?.username?.trim() || null);
         setRole(profile?.role ?? null);
       })
       .catch((loadError) => {
@@ -204,6 +203,8 @@ export default function SettingsPage() {
                 </div>
               </section>
 
+              <PushNotificationsSection />
+
               {/* Above the deletion section so the documents describing what
                   deletion does sit before the control that performs it. */}
               <section className="ftc-card overflow-hidden p-0">
@@ -241,7 +242,7 @@ export default function SettingsPage() {
                 ))}
               </section>
 
-              <RequestAccountDeletionSection accountEmail={accountEmail} username={username} />
+              <DeleteAccountSection onError={setError} />
 
               {error ? <p className="text-sm text-red-400">{error}</p> : null}
             </>

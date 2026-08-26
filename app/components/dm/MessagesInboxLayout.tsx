@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import {
   APP_DM_CONTENT_WIDTH_CLASS,
@@ -12,6 +13,7 @@ import {
 } from "@/app/components/layout/AppPageLayout";
 import MessagesInboxComposeButton from "@/app/components/dm/MessagesInboxComposeButton";
 import MessagesInboxSearchBar from "@/app/components/dm/MessagesInboxSearchBar";
+import HelpBetaSheet from "@/app/components/help/HelpBetaSheet";
 
 type InboxTab = "dm" | "group";
 
@@ -77,21 +79,40 @@ export default function MessagesInboxLayout({
   groupUnreadCount?: number;
   children: ReactNode;
 }) {
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const iconButtonClass =
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
+
   return (
-    <div
-      className={`flex min-h-[100dvh] w-full flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
-      <AppNavigation />
-      <div className={`${APP_DM_CONTENT_WIDTH_CLASS} flex min-h-0 flex-1 flex-col`}>
-        <header className={APP_PAGE_HEADER_CLASS}>
-          <div className={APP_PAGE_TITLE_ROW_CLASS}>
-            <h1 className={APP_PAGE_TITLE_CLASS}>Messages</h1>
-            {onCompose ? (
-              <div className="flex shrink-0 items-start justify-end md:items-center">
-                <MessagesInboxComposeButton onClick={onCompose} />
-              </div>
-            ) : null}
-          </div>
+    <>
+      <div
+        className={`flex min-h-[100dvh] w-full flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+      >
+        <AppNavigation />
+        <div className={`${APP_DM_CONTENT_WIDTH_CLASS} flex min-h-0 flex-1 flex-col`}>
+          <header className={APP_PAGE_HEADER_CLASS}>
+            <div className={APP_PAGE_TITLE_ROW_CLASS}>
+              <h1 className={APP_PAGE_TITLE_CLASS}>Messages</h1>
+              {onCompose || helpOpen !== undefined ? (
+                <div className="flex shrink-0 items-start justify-end gap-2 md:items-center">
+                  <button
+                    type="button"
+                    onClick={() => setHelpOpen(true)}
+                    aria-label="Help"
+                    title="Help"
+                    className={iconButtonClass}
+                  >
+                    <span className="flex h-4 w-4 items-center justify-center text-xs font-bold">
+                      ?
+                    </span>
+                  </button>
+                  {onCompose ? (
+                    <MessagesInboxComposeButton onClick={onCompose} />
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
 
           <div className="mt-4">
             <MessagesInboxSearchBar
@@ -117,10 +138,13 @@ export default function MessagesInboxLayout({
           </div>
         </header>
 
-        <div className={`flex-1 ${APP_PAGE_INSET_CLASS} pb-4 pt-0`}>
-          <AppPageDesktopSurface>{children}</AppPageDesktopSurface>
+          <div className={`flex-1 ${APP_PAGE_INSET_CLASS} pb-4 pt-0`}>
+            <AppPageDesktopSurface>{children}</AppPageDesktopSurface>
+          </div>
         </div>
       </div>
-    </div>
+
+      <HelpBetaSheet open={helpOpen} onClose={() => setHelpOpen(false)} context={activeTab === "dm" ? "messages" : "crew-chat"} />
+    </>
   );
 }

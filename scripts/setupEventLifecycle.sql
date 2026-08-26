@@ -51,6 +51,7 @@ declare
   v_user_id text := public.auth_user_id();
   v_event public.events;
   v_cancelled_bookings jsonb;
+  v_booking record;
 begin
   if v_user_id is null then
     raise exception 'Not authenticated';
@@ -99,6 +100,24 @@ begin
   into v_cancelled_bookings
   from cancelled;
 
+  -- Mark conversations as unread for all affected DJ recipients.
+  -- This happens server-side after authorization check (event owner validated above),
+  -- so recipients are determined from legitimate bookings, not client-supplied values.
+  for v_booking in
+    select br.recipient_id, br.conversation_id, br.event_id
+    from public.booking_requests br
+    where br.event_id = p_event_id
+      and br.recipient_id is not null
+      and br.conversation_id is not null
+      and br.status in ('accepted', 'pending', 'cancelled')
+  loop
+    perform public.mark_conversation_unread(
+      v_booking.recipient_id,
+      v_booking.conversation_id,
+      v_booking.event_id
+    );
+  end loop;
+
   return jsonb_build_object(
     'event', to_jsonb(v_event),
     'cancelled_bookings', v_cancelled_bookings
@@ -110,6 +129,8 @@ revoke all on function public.delete_empty_event(uuid) from public;
 grant execute on function public.delete_empty_event(uuid) to authenticated;
 
 revoke all on function public.cancel_event(uuid) from public;
+revoke all on function public.cancel_event(uuid) from anon;
+revoke all on function public.cancel_event(uuid) from authenticated;
 grant execute on function public.cancel_event(uuid) to authenticated;
 
 notify pgrst, 'reload schema';

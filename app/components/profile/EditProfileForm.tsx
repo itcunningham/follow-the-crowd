@@ -78,7 +78,7 @@ export default function EditProfileForm({
 }: {
   profile: UserProfile;
   isEditing: boolean;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
   onDirtyChange?: (hasUnsavedChanges: boolean) => void;
 }) {
   const editBaselineRef = useRef(createProfileEditBaseline(profile));
@@ -301,8 +301,10 @@ export default function EditProfileForm({
       return;
     }
 
-    if (!isAllowedProfileImageType(file.type)) {
-      setUploadError("Please choose a JPG, PNG, or WebP image");
+    // Empty MIME (common for some iOS HEIC picks) is allowed — upload resizes
+    // and re-encodes to JPEG. Reject only clearly unsupported types.
+    if (file.type.trim() && !isAllowedProfileImageType(file.type)) {
+      setUploadError("Please choose a JPG, PNG, WebP, or HEIC image");
       return;
     }
 
@@ -468,10 +470,14 @@ export default function EditProfileForm({
         try {
           avatarUrl = await uploadProfileImage(selectedFile);
           setExistingAvatarUrl(avatarUrl);
+          setSelectedFile(null);
         } catch (imageError) {
           console.error("Profile image upload failed:", imageError);
-          setUploadError("Image upload failed");
-          setSaving(false);
+          setUploadError(
+            imageError instanceof Error && imageError.message.trim()
+              ? imageError.message.trim()
+              : "Image upload failed. Try a smaller JPG or PNG.",
+          );
           return;
         }
       }
@@ -492,7 +498,6 @@ export default function EditProfileForm({
       }
 
       await saveUserProfile(payload, { avatarUrl });
-      onSaved();
     } catch (saveError) {
       console.error("Failed to save profile:", saveError);
 
@@ -505,7 +510,22 @@ export default function EditProfileForm({
         setError(message);
       }
 
+      return;
+    } finally {
+      // Clear Saving before post-save navigation/refetch so a hung redirect
+      // cannot leave the button stuck on “Saving”.
       setSaving(false);
+    }
+
+    try {
+      await onSaved();
+    } catch (savedError) {
+      console.error("Profile saved but follow-up navigation failed:", savedError);
+      setError(
+        savedError instanceof Error
+          ? savedError.message
+          : "Profile saved, but we could not open it. Try Back to profile.",
+      );
     }
   }
 

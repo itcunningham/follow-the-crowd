@@ -1,5 +1,7 @@
-import { createNotification } from "@/lib/notifications";
+import { createNotification, formatNotificationPreview } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUserProfile } from "@/lib/user/currentUser";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 
 /**
  * Other participant in a 1:1 DM. Used for header profile, blocks, and
@@ -33,8 +35,10 @@ export async function notifyDmPeerOfMessage(options: {
   senderUserId: string;
   otherUserId: string | null;
   body: string;
+  /** The just-inserted messages.id, when the caller has one (attachment sends do). */
+  messageId?: string | null;
 }): Promise<string | null> {
-  const { conversationId, senderUserId, body } = options;
+  const { conversationId, senderUserId, body, messageId } = options;
   let recipientId = options.otherUserId;
 
   if (!recipientId || recipientId === senderUserId) {
@@ -51,12 +55,17 @@ export async function notifyDmPeerOfMessage(options: {
   }
 
   try {
+    const senderProfile = await getCurrentUserProfile();
+    const senderName = resolveUserDisplayName(senderProfile, { fallback: "Someone" });
+
     await createNotification(
       recipientId,
       "message",
-      "New message",
-      body,
+      senderName,
+      formatNotificationPreview(body),
       `/dm/${conversationId}`,
+      null,
+      messageId,
     );
   } catch (notificationError) {
     console.error("[dm] Message sent but notification failed:", notificationError);

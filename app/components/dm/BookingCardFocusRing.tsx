@@ -14,8 +14,16 @@ export default function BookingCardFocusRing({
   roundedClassName = "rounded-2xl",
   children,
 }: BookingCardFocusRingProps) {
+  // max-w-full is load-bearing, not cosmetic. The bubble column this sits in
+  // is `flex flex-col items-start`, so a child is sized to fit-content and is
+  // NOT clamped to the column's width. The booking card inside is
+  // `w-full max-w-xs` -- a fixed 20rem/320px -- so without a cap here this
+  // wrapper takes 320px inside a ~271px column and pushes the chat's scroll
+  // width past the viewport, making the whole conversation pan sideways.
+  // It stayed hidden because the incoming row starts at x=64: 64 + 320 = 384,
+  // which still fits a 390px viewport and only overflows below it.
   return (
-    <div className={`relative ${roundedClassName}`}>
+    <div className={`relative max-w-full ${roundedClassName}`}>
       {children}
       {phase ? (
         <div

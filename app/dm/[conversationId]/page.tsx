@@ -130,6 +130,19 @@ import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/c
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
 import {
+  buildDmBookingLifecycleSignatures,
+  parseDmBookingTimelineBookingId,
+  pickDmBookingLifecycleToast,
+} from "@/lib/dm/dmBookingSystemMessages";
+import { InlineTabFeedbackMessage } from "@/app/components/feedback/InlineTabFeedbackMessage";
+import { useInlineTabFeedbackDismiss } from "@/lib/design/inlineTabFeedback";
+import {
+  CHAT_MESSAGE_TARGET_PARAM,
+  parseChatMessageTargetIdParam,
+  useChatMessageTargetScroll,
+} from "@/lib/chat/messageTargetScroll";
+import { useActiveChatPresence } from "@/lib/chat/useActiveChatPresence";
+import {
   resolveDmBookingTarget,
   useChatBookingTargetScroll,
   CHAT_BOOKING_REQUEST_ID_ATTR,
@@ -309,8 +322,17 @@ export default function DmChatPage() {
           highlightTargetBookingRequestId: null,
           bookingFocusMode: "scroll-and-highlight" as const,
         };
+  // A push notification's message deep link (?message=<messages.id>). Nulled
+  // out under the same precedence as the booking-card target above -- these
+  // triggers come from different links and are never meant to fire together.
+  const messageTargetId =
+    hasPendingPreciseScrollRestore || scrollTargetBookingRequestId
+      ? null
+      : parseChatMessageTargetIdParam(searchParams.get(CHAT_MESSAGE_TARGET_PARAM));
   const suppressAutoScrollRef = useRef(
-    Boolean(scrollTargetBookingRequestId) || hasPendingPreciseScrollRestore,
+    Boolean(scrollTargetBookingRequestId) ||
+      hasPendingPreciseScrollRestore ||
+      Boolean(messageTargetId),
   );
   const fixedChatRouteKey = `${pathname}?${searchParams.toString()}`;
 
@@ -382,6 +404,7 @@ export default function DmChatPage() {
     scrollToBottomSmooth,
     markUserSentMessage,
     captureScrollBeforeIncomingInsert,
+    pinnedToBottomRef,
   } = useChatScroll({
     loading,
     messageIds,
@@ -480,7 +503,44 @@ export default function DmChatPage() {
     scrollRef,
     highlightBookingFocus,
     suppressAutoScrollRef,
+    pinnedToBottomRef,
   });
+
+  // A booking lifecycle push targets its own timeline notice ("Booking
+  // confirmed · <event> · <bookingId>"). A newer notice for the same thread
+  // makes shouldSuppressDmBookingTimelineNotice hide the older one, so that
+  // message is never rendered and no retry can find it. The booking id is
+  // already encoded in the notice, so fall back to that booking's still-visible
+  // card rather than dumping the reader at the bottom.
+  const messageTargetFallbackSelector = useMemo(() => {
+    if (!messageTargetId) {
+      return null;
+    }
+
+    const targetMessage = messages.find((item) => item.id === messageTargetId);
+    const bookingId = targetMessage
+      ? parseDmBookingTimelineBookingId(targetMessage.text)
+      : null;
+
+    return bookingId
+      ? `[${CHAT_BOOKING_REQUEST_ID_ATTR}="${CSS.escape(bookingId)}"]`
+      : null;
+  }, [messageTargetId, messages]);
+
+  useChatMessageTargetScroll({
+    targetMessageId: messageTargetId,
+    loading,
+    scrollRef,
+    onTargetFound: addHighlightedMessageId,
+    onTargetMissing: scrollToBottomSmooth,
+    suppressAutoScrollRef,
+    pinnedToBottomRef,
+    fallbackTargetSelector: messageTargetFallbackSelector,
+  });
+
+  // Same bare link createNotification() uses for this conversation -- lets
+  // push-send skip an external push while this exact thread is visible here.
+  useActiveChatPresence(currentUserId, `/dm/${conversationId}`);
 
   useEffect(() => {
     if (loading) {
@@ -544,6 +604,57 @@ export default function DmChatPage() {
       cancelled = true;
     };
   }, [bookings]);
+
+  /**
+   * Temporary in-DM toast on a booking lifecycle transition.
+   *
+   * The lifecycle rows are hidden from the timeline now, so a reader already
+   * sitting in the thread would otherwise watch the card mutate in silence.
+   *
+   * No new realtime system: this reads `bookings`, which the EXISTING
+   * `booking_requests` subscription refreshes via reloadConversationBookings().
+   * Driving it off the resulting state (rather than the subscription callback)
+   * also covers the other reload entry point, `ftc-notifications-updated`.
+   *
+   * Transition detection and copy both live in pure helpers
+   * (buildDmBookingLifecycleSignatures / pickDmBookingLifecycleToast) so they
+   * are covered behaviourally rather than by a source regex -- a source regex
+   * over this effect is exactly what let a status-only signature, which cannot
+   * tell a DJ withdrawal from a planner cancellation, pass review.
+   *
+   * Presentation is the app's existing transient-feedback surface --
+   * useInlineTabFeedbackDismiss + InlineTabFeedbackMessage, the same neutral
+   * muted copy and 2700ms/300ms fade Event Plans, Gigs History, Booking Plans
+   * and the DJ availability calendar already use. It is deliberately NOT the
+   * `notice` line: that one is amber `--ftc-color-warning` and belongs to the
+   * booking action handlers' warnings, which must keep reading as warnings.
+   */
+  const bookingLifecycleSignatureRef = useRef<Map<string, string> | null>(null);
+  const [bookingLifecycleToast, setBookingLifecycleToast] = useState<string | null>(null);
+  const clearBookingLifecycleToast = useCallback(() => setBookingLifecycleToast(null), []);
+  const bookingLifecycleToastFading = useInlineTabFeedbackDismiss(
+    bookingLifecycleToast,
+    clearBookingLifecycleToast,
+  );
+
+  useEffect(() => {
+    const previousSignatures = bookingLifecycleSignatureRef.current;
+    const nextSignatures = buildDmBookingLifecycleSignatures(bookings);
+
+    bookingLifecycleSignatureRef.current = nextSignatures;
+
+    const toast = pickDmBookingLifecycleToast({
+      previousSignatures,
+      nextSignatures,
+      bookings,
+      currentUserId,
+      actorDisplayName: otherUserLabel,
+    });
+
+    if (toast) {
+      setBookingLifecycleToast(toast);
+    }
+  }, [bookings, currentUserId, otherUserLabel]);
 
   const blockBannerMessage = useMemo(
     () => getDmBlockBannerMessage(blockStatus, otherUserLabel),
@@ -1462,11 +1573,20 @@ export default function DmChatPage() {
 
     const userId = await getCurrentUserId();
 
-    const { error: insertError } = await supabase.from("messages").insert({
-      conversation_id: conversationId,
-      user_id: userId,
-      text,
-    });
+    // .select("id").single() (not a bare insert) so the id can be threaded
+    // through as the notification's message identity below -- the exact
+    // same shape sendDmMessageWithAttachments already uses successfully for
+    // every image send, so the sender's own RLS read-back of a row they just
+    // wrote is already proven to work on this table.
+    const { data: insertedMessage, error: insertError } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        user_id: userId,
+        text,
+      })
+      .select("id")
+      .single();
 
     if (insertError) {
       setInput(text);
@@ -1481,6 +1601,7 @@ export default function DmChatPage() {
       senderUserId: userId,
       otherUserId,
       body: text,
+      messageId: insertedMessage?.id as string | undefined,
     });
     if (recipientId && recipientId !== otherUserId) {
       setOtherUserId(recipientId);
@@ -1559,6 +1680,7 @@ export default function DmChatPage() {
         senderUserId: userId,
         otherUserId,
         body: caption || getDmAttachmentNotificationBody(sentAttachments[0], sentAttachments.length),
+        messageId,
       });
       if (recipientId && recipientId !== otherUserId) {
         setOtherUserId(recipientId);
@@ -2261,6 +2383,16 @@ export default function DmChatPage() {
       {notice ? (
         <p className="px-4 pb-2 text-sm text-[var(--ftc-color-warning)]">{notice}</p>
       ) : null}
+
+      {/* wrap: a chat is not a fixed-height tab row, and the event name is the
+          informative half of "<DJ> withdrew from <event>" -- truncating eats
+          exactly the part worth reading. */}
+      <InlineTabFeedbackMessage
+        message={bookingLifecycleToast}
+        fading={bookingLifecycleToastFading}
+        className="w-full px-4 pb-2 text-center"
+        wrap
+      />
 
       {showNewMessagesPill ? (
         <ChatNewMessagesPill

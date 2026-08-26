@@ -7,7 +7,6 @@ import {
 } from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import {
-  formatEventCancelledInboxPreview,
   getActiveEventLineupStats,
   insertEventCancellationActivityMessagesIfNeeded,
   listBookingRequestsForEvent,
@@ -36,7 +35,8 @@ import {
   FTC_STATUS_TODAY,
   FTC_STATUS_UPCOMING,
 } from "@/lib/ftcFlatStatus";
-import { getCurrentUserId } from "@/lib/user/currentUser";
+import { getCurrentUserId, getCurrentUserProfile } from "@/lib/user/currentUser";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 import {
   isEventBrandColumnMissing,
   isEventHistoryHideAvailable,
@@ -794,6 +794,9 @@ async function notifyCancelledBookingsFromEventCancellation(
 ): Promise<void> {
   console.log("[events] Notifying DJ of event cancellation for", cancelledBookings.length, "bookings");
 
+  const plannerProfile = await getCurrentUserProfile();
+  const plannerName = resolveUserDisplayName(plannerProfile, { fallback: "Someone" });
+
   await Promise.all(
     cancelledBookings.map(async (booking) => {
       console.log("[events] Processing cancelled booking notification:", {
@@ -807,13 +810,22 @@ async function notifyCancelledBookingsFromEventCancellation(
         return;
       }
 
+      // A second "message"-type notification with near-identical copy used to
+      // fire here alongside this one -- same recipient, same link, telling
+      // the DJ the exact same thing twice ("<planner> · Booking cancelled" /
+      // event name, then "<planner>" / "Event cancelled · event name") --
+      // producing two push banners for one cancellation. This booking_update
+      // notification is the canonical one (matches every other booking
+      // status change's shape); the redundant message-type duplicate was
+      // removed rather than deduped, since it was pure copy of this one, not
+      // a materially different notice.
       try {
         console.log("[events] Creating booking_update notification");
         await createNotification(
           booking.recipient_id,
           "booking_update",
-          "Booking request cancelled",
-          `${booking.event_name} at ${booking.venue}`,
+          `${plannerName} · Booking cancelled`,
+          booking.event_name,
           `/dm/${booking.conversation_id}`,
         );
         console.log("[events] booking_update notification created");
@@ -822,25 +834,6 @@ async function notifyCancelledBookingsFromEventCancellation(
           "[events] Failed to notify DJ of event cancellation:",
           booking.id,
           notificationError,
-        );
-      }
-
-      try {
-        const eventCancellationPreview = formatEventCancelledInboxPreview(booking.event_name);
-        console.log("[events] Creating message notification with text:", eventCancellationPreview);
-        await createNotification(
-          booking.recipient_id,
-          "message",
-          "New message",
-          eventCancellationPreview,
-          `/dm/${booking.conversation_id}`,
-        );
-        console.log("[events] message notification created");
-      } catch (messageNotificationError) {
-        console.error(
-          "[events] Failed to send message notification for event cancellation:",
-          booking.id,
-          messageNotificationError,
         );
       }
     }),

@@ -11,11 +11,946 @@
 
 When emails are generated server-side, `window` is undefined, so it hit the fallback. The fallback was outdated.
 
-**Fix:** Updated `.env.example` to reflect the canonical domain (`https://followthecrowd.com.au`). Added clarifying comment in `appUrl.ts` that the fallback is legacy and the env var is authoritative. All auth flows (signup, password reset, magic link, email change) automatically use the correct URL once `NEXT_PUBLIC_APP_URL` is set in Vercel production environment. 
+**Fix:** Updated all runtime code references and fallback URL. `lib/auth/appUrl.ts` FTC_APP_URL_FALLBACK now `https://followthecrowd.com.au`. All auth flows (signup, password reset, magic link if implemented, email change if implemented) use `getAuthRedirectUrl()` shared helper, which resolves in order: NEXT_PUBLIC_APP_URL env var → browser origin → canonical domain fallback.
 
-**Deployment note:** Vercel env var `NEXT_PUBLIC_APP_URL` must be set to `https://followthecrowd.com.au` for production to use the correct redirect. Commit: `74dae0a2` on `claude/new-session-cpb8vu`.
+**Deployment note:** Vercel env var `NEXT_PUBLIC_APP_URL` must be set to `https://followthecrowd.com.au` for production. Final code fix: commit `45126fba` on `claude/new-session-cpb8vu`.
 
-**Verification:** Test with a NEW signup email after deployment (old emails in inbox contain stale redirects).
+**Verification:** Test with a NEW signup email after Production deployment (old emails in inbox contain stale redirects).
+
+---
+
+## Acquisition research: Facebook / Reddit beta communities (2026-08-26)
+
+Research-only pass for free FTC beta outreach (Melbourne/Naarm first). Full write-up: `docs/research/FTC-BETA-COMMUNITY-RESEARCH.md`.
+
+- ~25 Facebook **Groups** verified by public mobile OG title + group ID (no login; member counts mostly UNVERIFIED).
+- Ranked Top 10 / Next 20 / long list + first-5 post playbook.
+- Reddit: live API blocked from research VM; rules from secondary sources — re-check sidebars before posting.
+- Collectives (Technoir, Machine, Bunker, Warg, MTC, etc.) are mostly Pages/events — warm DM targets, not Groups.
+- Mornington: no dedicated DJ/promoter FB Group verified; use MP Music Network / Peninsula LIVE instead.
+- Nothing posted or contacted.
+
+## Push hardening: silently self-heal a stale subscription on app launch (`main`, 2026-08-17) — root cause NOT confirmed, needs a session with live access
+
+**Report:** a normal DM sent to one specific iPhone produced no push notification at all (not a click/scroll problem — no banner ever appeared). That device has a known history of a stale browser/DB push-subscription endpoint mismatch.
+
+**This sandbox has no live Supabase project access and no real device access** (`.env.local`'s URL is still the `https://example.supabase.co` placeholder) — the same limitation recorded in every round of this project. The task asked for hard live evidence at every stage (message row, notification row + `message_id`, `active_chat_presence` row + freshness, live subscription count/staleness, push-send's actual delivery result). **None of that could be produced here.** A session with real Supabase access should run the checks below to actually land on one of categories A–G before assuming this round's fix was sufficient.
+
+**Full source verification of the whole pipeline, done instead:**
+- DM message → notification creation (`lib/dm/resolveDmOtherUserId.ts` → `lib/notifications.ts`): `message_id` threaded correctly, `link` stays bare. Unregressed.
+- `active_chat_presence` dispatch (`lib/chat/useActiveChatPresence.ts`): already fixed in an earlier round (the `void`-on-a-thenable bug), confirmed live in Production per that round's entry below. push-send's suppression check is exact-`thread_link`-match only, gated to `type === "message"`, and fails open (try/catch) on any error.
+- push-send (`supabase/functions/push-send/index.ts`): subscription fetch selects every `is_active` row for the recipient with no filtering bug; a dead endpoint (404/410 from the push service) is already deactivated server-side reactively.
+
+**The one concrete, provable-from-source gap:** that 404/410 deactivation only fires once a push is *actually attempted* against a dead endpoint — there was no code path that proactively detected a stale/mismatched subscription and re-registered it. `detectNotificationState()` already computes exactly that state (`"reconnect"`: browser permission granted, but either the browser's own `PushSubscription` is gone or there's no matching active DB row for the signed-in user) — but the only place it was ever checked was the Settings page, so recovery required the user to notice and manually re-toggle notifications there.
+
+**Fix:** `ServiceWorkerProvider` (already mounted once per app launch) now calls `detectNotificationState()` itself, and when it reads `"reconnect"` **and** the user is actually signed in, silently calls `enableNotifications()` — no user gesture is required to re-subscribe once permission is already `"granted"` (only the original prompt needs one). Best-effort, never surfaced to the user; the Settings page's own reconnect banner is still the fallback.
+
+**This is a real, safe hardening for the exact failure mode described — not a confirmed root cause.** If a session with live access finds the actual break was elsewhere (categories A, B, D, E, F, or G below), this fix should stay (it's still correct and low-risk) but won't be the whole story.
+
+**Diagnostic queries for the next session with real Supabase access**, run in order, using the fresh DM's actual ids:
+```sql
+-- 1. The message row
+select id, conversation_id, sender_id, recipient_id, created_at
+from public.messages
+where conversation_id = '<conversation_id>'
+order by created_at desc
+limit 1;
+
+-- 2. The notification row for it (expect message_id to equal the message id above)
+select id, type, title, body, link, message_id, created_at
+from public.notifications
+where user_id = '<recipient_user_id>'
+order by created_at desc
+limit 3;
+
+-- 3. Active chat presence for the recipient at send time
+select thread_link, updated_at, extract(epoch from (now() - updated_at)) as age_seconds
+from public.active_chat_presence
+where user_id = '<recipient_user_id>';
+
+-- 4. Subscription health for the recipient (never expose endpoint/keys)
+select id, is_active, last_used_at, created_at,
+       (endpoint = (select endpoint from public.push_subscriptions where user_id = '<recipient_user_id>' and is_active = true order by last_used_at desc nulls last limit 1)) as is_the_one_push_send_would_pick
+from public.push_subscriptions
+where user_id = '<recipient_user_id>'
+order by created_at desc;
+```
+Then check the Supabase Edge Function logs for `push-send` around the notification's `created_at` for the exact `[push-send]` log lines (suppressed / no subscriptions / delivered N/M / send failed) to land on the category directly, and confirm the deployed `push-send` version matches `main`'s current commit — this project has been bitten before (a prior round) by the deployed Edge Function silently lagging behind a merged commit, since Vercel deploys never touch Supabase Edge Functions.
+
+**Not touched:** VAPID keys, `pg_net`, badge logic, run-sheet pushes, message dedupe SQL, the presence/scroll-target features from prior rounds.
+
+**Verified:** `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round; the new wiring test verified in isolation.
+
+## Beta blocker fixed: event Save could hang on "Saving" forever (`40ee5af8` on `main`, 2026-08-17)
+
+**Symptom:** creating an event with a DJ selected could leave Save stuck on "Saving" indefinitely.
+
+**Root cause:** `withEventFieldsFallback` (`lib/events/eventQueryFields.ts`) retried in a `while` loop as long as `markMissingOptionalEventColumn(error)` returned `true` -- but that function returns `true` purely from an error-pattern match (Postgres code `42703` + the column name in the message), regardless of whether the flag it sets actually changed. If a column was already marked missing (e.g. from an earlier call in the same browser session/module lifetime) and the query errored again with that same pattern, `selectEventFields()` came back byte-identical to what was just tried -- the loop retried the exact same query forever. The `await createEvent(...)` promise never settled, so `EventsPageClient.tsx`'s existing (and already-correct) `try/catch/finally` around it never ran, and `setSaving(false)` never fired.
+
+**Fix:** track the projection used for each attempt and only retry when the next computed projection actually differs from it; otherwise stop and let the real error surface. Mutation-tested: temporarily reverted the fix and confirmed a new regression test genuinely hangs (`timeout` killed it), then restored it and confirmed the test passes.
+
+**Duplicate-event check:** no direct DB access from this sandbox to confirm. Reasoned from the mechanism: `createEvent` does a single `.insert().select(fields).single()` call, so each failed retry attempt is one atomic `INSERT ... RETURNING (missing_col)` -- Postgres rolls that back entirely on a column-not-found error, so the retry loop itself should not have committed duplicate rows. Handed the user a read-only SQL query (group `events` by `owner_id, name, venue, event_date, set_time` having `count > 1`, ordered by `created_at`) to confirm directly, since a frustrated manual re-click during the hang is a separate, real possibility this reasoning can't rule out.
+
+**No global Supabase timeout added.** `lib/supabaseClient.ts` has none today; the root-cause fix alone makes the promise settle, so a timeout wasn't necessary and per the task's explicit instruction was not added "automatically."
+
+**Not touched:** `eventCreateInviteMessages.ts` (pure message-formatting helpers, no query logic -- nothing to fix) and `EventsPageClient.tsx` (its save/invite flow's error handling was already correct). No relevant salvaged/uncommitted work found in any stash.
+
+**Verified:** `npm run build` passed. `npm run test:regressions` has the same one pre-existing unrelated failure as every recent round (`testWorkspaceGigsPendingDisplayCountPreservesLastKnown`); both new tests verified in isolation, including mutation-testing the primary fix itself. No separate QA pass this round per the task's explicit "one agent only" instruction.
+
+## Rate-proposal and declined-booking pushes target their own message (2026-08-17)
+
+**The remaining `createNotification` calls in `lib/bookingRequests.ts` that passed five arguments
+now pass seven.** `notifications.message_id` was NULL for every rate-proposal notification, so
+`push-send` had nothing to append `?message=` from and the tap landed at the bottom of the DM.
+
+**Threading the ids naively would have re-shipped the withdrawal bug.** `"Rate declined"`,
+`"Original offer kept"` and `"Proposed rate accepted"` were **bare non-unique constants** —
+identical text for every booking in a thread. An exact-text dedupe on a constant returns
+*another* booking's row, that stale id gets threaded, and `create_notification`'s
+`(user_id, message_id)` dedupe (no unread filter, no time window) swallows the legitimate
+notification: **no push at all**.
+
+**So the stored text is versioned** to the existing convention `<label> · <event> · <bookingId>`:
+
+| Stored (internal identity) | Displayed everywhere |
+|---|---|
+| `Rate proposed: $500 · <event> · <bookingId>` | `Rate proposed: $500` |
+| `Proposed rate accepted · <event> · <bookingId>` | `Proposed rate accepted` |
+| `Rate declined · <event> · <bookingId>` | `Rate declined` |
+| `Original offer kept · <event> · <bookingId>` | `Original offer kept` |
+
+`Rate proposed` needed the id too: two bookings in one thread can carry the same figure, and the
+same figure can be re-proposed after a decline.
+
+### Negotiation history is no longer hidden as lifecycle noise — the identity is internal only
+
+The first attempt added these four to `isVersionedBookingLifecycleDmMessage`, which classifies as
+`"hidden"`. **That was wrong and QA caught it.** An accepted $600 booking then showed *nothing*:
+the rows were gone and both `BookingRateProposalPanel` and `BookingRateProposalNotice` return null
+once no proposal is pending, so the card did not take over either — `proposed_rate_note` vanished
+with them.
+
+The recognisers are now split:
+
+- `isVersionedBookingLifecycleDmMessage` — the three **state verbs**
+  (`Booking confirmed | withdrawn | cancelled`). Hidden, exactly as shipped in `f5b4cbd9`.
+- `isVersionedRateProposalDmMessage` — the four **negotiation notices**. Not unconditionally
+  hidden; visibility remains gated by the card.
+- `isVersionedBookingIdentityDmMessage` — either. Drives display stripping and system-message
+  classification, never visibility.
+
+`formatDmBookingSystemMessageDisplay` slices any versioned row at the first `" · "`, so the
+readable label is all that renders — no event name, no UUID, on any surface.
+
+**"Not unconditionally hidden" is not "always rendered", and the earlier wording here overstated
+it.** The pre-existing `shouldSuppressDmBookingTimelineNotice` card rule is unchanged and still
+hides a notice whose state the card is currently displaying: `Proposed rate accepted` once the
+booking is accepted, and `Rate declined` / `Original offer kept` while pending with no live
+proposal. What changed is only that these rows are no longer swept up by the unconditional
+lifecycle-verb hide. Both halves of the distinction are now asserted, each with the no-card control
+that proves the suppression came from the card rule rather than from lifecycle hiding.
+
+### Argument position is now pinned, because reaction_id has no FK
+
+`createNotification(userId, type, title, body, link, reactionId, messageId)`. QA verified live that
+`notifications.reaction_id` has **no foreign key**, so sliding the message id into argument 6 does
+not throw — the RPC takes its reaction branch, writes `reaction_id = <messageId>`, leaves
+`message_id` NULL, and silently recreates the bug with no error anywhere. Every producer now has an
+explicit `null,` in slot 6, and a shared `assertMessageIdIsSeventhArgument` guard pins it per call
+site.
+
+### The other four fixes
+
+- **Ordering.** `acceptProposedBookingRate` created its notification *before* the DM insert, so
+  there was no id to thread. The insert runs first.
+- **One action, one push.** That path used to create two notifications for the same DJ — a
+  `booking_update` and a redundant `message` whose only extra content was the planner's name. The
+  `booking_update` is kept; the DM row is still written (thread history *and* the deep-link
+  target). Not left to `create_notification` to collapse: that would make correctness depend on
+  both calls always deriving the same `message_id`.
+- **Declined bookings** no longer dead-end at `/bookings`. They write no lifecycle row (the card
+  already reads "Declined"); the push links to `/dm/<conversationId>` and targets the existing
+  `BOOKING REQUEST\nBooking ID: <id>` message, which is unique per booking and *is* the card.
+  Lookup reuses `findDmMessageIdForBookingRequest`; it never throws.
+- **The decline round boundary is an identity lookup, not a heuristic.** It came from scanning the
+  20 most recent DJ-authored rows for something that *looked like* a proposal. With >20 DJ messages
+  between a re-proposal and the decline it resolved to nothing, the bound was dropped, an all-time
+  exact-text match found round one's row, and the permanent `(user_id, message_id)` dedupe returned
+  round one's notification — **no row, no push, no unread bump**. QA reproduced it at 3 pushes out
+  of 4. Worse than base, where `message_id` was NULL and the time-boxed content dedupe still let
+  the push through. It now selects this booking's own latest proposal row with a pattern anchored
+  on the booking id at both ends, and the dedupe only runs when that boundary is known — with no
+  boundary it inserts, because a redundant row costs a duplicate notice while a false dedupe costs
+  the push outright.
+
+`formatVersionedBookingLifecycleDmMessage` now **throws** on a blank booking id instead of
+returning the bare label; a silent degrade handed back the collision-prone form.
+
+### Verified live, then on device
+
+Full planner↔DJ flow driven through the real library functions as the two QA accounts (Isaac's
+`30a8adcc` never touched), then WebKit at 1280/390/375/320 against a local build of this branch:
+
+- two `$500` proposals on different bookings in one thread → two rows, two notifications, distinct
+  `message_id`s, bodies `Rate proposed: $500`
+- **the collision case**: two declines → `Rate declined · A · <idA>` / `Rate declined · B · <idB>`,
+  two notifications with distinct `message_id`s, both titled the bare `"Rate declined"`
+- **the >20-message case**: re-propose on A, 25 unrelated DJ messages, decline → round two wrote
+  its **own** row and its **own** notification targeting that new row
+- accepting a rate → **exactly one** notification, `booking_update`, non-null `message_id` pointing
+  at the accepted-proposal row
+- declined booking → `message_id` = the booking-request row, `link = /dm/<convo>`
+- **every notification created in the run had a non-null `message_id`; no UUID in any title or body**
+- **UI 52/52**: negotiation history reads `Rate proposed: $500 / Rate declined / Rate proposed:
+  $650`, the state verbs stay hidden, no UUID and no identity suffix in the DM or the inbox, a
+  targeted negotiation row renders on screen, and a hidden lifecycle target is absent from the DOM
+  yet still resolves to its booking card (2223–2397px from the bottom)
+- all QA data created for the run was deleted and the deletion confirmed
+
+### Tests
+
+Five regressions. **15 mutations, 15 caught**: argument 7 → 6 at each of the five call sites;
+generic decline text; bare rate-proposed text; dropping `.select("id")`; nulling the dedupe-branch
+id; accepted-rate ordering; `/bookings` decline destination; the `.limit(20)` heuristic; hiding
+negotiation history; restoring the double push; silent degrade on a missing booking id.
+
+Two of this round's fixes were **my own vacuous tests**, both found by probing rather than assumed:
+
+1. `source.slice(start, start + 4200)` overshot 1608 chars past
+   `insertRateProposedDmMessageIfNeeded` into the next function, which independently satisfied every
+   assertion — so all four of that helper's guards were dead while the identical mutations on its
+   siblings were caught. All source windows now use `extractFunctionBody` at exact boundaries.
+2. That helper's first anti-overshoot guard (`!body.includes(nextHeader)`) was **tautological** —
+   the slice ends at `nextHeader` by construction. It now counts top-level function declarations in
+   the extracted window and fails if there is more than one. Probed: widening a window back out
+   fails with "spans 3 top-level functions".
+
+### Second QA pass (PASS on code, tests and logic) added two assertions
+
+QA independently proved the new overshoot guard is load-bearing — it restored the old tautological
+guard, widened a window, watched it escape, then confirmed the count guard catches it. It also
+confirmed the >20-message push loss is fixed against live Postgres, and that the duplicate-push
+inverse **cannot** occur: `decline_proposed_booking_rate` requires `proposed_rate_status =
+'pending'` and atomically sets `'declined'`, so the DB gate serialises repeat declines. The
+insert-when-boundary-unknown tradeoff is therefore safer than originally claimed.
+
+It found two **missing** assertions (shipped code was correct in both):
+
+1. **The boundary sort direction was unpinned.** `.order("created_at", { ascending: false })` on the
+   new round-boundary lookup is load-bearing — QA flipped it and proved against real Postgres that
+   the boundary resolves to round *one's* proposal, round two's decline dedupes onto round one's
+   row, and the permanent `(user_id, message_id)` dedupe swallows the push. Now pinned.
+2. **`cancelBookingRequest` was the one remaining unguarded `messageId` site** — the
+   withdrawal/cancellation push, the exact bug this line of work exists to fix. The arg-6 slide
+   escaped there. `assertMessageIdIsSeventhArgument` now covers all **six** sites.
+
+**Known, not fixed (pre-existing, flagged not introduced):** one fixed-width source window survives
+in `testBookingRequestPushDeepLinksToTheBookingCard` (`slice(start, start + 800)`) — same vacuity
+class as the windows corrected here, but it predates this work and guards an unrelated assertion.
+Worth converting to `extractFunctionBody` in a follow-up.
+
+**Not touched:** `push-send`, RLS, `create_notification`, the service worker, deep-link scroll
+internals, booking card UI, schema. **No SQL.**
+
+## The booking card is now the ONE visible source of truth (2026-08-16)
+
+**Booking lifecycle "audit" lines no longer appear as visible chat.** The three versioned rows —
+`Booking confirmed | withdrawn | cancelled · <event> · <bookingId>` — are hidden from the DM
+timeline. The card carries the state; the rows carry the plumbing.
+
+**Hidden VISUALLY, never logically — this was the whole risk.** CURRENT-STATE already records what
+happens when a lifecycle row is suppressed at the *data* level: "the invite stayed latest, and the
+planner never got unread/badge". So nothing was deleted, skipped or filtered out of `messages`.
+One line in `classifyDmConversationMessageKind` returns `"hidden"`; the DM page already drops
+`"hidden"`. Everything downstream of the row is untouched:
+
+| Path | Reads | Affected? |
+|---|---|---|
+| `getUnreadConversationIds` / `lib/inboxUnread.ts` | raw newest `messages` row per conversation | **no** — never knew about message kinds, and a test now fails if it learns |
+| `pickDmInboxPreviewMessage` | newest row → supplies `latestActivityAt`, `latestPreview`, `latestMessageUserId` | **no** — deliberately still returns the lifecycle row. Skipping it here would have demoted the conversation to the *previous* message's timestamp, which is the exact regression above |
+| `applyDmInboxRealtimeMessage` / inbox unread on INSERT | author id vs current user | **no** |
+| `notifications.message_id` / `?message=` deep links | the row's id | **no** |
+
+**Verified on a real device rather than argued.** WebKit against the production database, QA DJ
+account. Before: the Messages row read
+`Booking withdrawn · Club · a73127e1-137d-44c7-b516-9ee3b262917e` — **a raw booking UUID in the
+user's face** — and the timeline rendered the notices. After: the row reads `Booking withdrawn`,
+the conversation is still first in the inbox at the lifecycle row's own timestamp, and no UUID
+appears anywhere. **60/60 checks at 1280 / 390 / 375 / 320.**
+
+**The UUID fix is one branch, not three.** `formatDmBookingSystemMessageDisplay` now returns the
+bare label for any versioned lifecycle row. `confirmed` and `cancelled` already displayed
+correctly by accident (they matched other branches); **`withdrawn` fell through to `return trimmed`
+and leaked the id**. Handling all three in one place means a future fourth verb cannot leak by
+being forgotten.
+
+**Push targeting survives the hiding, and this was measured.** The DM page derives
+`fallbackTargetSelector` from `parseDmBookingTimelineBookingId(targetMessage.text)` where
+`targetMessage` comes from the **loaded `messages` array, not the DOM** — so a row that is never
+rendered still resolves to `[data-chat-booking-request-id="<id>"]`. On device the target row is
+confirmed absent from the DOM (`targetInDom: false`) while the card lands centred, **2658px /
+432px from the bottom** at 390px. No new scroll system; `useChatMessageTargetScroll`'s existing
+`fallbackTargetSelector` did all of it.
+
+**Temporary in-DM toast.** A reader already in the thread would otherwise watch the card mutate in
+silence. It reuses the page's existing `notice` state and styling and the **existing**
+`booking_requests` realtime subscription — no second realtime system, no new component, and it
+adds no `messages` row. Copy: `"<DJ> accepted your booking"`, `"<DJ> withdrew from <event>"`,
+`"<Planner> cancelled your booking"`. Attribution comes from `otherUserLabel`, which in a 1:1 DM
+*is* the actor. It fires on a **transition** (a signature map seeded on first render), never on a
+state check, and never for the user who acted. `declined` stays silent by decision.
+
+**Toast verified live**: flipping `booking_requests.cancelled_by` on a QA booking produced
+"Planner1 cancelled your booking" **508ms** later via the existing subscription, cleared itself
+after 5s, and added no chat line. Both negative controls also verified live — an already-cancelled
+booking on first load produced nothing, and the acting user got nothing. The booking's original
+value was restored.
+
+**Legacy rows are safe.** Only the versioned three-segment form is hidden. `Booking confirmed`,
+`Booking accepted · <event>`, `Booking cancelled · <event>` and
+`Booking request cancelled by planner.` still render as timeline notices in historical threads, and
+a chat message that merely happens to end in a UUID still renders as chat.
+
+**Tests:** five new regressions plus a behavioural happy-dom case. **Nine mutations, nine caught** —
+disabling the hide, disabling the UUID strip, adding a lifecycle skip to `pickDmInboxPreviewMessage`
+(the trap), removing the toast's actor gate, turning the transition guard into a state check,
+dropping `fallbackTargetSelector` from the DM page, deriving the fallback from the DOM, removing
+the fallback lookup from the hook, and widening the lifecycle regex to swallow legacy rows. The
+happy-dom test carries its own control: the same hidden target **with no fallback selector** must
+still fall to the bottom, so the test cannot pass vacuously.
+`npm run test:regressions` → **All regression checks passed**. `npm run build` passes.
+
+**Not touched:** `push-send` (no Edge Function redeploy), RLS, `create_notification` dedupe,
+`message_id` plumbing, booking card design, `active_chat_presence`, and every lifecycle DB row.
+**No SQL.**
+
+**Follow-up (same branch): the toast is now neutral, not amber.** It first shipped through the DM's
+`notice` line, which is `--ftc-color-warning` (`#fbbf24`) — wrong for "Alice accepted your booking",
+and sharing that state meant the toast's auto-clear could also wipe a genuine booking warning. It
+now uses the app's **existing** neutral transient-feedback surface — `useInlineTabFeedbackDismiss`
++ `InlineTabFeedbackMessage` (`text-ftc-text-muted`, `transition-opacity duration-300`, 2700ms
+visible / 3000ms clear) — the same one Event Plans, Gigs History, Booking Plans and the DJ
+availability calendar already use. **No new colour, token, variant or component**, and the
+hand-rolled timer plus `DM_BOOKING_LIFECYCLE_TOAST_MS` are gone; the shared hook owns the timing.
+The amber `notice` line is untouched and still amber for real warnings.
+
+Measured on device at 1280 / 390 / 320: colour `rgb(100, 116, 139)` (was `#fbbf24`),
+`transition: opacity 0.3s`, no page overflow, self-clears, adds no chat line.
+
+**QA caught two guards that protected nothing — both are now behavioural.**
+
+1. **The colour guard asserted on a dead constant.** `INLINE_TAB_FEEDBACK_TEXT_CLASS` had **zero**
+   production consumers; its only reference in the repo was the assertion itself. The component
+   renders `EVENTS_LIST_TAB_FEEDBACK_CLASS`, so QA painted the *real* class amber and the whole
+   suite passed. The orphan is deleted, and the test now renders the component through
+   `react-dom/server` and asserts on the **rendered className** — so it survives the component
+   switching constants again.
+2. **The transition signature had only a source regex.** QA reduced
+   `` `${status}:${cancelled_by}` `` → `` `${status}` `` and the suite passed — yet that field is
+   the only thing separating a DJ withdrawal from a planner cancellation, since both are
+   `status: "cancelled"`. Detection now lives in pure, exported helpers
+   (`buildDmBookingLifecycleSignatures` / `pickDmBookingLifecycleToast`) driven through real
+   snapshot sequences, including the decisive pair: same status, different actor, different copy.
+
+**The toast wraps instead of ellipsising (product decision).** `EVENTS_LIST_TAB_FEEDBACK_CLASS` is
+slot-constrained (`truncate`) for a fixed-height tab row; in a chat it cut the event name — the
+informative half of "<DJ> withdrew from <event>". QA measured `scrollWidth 437 > clientWidth 390`.
+A narrowly scoped `wrap` prop on `InlineTabFeedbackMessage` (**default off**) selects
+`EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS`, **derived from the base class** by dropping `min-w-0
+truncate` and relaxing `leading-none` — so colour, size and transition can never drift from the
+shared surface. No new colour or token.
+
+Measured with an 85-char message at 390 / 375 / 320: **27/27** — not ellipsised, `scrollWidth ==
+clientWidth`, grows 23px → 38px, no horizontal overflow, composer still reachable. The four other
+consumers (Event Plans, Gigs History, Booking Plans, DJ availability, all via
+`PlannerWorkspaceTitleFeedback`) plus `HistoryTabRowFeedbackCell` were A/B render-diffed pre vs
+post change: **byte-identical markup**.
+
+Five mutations caught this round, including both QA escapes repeated independently. A sixth — the
+DM page dropping `wrap` — **escaped my first attempt** and is now covered by asserting on the
+call-site element itself.
+
+**Known nit, not fixed:** the effect adds one instance of `react-hooks/set-state-in-effect`, a rule
+the same file already violates three times.
+
+## Booking lifecycle pushes now deep-link to their own message (2026-08-16)
+
+**Report:** the planner taps a fresh "DJ accepted" or "DJ withdrew" push, the right DM opens, but it lands on the latest message instead of the relevant one.
+
+**Same root cause as the booking-request fix, in two more places.** A survey of every `createNotification` call in `lib/bookingRequests.ts` found only the booking-request one (fixed last round) passing a messageId — **every other booking notification passed 5 arguments**, so `notifications.message_id` was NULL and push-send had nothing to append `?message=` from.
+
+**Accepted.** `insertBookingAcceptedDmMessageIfNeeded` writes a real confirmation DM message but discarded its id (`.insert()` with no `.select("id")`), and returned only `{ inserted, messageText }`. The helper now returns `messageId` and the call site threads it through.
+
+**Withdrawn / cancelled.** Same missing id, **plus an ordering problem**: `cancelAcceptedBookingRequest` created the notification *before* calling `insertBookingCancelledDmMessageIfNeeded`, so the target message did not exist yet. The insert now runs first. Both blocks were already independently try/catch-wrapped, so the swap is safe in both directions — and it is strictly more robust than before, since a notification failure can no longer reach the insert at all. (One withdrawal title, `"<name> · Withdrew from event"`, and the cancellation titles all come from this single call site, so both report cases are covered by one fix.)
+
+**Dedupe paths matter too.** Both helpers skip the insert when the row already exists. They now return that **existing row's id** rather than null, so a repeat action still produces a targeted notification — and `create_notification`'s `(user_id, message_id)` dedupe collapses it to the same row. **One action, one notification, one push.**
+
+**Declined is deliberately different and was left alone.** It writes **no DM system message at all** and its notification links to `/bookings` (the Gigs list), not the DM — so there is nothing to target and the defect is not a missing message id. The booking card in the DM does get its text updated in place, so a target could exist, but pointing the push at the DM instead of Gigs is a destination change, not a targeting fix. Pinned with an assertion so changing it becomes a conscious decision. **Say the word if you want declined redirected to the DM card.**
+
+**Also still untargeted, same class, not in this round's scope:** the four rate-proposal notifications (`Proposed rate accepted`, `Rate declined` / `Original offer kept`, and the two `type: "message"` proposal DMs). They have real DM messages and would take the same treatment.
+
+**Deep-link format (unchanged, reused):** `/dm/<conversationId>?message=<messages.id>` — no new scroll system, and the target inherits the settle lease.
+
+**No push-send change → no Edge Function redeploy.** `?message=` appending is gated on `message_id` presence, not notification type.
+
+**Tests:** `testBookingLifecyclePushesCarryAMessageTarget` pins both helper return types, both call sites, **the insert-before-notification ordering** (reversing it silently restores the NULL bug), the dedupe-path ids, and declined's `/bookings` destination. **Mutation-tested three ways** — dropping either messageId argument, and nulling the dedupe id — all caught. One pre-existing test, `testWithdrawalNotificationSoftFails`, asserted the *old* ordering positionally; rewritten to assert the underlying property (both blocks unconditionally reachable, neither able to skip the other) and mutation-tested by removing the insert's try/catch. Anchoring after settling is already covered by the existing happy-dom booking tests. `npm run test:regressions` → **All regression checks passed**. `npm run build` passes.
+
+## Booking Accept/Decline no longer jumps the DM to the bottom (2026-08-16)
+
+**Report:** the DJ taps Accept on a booking request card up in the DM history and is immediately scrolled to the bottom. Not a push/deep-link issue — the deep link now lands correctly.
+
+**Exact scroll writer:** `scrollToBottom("auto")` in the own-message branch of `useChatScroll`'s append effect.
+
+**Why acceptance triggered it.** `handleBookingResponse` itself is innocent — it updates the existing booking message's text in place, adds no message, toggles no `loading`, and navigates nowhere. But server-side, `updateBookingRequestStatus` calls **`insertBookingAcceptedDmMessageIfNeeded(booking)`**, which inserts a *new* DM message **attributed to the responder's own user id**. That arrives back through the messages realtime INSERT handler, which calls `captureScrollBeforeIncomingInsert(isFromCurrentUser)` — and its own-message branch did:
+
+```
+pendingIncomingAppendPinnedRef.current = null;
+pinnedToBottomRef.current = true;   // unconditional
+```
+
+Every scroll path in `useChatScroll` is gated on `pinnedToBottomRef`, so forcing it `true` unlocked all of them; the append effect's own-message branch then scrolled to the bottom. The assumption baked into that branch — "a message from me is one I just typed, so follow it" — is false for anything the server inserts under the acting user's id.
+
+**Fix (`lib/useChatScroll.ts`, one branch):** pin only when the reader is genuinely near the bottom, exactly as the other-user branch already does. A real composer send is unaffected because it is captured separately and earlier: `markUserSentMessage` records the pre-send pinned state into `pendingOwnAppendPinnedRef`, which the append effect consults **before** `pinnedToBottomRef`. Nothing was globally disabled and no new scroll system was added.
+
+**Behaviour matrix:**
+
+| Case | Before | After |
+|---|---|---|
+| Accept/Decline while reading history | jumps to bottom | **card stays anchored** |
+| Accept/Decline while already at the bottom | bottom | bottom (unchanged) |
+| Composer send while pinned | follows down | follows down (unchanged) |
+| Composer send while reading history | stays put | stays put (unchanged) |
+| Incoming message from the other user | pill / stays put | unchanged |
+| Manual DM open, push deep-link targeting | unchanged | unchanged |
+
+**Tests:** three new cases in the happy-dom harness covering the full A→E sequence — card above later messages, user acts on it, a message under their own id is appended, layout settles, viewport still holds the card — for **Accept and Decline**, plus `testOwnMessageStillFollowsWhenPinnedToBottom` pinning the other half of the contract so the fix cannot be "achieved" by never following own messages. **Mutation-tested**: restoring the unconditional pin fails both booking tests and leaves the pinned-follow test passing, which is exactly the right signature. `npm run test:regressions` → **All regression checks passed**. `npm run build` passes.
+
+**Not touched:** push delivery, VAPID, subscriptions, service worker, `message_id` plumbing, the deep-link target path, or `active_chat_presence`.
+
+## Push regression #4: booking-request pushes now deep-link to the booking card (2026-08-16)
+
+**Report:** tapping a booking-request push opened the right DM but scrolled to the latest message instead of the booking request card.
+
+**Exact cause.** `sendBookingRequest` inserts the booking-card DM message with a plain `.insert({...})` — **no `.select("id")` read-back** — and then called `createNotification` with only **five** arguments. `messageId` is the 7th, so `notifications.message_id` was **NULL** for every booking request, and push-send (which appends `?message=` only when `message_id` is set) had nothing to append. The push link was a bare `/dm/<conversationId>`, and the DM opened at the bottom exactly as designed.
+
+**The booking card is a real `messages` row.** Its text encodes `BOOKING REQUEST / Booking ID: <uuid>`, and the DM page renders it in an `<li>` carrying `data-chat-message-id={message.id}`. So no booking-specific scroll mechanism was needed — the existing `?message=<id>` path finds it like any other message, and inherits the settle lease from the previous round for free.
+
+**Deliberately NOT used:** the pre-existing `?bookingRequestId=` / `useChatBookingTargetScroll` flow. It resolves a booking id to a message id client-side and works, but it releases suppression immediately on landing and has **no settle lease**, so it would drift exactly the way the `?message=` path used to. Reusing `?message=` keeps one hardened path instead of two.
+
+**Verified the RPC assumption rather than trusting it.** A raw probe call was rejected (`P0001 Not allowed to create booking_request notification` — the branch requires a `booking_requests` row created within 10 minutes), so the live `create_notification` definition was read directly via the Management API. The decisive part:
+
+```
+if p_message_id is not null then          -- NOT gated on p_type
+  ... where n.user_id = p_user_id and n.message_id = p_message_id
+  insert into public.notifications (..., message_id) values (..., p_message_id)
+```
+
+So for `booking_request` the id **persists**, and dedupe becomes `(user_id, message_id)` — idempotent per recipient per message. **One booking request still produces exactly one notification and one push**, and this is stricter than the old title/link + 10-minute fingerprint it replaces.
+
+**Fix:** `lib/bookingRequests.ts` only — read the message id back via `.select("id").single()` (the same shape the DM and crew text sends already use) and pass it as `createNotification`'s 7th argument. **No push-send change, so no Edge Function redeploy**; `?message=` appending is gated on `message_id` presence, not on notification type.
+
+**Deep-link format (unchanged, reused):** `/dm/<conversationId>?message=<messages.id>`
+
+**Tests:** new `testBookingRequestPushDeepLinksToTheBookingCard` pins the read-back, the 7th-argument threading, and the argument arity (so a future edit cannot slide the id into the `reactionId` slot). **Mutation-tested both ways** — reverting to the 5-arg call and removing the read-back each fail it. The A→B→C settle behaviour is already covered generically by `testTargetHoldsThroughLateSettleBurst`, which grows content above the target after the old window would have closed; the target hook is content-agnostic, so a booking-card duplicate of it would assert nothing new. `npm run test:regressions` → **All regression checks passed**. `npm run build` passes.
+
+**Not touched:** push delivery, VAPID, subscriptions, service worker, `active_chat_presence`, and the existing message deep-link path.
+
+## `npm run test:regressions` runs end to end again — 328/328 (2026-08-16)
+
+**The suite had been halting on its first SQL-text assertion for a long time, so most of it never ran.** Nine tests were failing. **Every single one was a false failure: the SQL/app code was correct and the assertion was wrong.** Nothing was weakened to make anything pass, and every fix was mutation-tested by breaking the thing it guards and confirming the assertion fails.
+
+Rather than fix-and-rerun serially (the suite halts on first throw, hiding the rest), I generated a runner that calls all 328 `test*` functions independently — which surfaced the full list in one pass, including four failures the original filing had not reached.
+
+| Test | Why it was wrong | Class |
+|---|---|---|
+| `testDmAttachmentsBucketIsPrivate` | `.*` across a four-line `insert into storage.buckets` — `.` can't cross newlines without `/s` | regex |
+| `testPrivateProfileFieldsAreDatabaseEnforced` | 8 assertions: lowercase patterns without `/i` against UPPERCASE SQL; multi-line `CREATE POLICY` blocks using `.*`; and `/upsert.*user_private_data/` where the real call is `.from("user_private_data").upsert(…)` — table name *precedes* `upsert`, across lines | regex |
+| `testDmReactionNotifications` | Expected a trailing full stop the copy-polish pass (`b919c06c`) deliberately removed | stale copy |
+| `testLoginScreenPolish` | Expected `"Update password"`; renamed to `"Set password"` in `99d87b49` for consistency with its "Set a new password" heading | stale copy |
+| `testBookingAcceptedDmMessageIsScopedToTheBooking` | Expected the bare string `"Booking accepted"`; `162859e9` made the title a template literal with a DJ-name prefix | stale copy |
+| `testProfileProjectionOmitsPrivateFields` | **Was asserting the opposite of the desired security property** — see below | stale + wrong |
+| `testNotificationCopyPolishPass` | Sign-out `clearAppBadge()` call was reflowed across lines and its silent `.catch(() => {})` replaced with a real error handler | formatting |
+| `testPinnedToBottomRefWiredIntoBothScrollTargetFlows` | Broken by this session's settle-lease work: suppression is now released from `endSettle()`, not in the same tick as the scroll | reshaped by us |
+| `testActiveChatPresenceHookHeartbeatAndCleanup` | Broken by this session's `dispatch()` fix: the queries are no longer `void supabase.…` | reshaped by us |
+
+**The one that mattered.** `testProfileProjectionOmitsPrivateFields` was doing two wrong things. Its `publicProjection` slice ran from `const PROFILE_FIELDS =` to `const OWN_PROFILE_FIELDS`, swallowing the **doc comment** between them — which *mentions* `dj_booking_contact_name` — so `doesNotMatch` was failing on prose, not on a projection. Worse, its next assertion demanded ``OWN_PROFILE_FIELDS = `${PROFILE_FIELDS}, dj_booking_contact_name` `` — the **Phase 7** shape. Phase 8 removed the private column from the owner projection entirely (it is read only from `user_private_data`), so the test was requiring the private field to be present in a `users` projection: the opposite of the property it claims to enforce. Now scoped to the string literal and pinned to the Phase 8 shape, which is strictly stronger. Mutation-tested three ways: leaking the column into the public projection, reintroducing it into the owner projection, and pointing `getUserProfileById` at the owner projection — all three caught.
+
+**`testWorkspaceGigsPendingDisplayCountPreservesLastKnown` was never broken.** Recent rounds recorded it as "the same one pre-existing unrelated failure", but it passes both in isolation and in the full ordered run (`main()` line 18443). The suite was halting around line 8200–8674, thousands of lines earlier, so that test was simply never reached — the attribution was carried forward from round to round without being re-checked. **Those notes were wrong and this supersedes them.**
+
+**Result:** `npm run test:regressions` → **All regression checks passed.** `npm run build` passes. Only `scripts/test-regressions.mts` changed; no application code, no SQL.
+
+## `events.event_brand` applied in Production — the crew-chat 400 is gone (2026-08-16)
+
+**Isaac ran `scripts/setupEventBrands.sql` in the Supabase SQL Editor** (`alter table public.events add column if not exists event_brand text; notify pgrst, 'reload schema';`). No code change was needed or made.
+
+**What the 400 actually was.** Not a broken query. `lib/events/eventQueryFields.ts` deliberately probes for optional columns: `selectEventFields()` asks for every one, and `withEventFieldsFallback` catches PostgREST's `42703`, marks the column missing, and retries without it — the same machinery that already guards `crew_chat_started_at` and `history_hidden_at`. Production simply lacked `event_brand`, so the probe failed once per full document load (module state resets on each load) and then succeeded. The earlier claim of "a second divergent events query in the crew chat path" was an artefact of a request URL truncated at 170 chars in the capture; the full URL was the ordinary `selectEventFields()` output, and the response body said plainly `column events.event_brand does not exist`.
+
+**Verified on Production after the SQL** (Playwright WebKit, iPhone 13, QA DJ account):
+
+| Surface | First events request | `event_brand` request | Fallback retries | `42703` | Failing REST calls |
+|---|---|---|---|---|---|
+| Crew chat `1c09887e` | **200** | 200 | 0 | none | **0** |
+| Crew chat `d9a6e7bf` | **200** | 200 | 0 | none | **0** |
+| Events list | **200** | — | 0 | none | **0** |
+| Event detail | **200** | 200 | 0 | none | **0** |
+
+Both crew chats rendered normally (9 and 15 messages). A direct authenticated `select id, event_brand from events` now succeeds, confirming the column exists.
+
+**Event Brand persistence is unblocked at the code level**: `mapEventInputToRow` gates the key on `eventBrand && !isEventBrandColumnMissing()`, and with no `42703` the flag never trips, so the key is now included whenever a brand resolves. Not exercised end-to-end here — that needs creating a real event on a promoter account with a saved brand, which is outside this verification pass.
+
+## Fourteenth QA round: active-chat push suppression finally works (2026-08-16)
+
+**Report:** a recipient sitting inside the exact DM/crew thread still received an external push. The feature had been inert since it shipped.
+
+**Exact cause — `void` on a thenable.** `useActiveChatPresence` did `void supabase.from("active_chat_presence").upsert(...)`. Supabase's `PostgrestBuilder` is a **thenable, not a promise**: it only issues its HTTP request when `.then()` is invoked. `void builder` constructs the query and discards it, so **the request was never sent**. Both the heartbeat upsert and the cleanup delete were silent no-ops — zero network calls, zero rows, no error — while RLS, grants, schema and a manual upsert all tested perfectly. That combination is exactly why five rounds of inspection kept clearing the wrong layer.
+
+**Proven two ways before touching code:**
+1. Watching Production network traffic with a DM open: **0 requests** to `active_chat_presence` in 8s, while a direct `fetch` upsert using the page's own session returned **201**.
+2. A Node repro against the live table: `void builder` wrote **0 rows**; the identical call with `.then()` invoked wrote **1**.
+
+**Fix:** both queries go through a small `dispatch()` helper that invokes `.then()` and logs failures instead of letting them vanish. Client-only — `push-send` untouched, **no Edge Function redeploy**.
+
+**Live Production evidence after deploy** (presence row observed directly, and push-send's exact suppression predicate replayed against it):
+
+| Scenario | Row | Suppressed? | Wanted |
+|---|---|---|---|
+| A DM open, foregrounded | `/dm/1561d6de…` age 5s | **true** | true |
+| heartbeat after 20s | `updated_at` advanced | — | advances |
+| B crew chat open | `/events/1c09887e…` age 4s | **true** for crew, **false** for the DM | correct |
+| C in a different DM | `/dm/10d2842f…` | **false** for the original DM | false |
+| D navigated away in-app | **NO ROW** | false | false |
+| E backgrounded | **NO ROW** | false | false |
+| F app closed | **NO ROW** | false | false |
+
+**One measurement caveat worth recording:** scenario D initially looked broken because the test used `page.goto` — a *hard* navigation, which destroys the document before React cleanup can dispatch the delete. Re-tested with a real in-app soft navigation (clicking a nav link), the row clears immediately. So: in-app navigation clears instantly; a hard reload or force-quit relies on push-send's 45s TTL, which stays authoritative by design.
+
+**G — non-message notifications are never suppressed:** `push-send` gates the whole presence check on `notification.type === "message"`, so booking/run-sheet/event notifications always deliver regardless of presence. Unchanged this round.
+
+**Guard added:** `testActiveChatPresenceActuallyDispatchesItsQueries` fails on any `void supabase.…` in that file, requires the builders to be dispatched via `.then()`, and asserts the heartbeat stays under push-send's 45s TTL. **Mutation-tested** — restoring the `void` fails it.
+
+`npm run build` passes; relevant tests green.
+
+## Thirteenth QA round: the last of the deep-link target drift (2026-08-16)
+
+**Report:** target lands correctly, no bottom snap — but ~1s later the viewport drifts down a little.
+
+**Measured, not inferred.** Traced Production at 320px and 375px, sampling scrollTop / scrollHeight / clientHeight / target rect every 100ms for 6.5s. Crew @320 was the clearest:
+
+```
+t=1849  top=581  sh=1497         rectTop=268  centreDelta=   0   <- landed, centred
+t=2057  top=581  sh=1296 (-201)  rectTop=105  centreDelta=-163
+t=2160  top=418 (-163)           rectTop=268  centreDelta=   0   <- lease re-asserted
+t=3616  top=418  sh=1334 (+38)   rectTop=268  centreDelta=   0
+t=3721  top=418  sh=1416 (+82)   rectTop=350  centreDelta= +82   <- NO re-assert
+t=3826  top=418  sh=1497 (+81)   rectTop=431  centreDelta=+163   <- NO re-assert
+```
+
+**Root cause — the lease ended too early (diagnosis A: the observer stops).** Content settles in *bursts*: ~2.06s, then a **1.46s gap**, then ~3.62/3.72/3.83s, then ~4.6–5.3s, as avatars and attachment images decode. The 400ms quiet window expired inside that 1.46s gap, so every later change ran unguarded.
+
+Note the mechanism: **`scrollTop` never moved** (418 throughout). Because the container is `[overflow-anchor:none]`, content growing *above* the target does not shift scrollTop — it slides the target **down the viewport**. That is why this read as a small "scroll down" rather than a jump. Measured drift: **+163px** (crew @320), **−83px** (DM image @320), **+17px** (DM image @375).
+
+**Fix:** quiet window **400ms → 1800ms** (bridges the largest observed gap of 1.46s) and hard budget **4s → 8s** (outlasts the last observed change at 5.33s). Both numbers come from the trace, not from rounding up. Also re-assert on `window resize` and `visualViewport` resize/scroll — on iOS the viewport itself settles as the PWA resumes, moving the target without resizing anything a container `ResizeObserver` watches. That last part is **guarded by signal, not by evidence**: it is not reproducible headless.
+
+**The test was rewritten to be faithful.** The first attempt passed against the *un*fixed code — the harness could not express "content above the target grew", so it proved nothing. It now raises ten 80px messages above the target to 120px after the old window would have closed, and asserts the target's **rect top is unchanged within 4px** rather than merely "still visible". **Mutation-tested**: reverting the quiet window reproduces a **400px** drift and fails the test.
+
+**Production verification after deploy** — same tracer, same viewports: settled drift **0px, +1px, +1px** (320px) and **0px, 0px, −1px** (375px), across DM text, DM image, and crew targets. `npm run build` passes; 11/11 relevant tests including the sibling scroll flows.
+
+**Not touched:** push-send, service worker navigation, subscriptions, `message_id` plumbing, `active_chat_presence`, and the horizontal-overflow fix.
+
+## Twelfth QA round: DM chat panned sideways below 390px (2026-08-16)
+
+**Report:** on the small iPhone, entering a chat via a push deep link let the conversation pan left/right as well as vertically.
+
+**It is not the deep link.** Reproduced at 375px and 320px on **manual open too** — the entry path is irrelevant. The report associated it with deep-linking only because that was how the chat was being opened.
+
+**Root cause:** `app/components/dm/BookingCardFocusRing.tsx` rendered `<div className={`relative ${roundedClassName}`}>` with no width cap. It sits in the bubble column `CHAT_INCOMING_BUBBLE_CELL_CLASS` (`col-start-2 min-w-0 w-full flex flex-col items-start`), and in a column flex with `items-start` a child is sized to **fit-content and is not clamped to the column width**. Its child, the booking card shell, is `w-full min-w-0 max-w-xs` — a fixed **320px**. So the wrapper took 320px inside a **271px** column and pushed the chat container's `scrollWidth` past the viewport.
+
+**Why 390px parity never caught it:** the incoming row grid starts at x=64, so 64 + 320 = **384**, which still fits a 390px viewport with 6px to spare. It only overflows below 390.
+
+**Measured on Production, before the fix:**
+
+| Viewport | chat scrollWidth / clientWidth |
+|---|---|
+| 320x568 | **384 / 320** (64px over) |
+| 375x667 | **384 / 375** (9px over) |
+| 390x844 | 390 / 390 (clean) |
+
+Crew chat was never affected — its bubble already carries `max-w-full` (`CHAT_MESSAGE_BUBBLE_GRID_BUBBLE_CLASS`), which is what the DM wrapper was missing.
+
+**Fix:** one class — `relative max-w-full ${roundedClassName}`. Chosen empirically, not by inspection: I applied three candidate fixes to the live DOM and measured each. Capping the inner card at `min(20rem,100%)` made it **worse** (392); `align-items: stretch` on the column worked but would stretch every bubble full-width; `max-width: 100%` on the wrapper resolved it exactly. **No global `overflow-x: hidden`** — the overflowing element itself is fixed.
+
+**Verified on Production** across 320/375/390 x {DM manual, DM deep-link text, DM deep-link image, crew manual, crew deep-link} — 15/15 with `scrollWidth == clientWidth`, `scrollLeft == 0`, and no document overflow. Re-run with a 9s settle confirmed deep-link targets still land and hold, and manual opens still land at the bottom. `npm run build` passes; 8/8 relevant tests including the sibling scroll flows.
+
+**Guard added:** `testBookingCardFocusRingCannotOverflowItsColumn` pins the `max-w-full` class and also asserts the card is still `max-w-xs`, so if that ever becomes fluid the rationale gets re-reasoned rather than silently outliving its reason. Note this is a source assertion — happy-dom does no layout, so the real proof is the Production measurement above.
+
+## Eleventh QA round: the target now holds the viewport while layout settles (2026-08-16)
+
+**Report:** with the tenth round's service-worker fix live, fresh pushes now reach the correct historical message — but a moment later the chat scrolls itself back to the bottom.
+
+**Honest caveat up front: this snap-back does not reproduce headless.** Traced `scrollTop` every 250ms for 25 seconds per case against Production (WebKit, iPhone 13, fresh context so image caches could not mask late decode) across historical DM text, historical DM image, and historical crew text targets. All three landed on target and **stayed** there for the full 25s. So the trigger is something the headless environment does not produce — a real resume from background, a realtime reconnect, the crew page's `refreshEventArtwork()` on `visibilitychange`, the DM page's 5s read-receipt poll, or slower on-device image decode.
+
+**Root cause of the *class* of failure, which is fixable regardless.** `useChatMessageTargetScroll` released `suppressAutoScrollRef` **in the same synchronous tick as the target scroll**. From that instant the position was defended by `pinnedToBottomRef` alone — and that ref has several writers (`scrollToBottom` sets it `true`; the `loading` reset in `useChatScroll` sets it `true`; the native scroll handler recomputes it). Every effect that settles after first paint then gets a turn at the viewport: image decode via the ResizeObserver re-pin, the append effect, the initial-scroll effect after any `loading` flip. Any one of them that re-pins wins, and the reader is yanked to the bottom a beat after arriving. Landing on the target was never the hard part; **staying** on it was, and nothing guaranteed it.
+
+**Fix — the target holds a short lease on the viewport** (`lib/chat/messageTargetScroll.ts`, one shared hook, so DM and crew get it identically with no divergent handling). After a successful target scroll the hook now keeps suppression **on** and enters a settling phase: a `ResizeObserver` on the container and content root re-asserts the target's centred position on every layout change, restarting a 400ms quiet timer each time. Control is handed back — suppression released, `pinnedToBottomRef` synced to wherever the viewport honestly ended up — when layout has been quiet for 400ms, when a 4s hard budget expires, or immediately when the user takes over (`pointerdown`/`touchstart`/`wheel`/`keydown`). Cleanup also fires on unmount or retarget, so a stuck `true` can never permanently disable auto-scroll.
+
+Because suppression stays on for the window, every late bottom-scroll is a **no-op rather than a race to win** — which is why this works without knowing exactly which effect fires on the device.
+
+**Tests — four new ones, all reproducing the full A→B→C sequence** the task required (target scroll succeeds → late effects fire → viewport still on target), not just the first scroll:
+
+- repeated successive layout settles (several images decoding in sequence)
+- **an explicit `scrollToBottomSmooth()` during the settle window is ignored** — the decisive proof the guard holds — *and* works normally again once the window closes, so the lease is provably temporary
+- a layout change after the window closes still leaves a reader parked in history alone
+- a message arriving after the deep link does not steal the target
+
+**Mutation-tested**: reverting to the immediate-release behaviour fails on "a scroll-to-bottom requested while the target is still settling must be ignored".
+
+**Verified:** `npm run build` passes. 14/14 relevant tests pass, including the sibling scroll flows the shared `suppressAutoScrollRef` could have disturbed — `testDmBookingReturnScroll`, `testDmChatReopenScroll`, `testDmChatGrowthScrollRace`, `testDmImageAttachmentDimensions`.
+
+**Not touched**, per the task's explicit list: push-send, service worker navigation, notification payload links, `message_id` threading, SQL, VAPID. **No Edge Function or SQL deploy needed this round** — the change is client-side only and ships with Vercel.
+
+## Tenth QA round: notificationclick lost the target to a hydration race (2026-08-16)
+
+**Report:** fresh pushes — created after the ninth round's `push-send` v9 deploy, with `message_id` confirmed populated — *still* opened the correct chat at the bottom.
+
+**Every stage upstream was proven correct before touching any code**, which is what made this one hard:
+
+| Stage | Evidence |
+|---|---|
+| `notifications.message_id` | Real UUIDs on fresh rows; stored `link` correctly bare |
+| push-send builds the link | Replayed push-send's exact `.select("*")` query **with its own service-role credentials** — every fresh row yields `/dm/<convo>?message=<uuid>` |
+| Web Push transmission | `sendWebPush` sends `JSON.stringify(payload)` verbatim, no link transformation |
+| `sw.js` push handler | Stores the link verbatim in `data.link`; no `pathname` rebuild anywhere, and **no historical version of `sw.js` ever stripped a query** (checked all three revisions) |
+| Production `sw.js` | Byte-identical to repo |
+| Client scroll | 12 Production scenarios at iPhone 13/390px already green in round nine |
+
+**Root cause — `notificationclick`'s existing-client branch.** It called `client.focus()` and then handed the targeted link to the *page* via `postMessage({type:"NAVIGATE_TO"})`, relying on `ServiceWorkerProvider` having already mounted `setupNotificationClickListener`. On an **iOS cold resume that listener does not exist yet**: iOS restores the PWA onto whatever URL it was last on and fires `notificationclick` before React hydrates. The message lands with no listener attached and is dropped silently — no error, nothing in any log.
+
+When the restored page happens to be the chat the push was about — overwhelmingly likely during QA, since you're testing in the thread you were just reading — the app never navigates at all. It simply sits where it already was: **the right chat, at the bottom, with a bare URL.** Indistinguishable from "the deep link worked but didn't scroll", which is exactly how two prior rounds misdiagnosed it.
+
+**Reproduced before fixing**, against Production with Playwright WebKit at iPhone 13: dispatching the service worker's own `NAVIGATE_TO` message at `document.readyState === "interactive"` (pre-hydration) on `/dm/<convo>` left the page at `scroll 8478/8478`, `atBottom=true`, URL still bare — the reported symptom exactly. The identical dispatch *after* hydration navigated and centred the target, which is why round nine's five existing-client probes all passed: they all fired late.
+
+**Fix (`public/sw.js`, ~15 lines).** The existing-client branch now calls `client.navigate(link)` — the service worker navigates the window itself, so nothing depends on page timing — then focuses the returned client. `postMessage` is kept strictly as a fallback for browsers without `WindowClient.navigate` and for clients where `navigate()` rejects (it does for uncontrolled clients). The closed-app `openWindow(link)` path is untouched.
+
+**New behavioural test, `scripts/test-sw-notification-click.ts`** — executes the **real `public/sw.js`** in a `node:vm` sandbox against fake `WindowClient`s, covering both paths the task required: existing-client navigation (DM and crew), closed-app `openWindow`, both `postMessage` fallbacks, and that hostile links are still rejected. **Mutation-tested**: reverting to postMessage-only makes it fail. Wired into `test-regressions.mts` beside `testMessageTargetScrollPriority`.
+
+**Deployment:** `public/sw.js` is a Vercel static asset, so pushing to `main` ships it — and it is served `cache-control: public, max-age=0, must-revalidate`, so browsers revalidate on every SW update check, with `skipWaiting()` + `clients.claim()` already in the file making the new worker take over immediately. **`push-send` did not change this round, so no Edge Function redeploy was needed** (still v9). `active_chat_presence` is now applied — the table exists and reads clean.
+
+**Note for retesting:** the old bare-link notifications still in the iPhone's tray can never target, and pre-v9 tag behaviour means they stack rather than replace. Clear the tray first so you are certainly tapping a fresh push.
+
+## Ninth QA round: the deep-link was never broken — the Edge Function was never deployed (2026-08-16)
+
+**Report:** tapping an older DM or crew-chat push still opened the chat at the bottom instead of the triggering message — i.e. the seventh and eighth rounds' feature appeared to have done nothing on the device.
+
+**Root cause — a deployment gap, not a code bug.** `supabase/functions/push-send/index.ts` builds the outbound push payload's `link`, and the seventh round changed it to append `?message=<messages.id>`. **Vercel does not deploy Supabase Edge Functions.** Merging to `main` shipped the Next.js half and nothing else, so `push-send` kept serving its **2026-08-13 build (version 8)** — the pre-deep-link version — for a full day. Every push therefore carried a bare `/dm/<id>` or `/events/<id>/chat` link with no target, and the client, working exactly as designed, opened the chat at the bottom. Confirmed by downloading the live function and diffing it against `main`: 348 deployed lines vs 397 in the repo, with **zero** occurrences of `message=`, `message_id`, `active_chat_presence`, or `PRESENCE_TTL` in the deployed source.
+
+Both prior rounds verified this feature by reading the repo, which is why neither caught it: the repo was correct the whole time. Nothing in the tooling compares deployed Edge Function source to `main`, and `supabase/README.md` + `docs/handoff/SUPABASE.md` documented a deploy order covering migrations and the app but **never mentioned Edge Functions at all** — so there was no step to skip. Both files now do, with the exact command, the `--no-verify-jwt` requirement, and how to diff what is actually live. That documentation gap is the systemic fix; the deploy itself was the immediate one.
+
+**Fixed by deploying, not by editing.** `push-send` redeployed from `main` — now **version 9**, `verify_jwt: false` preserved, and a re-download confirms the deployed source is byte-identical to the repo. Post-deploy the function still returns its own `405` to GET and `401` to an unauthenticated POST, proving it boots and its webhook auth path runs — push delivery itself untouched.
+
+**The client side was already correct and already live** — proven against Production, not inferred. Signed in as the QA DJ account with Playwright WebKit at iPhone 13 / 390px and drove twelve real scenarios against `follow-the-crowd.vercel.app`:
+
+| Scenario | Result |
+|---|---|
+| DM manual open (no param) | bottom, `8027/8027` |
+| DM old text target (msg 4 of 77) | centred, offset **0** from container centre |
+| DM old **image** target | centred, offset **0** — no snap-back after a 6s settle |
+| DM latest-message target | visible, at bottom |
+| DM bogus/deleted target | clean fallback to bottom, no console errors |
+| Crew manual open | bottom |
+| Crew old user text (08-09) | centred, offset **0** |
+| Crew mid user text (08-15) | visible, offset −19 |
+| Crew old **image** target | centred, offset **0** |
+| Crew bogus/deleted target | clean fallback to bottom |
+
+The image cases matter most: they are exactly the late-decode layout shift the eighth round's `pinnedToBottomRef` fix targeted, and a 6-second settle confirms it holds on real Production code, not just in happy-dom.
+
+**A crew system message (`"Crew chat started"`) is not a deep-link target** — it renders without `data-chat-message-id`, so it falls back to the bottom. Correct by construction: system notices go through `createNotification` with no `messageId`, so they never produce a `?message=` link in the first place.
+
+**Two further live-data findings, from the first session to actually query the production DB** (prior rounds had no Supabase access; this one signed in as the QA accounts with the anon key and read their own rows under RLS):
+
+1. **`notifications.message_id` is populated — but only from 2026-08-15 ~08:00 UTC onward.** Every message notification before that is `NULL` (24 of 52 on the QA DJ account). Those can never deep-link: pushes already delivered to a device have a frozen payload, and the rows themselves carry no target for the in-app list either. **A retest must use a newly sent message** — an old notification landing at the bottom after this deploy is expected, not a regression.
+2. **Migration `20260818000000_active_chat_presence.sql` was never applied.** `public.active_chat_presence` does not exist in production, so the eighth round's "don't push a thread the recipient is reading" feature is inert. It fails safe — `useActiveChatPresence` fires `void` upserts whose errors are discarded, and `push-send` reads the table with destructured `data` only, so a missing table yields `null` and falls through to a normal send. **Still pending Isaac's SQL Editor paste.**
+
+**Also spotted, and since resolved — the original note here was wrong on both counts, see the 2026-08-16 `event_brand` entry below.** The `400` on `rest/v1/events` was *not* a second divergent query (that reading came from a request URL truncated at 170 chars in the capture) and *not* a bug: it was the intentional `withEventFieldsFallback` probe discovering that Production lacked `events.event_brand`. Fixed by applying `scripts/setupEventBrands.sql`; no code change.
+
+**The feature's own two wiring tests had been failing since the eighth round merged, unnoticed.** `testDmPageWiresMessageTargetScroll` and `testCrewChatPageWiresMessageTargetScroll` assert the exact `useChatMessageTargetScroll({...})` call shape, ending `suppressAutoScrollRef,\n});`. The eighth round inserted `pinnedToBottomRef,` into that call and never updated the seventh round's assertions, so both silently went red — invisible because the suite halts long before reaching them. Both patterns now expect `pinnedToBottomRef,`, and **each was mutation-tested**: removing `pinnedToBottomRef` from the real call makes both fail, restoring it makes both pass.
+
+**Tests run.** `npm run build` passes. All **9** deep-link tests pass in isolation: the seven `?message=` tests, `testMessageTargetScrollPriority` (the eighth round's happy-dom ResizeObserver test), and `testCreateNotificationRpcPayloadIncludesMessageId`.
+
+**`npm run test:regressions` is broken far earlier and never reaches any of them** — worse than the single known failure recent rounds have been recording. It halts on `testDmAttachmentsBucketIsPrivate`, then on a chain inside `testPrivateProfileFieldsAreDatabaseEnforced`. **Every one checked is a false failure: the SQL and app code are correct and the test's own regex is wrong** — `.*` used across multi-line SQL statements without `/s`, and lowercase patterns without `/i` matched against uppercase SQL. Two of those are security assertions (`REVOKE ALL ON public.user_private_data FROM public/anon`), and the REVOKEs were verified genuinely present, so this is **not** a security gap — but it does mean the suite has been providing far less cover than its green-ish reputation suggested. Deliberately **not** fixed here to keep this round's diff honest; filed as its own task with all eight diagnosed assertions listed.
+
+**Not touched:** no application code changed this round. Repo edits are `supabase/README.md`, `docs/handoff/SUPABASE.md`, this file, and the two stale test assertions above. VAPID, the webhook secret, `pg_net`, badge logic, run-sheet and booking notifications, RLS, and `public/sw.js` are all untouched.
+
+## Eighth real-device QA round: scroll-priority race fixed; push suppressed for active thread (merge on `main`, 2026-08-15)
+
+**Two issues found in real-device QA of the seventh round's deep-link feature.**
+
+**Issue 1 — tapping a message push still landed at the bottom of the chat, not the target message.** The seventh round's own source-level trace, AND an independent QA pass, both concluded the `suppressAutoScrollRef` handshake was correct. Real-device testing proved this wrong. **Actual root cause**: `useChatMessageTargetScroll` (and the pre-existing `useChatBookingTargetScroll` it copied its pattern from) write `container.scrollTop` directly — bypassing a *separate* internal ref in `lib/useChatScroll.ts`, `pinnedToBottomRef`, that a `ResizeObserver`-driven "keep pinned to bottom" effect actually reads (not the suppression flag). Left stale `true` from mount, any layout change after suppression drops — concretely, an attachment image finishing decode and resizing from its guessed placeholder box to its real aspect ratio (`lib/dm/dmImageAttachmentDimensions.ts`) — reads the stale ref and snaps the scroll straight back to the bottom, wiping out the deliberate target scroll.
+
+**Fix**: `lib/useChatScroll.ts` now exposes `pinnedToBottomRef` and a new `syncPinnedToBottomRefAfterDirectScroll(container, pinnedToBottomRef)` helper. Both `useChatMessageTargetScroll` and `useChatBookingTargetScroll` call it in the same synchronous tick as their direct `scrollTop` write, before releasing suppression — closing the race window entirely, for both the reported bug and the identical latent risk in the pre-existing booking-target flow.
+
+**Proven with a real DOM-level test, not just source assertions**: new `scripts/test-message-target-scroll-priority.ts` runs the actual hooks against a happy-dom container with a fake, manually-triggerable `ResizeObserver`, and specifically simulates a post-target-scroll layout change. Verified by both the implementer and an independent QA pass to actually catch the regression (temporarily reverted the fix, confirmed the test fails with the chat snapping to the bottom; restored, confirmed it passes) — a purely source-text regex assertion could not have caught this class of bug, and didn't, last round.
+
+**Issue 2 — a recipient actively viewing a DM/crew chat thread still received an external push for a new message in that exact thread.** Redundant UX. Fixed with the smallest reliable mechanism (confirmed via investigation that FTC had **zero** existing presence/visibility infrastructure — no Supabase Realtime presence, no active-route tracking — before this round):
+
+- New table `public.active_chat_presence` (migration `20260818000000_active_chat_presence.sql`) — one row per user, RLS-scoped so **only the owning row's user can read/write it** (unlike `public.users`, which grants blanket authenticated select). Nothing in the client ever needs to read another user's row; only `push-send` does, via the service-role client, which bypasses RLS.
+- New client hook `lib/chat/useActiveChatPresence.ts` — upserts `{user_id, thread_link, updated_at}` on a 20s heartbeat while a chat page is mounted **and** `document.visibilityState === "visible"`, using the exact same bare link string `createNotification()` is called with (`/dm/${conversationId}` or `getEventCrewChatLink(eventId)`, never the `?message=`-decorated version). Clears (deletes) the row immediately on `visibilitychange`-to-hidden, `pagehide`, and unmount.
+- `supabase/functions/push-send/index.ts` checks this table before fetching subscriptions — scoped to `notification.type === "message"` only (never booking/reaction/system notifications, even if one happens to share a DM's link), requires an **exact string match** on `thread_link === notification.link` (so viewing thread A never suppresses a push for thread B), and only within a **45-second TTL** on `updated_at`. Wrapped in try/catch — any failure in the check itself falls through to a normal send, never blocks delivery.
+
+**Known, explicitly flagged simplification**: suppression is scoped per-`(user, thread)`, not per-device — a second device with an active push subscription would also be suppressed while the user views the thread elsewhere on their primary device. True per-device scoping would need to correlate specific `push_subscriptions` rows with per-device presence, meaningfully larger than what a beta app needs. QA also noted a narrow, self-healing (~20s) non-security race on rapid thread-to-thread navigation (an unawaited delete from the outgoing thread can land after the new thread's upsert) — accepted as within the "smallest reliable mechanism" scope.
+
+**Not touched**: message dedupe SQL, VAPID keys, badge logic, run-sheet pushes, booking push copy — confirmed via diff review before merge.
+
+**Verified**: independent QA pass re-ran and adversarially mutation-tested the new happy-dom scroll-priority test (confirmed it fails without the fix, passes with it) and the pre-existing booking-return-scroll test suite (still passing with the new required `pinnedToBottomRef` parameter threaded through); confirmed the presence migration's RLS policies are all scoped to `user_id = auth.uid()`; confirmed push-send's suppression check is exact-conversation-aware, fails open, and sits before VAPID/webhook/delivery code that remains fully untouched. `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*; all new tests for this round verified passing in isolation (the full suite still can't reach them in call order, same known limitation as recent rounds).
+
+**Sandbox limitation (unchanged from every prior round)**: no real Supabase project access, no real iPhone, no egress to the production app. This round's scroll-priority fix and its regression test *do* exercise real DOM/React behavior via happy-dom (not just source-text assertions), which is a meaningfully stronger proof than prior rounds had available — but a genuine real-device retest is still the only way to fully confirm both fixes end-to-end.
+
+## Seventh real-device QA round: push notifications deep-link to the exact chat message (merge on `main`, 2026-08-15)
+
+**Symptom:** tapping an older DM or crew-chat push always opened the conversation scrolled to the bottom, never to the specific message that generated the notification.
+
+**Root cause:** `notifications.message_id` has carried the triggering message's identity since the sixth round's dedupe migration, but nothing downstream of that column ever used it for navigation — the notification's `link` was always a bare `/dm/{conversationId}` or `/events/{eventId}/chat` path, with no reference to *which* message it was about, all the way from the outbound push payload through to both chat pages' click handling.
+
+**Fix:** thread `message_id` through to navigation as a `?message=<messages.id>` query param, appended only at the point of use (the push payload built in `supabase/functions/push-send/index.ts`, and the in-app notifications list's `router.push` in `app/notifications/page.tsx` via a new `buildNotificationTargetHref(link, messageId)` in `lib/notifications.ts`) — deliberately never written into the *stored* `notifications.link` column, since `markNotificationsReadForLink` does an exact `.eq("link", link)` match against it elsewhere in the same file.
+
+New shared hook `lib/chat/messageTargetScroll.ts` (`useChatMessageTargetScroll`) reads the target id, retries (up to 12×50ms, covering paint timing only) finding `[data-chat-message-id="<id>"]` in the DOM, centers and scrolls to it, then hands off to the page's own already-instantiated highlight callback (`addHighlightedMessageId`, from the pre-existing `useChatNewMessageHighlight` hook already wired to every message-bubble type in both pages — reused as-is, no new highlight mechanism needed). Falls back to the page's normal `scrollToBottomSmooth()` when the id is missing (legacy notification) or the target message can't be found (e.g. deleted) — no crash, no error surfaced.
+
+Both chat pages currently load a conversation's **entire history on mount, with no pagination or virtualization** — confirmed by direct inspection before implementing, so the retry loop above exists only to survive early paint frames, not to trigger additional fetches. If pagination is ever added, `onTargetMissing` (fired after the retry budget is exhausted) is the natural place to trigger a "load older history" call before giving up.
+
+**The one deliberate touch to a "do not touch" file:** `supabase/functions/push-send/index.ts` (the push-delivery edge function) needed `message_id` threaded into its outbound payload's `link` field, since without it a push notification literally cannot carry the target — this is scoped to the payload-content-shaping lines only. VAPID signing, webhook secret validation, and the subscription delivery loop are byte-identical to before (confirmed by an independent QA pass diffing that file specifically).
+
+**The trickiest part:** the DM page already had two other flows writing to the same `suppressAutoScrollRef` (the pre-existing booking-request-card scroll-to-target flow, and a precise-scroll-restore-on-profile-return flow). The new hook avoids racing them by (a) nulling out its own target whenever either of those is already active this navigation — same precedence pattern they already use against each other — and (b) only ever *claiming* suppression (`if (targetMessageId) { suppressAutoScrollRef.current = true; }`), never unconditionally writing `false` the way the pre-existing booking hook's reset effect does, combined with being declared after that hook so effect order can't invert this. Independently traced by hand across all three navigation scenarios (message-target-only, booking-target-only, no-target) by a separate QA pass — no ordering bug found.
+
+**Not touched:** SQL migrations, VAPID, `pg_net`, badge, run-sheet, booking notifications, and the service worker (`public/sw.js`) needed zero changes — it already forwards whatever `link` string arrives in the push payload verbatim, including query params.
+
+**Verified:** independent QA pass confirmed the diff's scope (7 files, no scope creep), the push-send boundary, that the stored `notifications.link` column is never written with the query param baked in, the suppression-ref race-condition trace, the fallback path end-to-end, and that `addHighlightedMessageId` is genuinely wired to every message-bubble type in both pages (so the highlight will actually be visible for text, image/attachment, and booking-card messages alike). One minor DRY nit was found and fixed: `lib/chat/messageTargetScroll.ts` initially reimplemented `computeChatMessageCenterScrollTop` instead of importing the existing export from `lib/dm/chatBookingTarget.ts`. `npm run build` passed. `npm run test:regressions` halted before reaching this round's tests, so all 8 were verified passing in isolation. *(Superseded 2026-08-16: the halt was a set of broken assertions much earlier in the file, not `testWorkspaceGigsPendingDisplayCountPreservesLastKnown`, which was never failing. Suite now runs end to end.)*
+
+**Sandbox limitation (unchanged from every prior round):** no real Supabase project access, no real iPhone, no egress to the production app — this round's implementation and both QA passes are source-level verification only. Real-device retest needed for: new DM text notification, old/legacy DM notification (no `message_id`), DM image notification, crew text notification, crew image notification, and the deleted/missing target-message fallback — all six scenarios listed in the task's "Also verify" checklist.
+
+## Sixth real-device QA round: p_message_id hypothesis investigated and disproven, no code bug found (merge on `main`, 2026-08-15)
+
+**Status: Production DB evidence from the user showed both prior migrations live (`dedupe_includes_body = true`, `has_message_identity_param = true`) but recent `notifications` rows for real image-only messages still had `message_id = NULL`, and a second consecutive image-only message produced no new notification row at all — the exact collision the fifth round's fix was meant to prevent. User's specific hypothesis: the RPC payload object passed to `supabase.rpc("create_notification", {...})` might silently omit the `p_message_id` key even though `createNotification()`'s TypeScript signature accepts a `messageId` parameter.**
+
+**Investigation, not a fix — the hypothesis is FALSE.** Directly inspected the current source (not inferred): `lib/notifications.ts`'s RPC payload literal explicitly includes `p_message_id: messageId ?? null,` by name; `messageId` is genuinely `createNotification`'s own last positional parameter, in scope for that call, not a stale closure or global. Re-traced every caller: DM text send and DM attachment send (`app/dm/[conversationId]/page.tsx` → `lib/dm/resolveDmOtherUserId.ts`), and crew/group chat text and attachment sends (`lib/eventCrewChat.ts`, `lib/groupChatAttachments.ts`) — all four pass a real, freshly-inserted message id through to `createNotification` as its 7th argument. No divergent/legacy call site exists (grepped for every `supabase.rpc("create_notification"` and every `createNotification(` call site repo-wide). **No application code was changed this round.**
+
+**What did change:** a new regression test, `testCreateNotificationRpcPayloadIncludesMessageId` (`scripts/test-regressions.mts`), that extracts the *actual RPC payload object literal text* out of `lib/notifications.ts` (not just a nearby line) and asserts every expected key — `p_user_id`, `p_type`, `p_title`, `p_body`, `p_link`, `p_reaction_id`, `p_message_id` — is present by name exactly once, with `p_message_id` specifically tied to `messageId ?? null`. Verified in isolation before merging, and independently re-verified plus adversarially mutation-tested by a separate QA review agent (confirmed the test fails if `p_message_id` is dropped from the payload, or if its value is stubbed to a bare `null`).
+
+**Since the code is provably correct at every layer, Production's `message_id = NULL` symptom must be explained by something outside this repo's application code.** Most likely candidates, in rough order of likelihood, none of which are fixable by further source changes:
+1. **Deployment lag** — the Vercel deployment serving those specific requests may not yet have contained the fifth-round commit that added `messageId` threading. Check the deployed commit SHA in the Vercel dashboard against `main`'s current tip.
+2. **Stale test data** — the example rows the user provided may predate the fix's actual deploy timestamp.
+3. **PostgREST schema cache staleness** — Postgres's `create_notification` function signature was confirmed changed (`has_message_identity_param = true` via `pg_get_functiondef`), but PostgREST's own cached RPC metadata may not have refreshed to recognize the new parameter, which could cause it to silently drop an argument it doesn't recognize. Fix: in the Supabase dashboard, either restart the API service or run `NOTIFY pgrst, 'reload schema';` in the SQL Editor.
+
+**Recommended retest:** after confirming (1) the currently deployed Vercel build's commit SHA is at or after this fix, and (2) a PostgREST schema reload has been triggered, send a **brand-new** image-only message and re-run the same diagnostic-row lookup. If a fresh row still shows `message_id = NULL` after both are confirmed, that would be new evidence of an actual code-level regression and should be reported with the fresh message/notification ids.
+
+**Not touched:** SQL migrations, VAPID, push-send, pg_net, badge, run-sheet, booking notifications — confirmed via `git diff` that the only file changed is `scripts/test-regressions.mts` (purely additive, +100/-0).
+
+**Verified:** new test verified in isolation via a scratch script before merging; independent QA agent re-read every file involved from scratch (not trusting my summary), independently confirmed the RPC payload includes `p_message_id` by name, independently confirmed all four send paths thread a real message id through, and adversarially mutation-tested the new test to confirm it actually catches the regression it claims to catch. `npm run build` passed. `npm run test:regressions` halted early, identically on `main` before this round's change. *(Superseded 2026-08-16: the halt was broken assertions earlier in the file; `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` was never failing.)*
+
+**Sandbox limitation (unchanged from every prior round): no real Supabase project access (`.env.local`'s URL is a placeholder), no real iPhone, no egress to the production app — this round's diagnosis is source-level reasoning only and cannot itself confirm Production's deployed commit or PostgREST schema-cache state. The user must check both directly.**
+
+## Fifth real-device QA round: universal one-message-one-push + diagnostics removed (`5782c0f7` on `main`, 2026-08-15)
+
+**Status: production confirmed both prior migrations (`20260816000000`, `20260817000000`) applied. A NEW, narrower real-device regression surfaced immediately after this round shipped — see the round above this one for the follow-up investigation. Read that first if debugging push delivery.**
+
+**Symptom this round fixed:** a message with both an image and a caption produced TWO pushes (one caption-shaped, one generic "Sent a photo"-shaped) instead of one.
+
+**Investigation:** traced every notification call site for DM/crew text and image sends. Both attachment paths already had exactly one `createNotification` call per message with caption-preferred body (`caption || genericBody`) — no second call site was found for this exact scenario despite exhaustive tracing (grepped for "Sent a photo"/"Sent N photos" repo-wide, checked every `postgres_changes` subscription on `messages` for a hidden second notify call). Rather than claim a fix for a mechanism that couldn't be pinpointed, extended the existing message-identity dedupe (idempotent per `(user_id, message_id)` at the RPC layer, added in the prior round for attachment sends only) to the DM and crew TEXT send paths too — making "same recipient + same message_id = same notification identity" a universal, DB-enforced guarantee for every real chat message, regardless of how many times or from where `createNotification` might ever be called for it.
+
+**Separate duplicate-push bug found and fixed while auditing per this round's explicit checklist:** whole-event cancellation (`lib/events.ts`, `notifyCancelledBookingsFromEventCancellation`) created a `booking_update` notification AND a near-identical `message`-type notification for the same recipient and same link — two push banners for one cancellation. Removed the redundant `message`-type call; kept the canonical `booking_update` one.
+
+**Temporary diagnostics removed:** both the "Device diagnostics" and "Badge diagnostics" panels in Settings, plus the diagnostics-gathering code they were the sole consumer of (`getPushDiagnostics`/`PushDiagnostics` from `lib/push/client.ts`, the entire `lib/navigation/badgeDiagnostics.ts` module). Production-safe `console.error` logging, the actual notification-state/badge-sync logic, unsupported-iOS messaging, and the reconnect flow are all unchanged.
+
+**Not touched:** VAPID, webhook secret, pg_net, JWT config, service-role grants, run-sheet/withdrawal notification code, badge-setting logic. No new SQL migration this round.
+
+**Verified:** two independent QA passes (traced all 4 message paths for exactly-once notification creation with real message ids threaded through; verified the event-cancellation fix doesn't orphan `formatEventCancelledInboxPreview`, still used elsewhere; confirmed badge-sync logic byte-identical minus diagnostics recording; one pass flagged a theoretical RLS read-back risk in the new text-send `.select("id").single()` calls, confirmed to be the same proven-safe pattern the image sends already use). Incidentally fixed two pre-existing, unrelated stale test assertions discovered only because isolating tests for verification bypasses an unrelated pre-existing failure that has always halted the full suite before reaching them. `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*.
+
+## Fourth real-device QA round: DM/crew image-only push fixed (`ec16d342` on `main`, 2026-08-15)
+
+**Same sandbox limitation as every round below: no real Supabase project access, no real iPhone, no egress to the production app. This fix is code-level reasoning only, not live-verified. Real-device retest required.**
+
+**Symptom:** DM image-only and crew-chat image-only messages produced no push; text in the same conversations pushed fine.
+
+**Root cause:** DM push title is always exactly `"<sender>"`, crew push title always `"<sender> · <event>"` — constant per sender+thread regardless of content. Two image-only sends with no caption both render the identical generic body `"Sent a photo"`. The previous round's dedupe fix (`20260816000000`, body must also match) does NOT help here — title AND body AND link are all genuinely identical between two such sends, so the second one still collided with the first's still-unread `notifications` row, never inserted, and `push-send` (INSERT-only trigger) never fired for it.
+
+**Fix:** new migration `20260817000000_notification_message_identity_dedupe.sql` adds a nullable `message_id` column to `notifications` (mirroring the existing `reaction_id` pattern) and a new `create_notification` branch: when a caller supplies `p_message_id` (a real `messages.id`), dedupe is scoped to `(user_id, message_id)` only — idempotent for a genuine accidental double-call on the same message, but always inserts for a different message regardless of title/body/link similarity. Ordered after the reaction branch, before the existing content-based dedupe (which booking/event/run-sheet notifications and message-type calls with no real message row still use, unchanged). `createNotification()` (`lib/notifications.ts`) gained an optional `messageId` param, always sent to the RPC (never omitted, matching the existing `reactionId` convention — omitting either risks Postgres failing to resolve between overloads, a documented past incident here). Wired at exactly the two call sites where a real message row exists: DM attachment send (`lib/dm/resolveDmOtherUserId.ts` + the DM page's `sendAttachments`) and crew attachment send (`lib/groupChatAttachments.ts`). Text sends are deliberately untouched — not reported broken, and different text messages naturally have different bodies.
+
+**Not touched:** VAPID, webhook secret, pg_net trigger config, JWT, service-role grants, reaction notification dedupe, booking/event/run-sheet notification dedupe, the confirmed-working run-sheet and withdrawal pushes, and the Home Screen badge logic/diagnostics (explicitly off-limits this round).
+
+**Verified:** independent QA pass diffed the new migration's authorization branches against the live function clause-by-clause (byte-identical), hand-traced the exact collision scenario pre/post fix, confirmed text paths and badge/run-sheet/booking files have zero diff, confirmed the old 6-arg signature is dropped before the 7-arg replace (avoiding the ambiguous-overload failure this codebase hit once before) — no defects found. `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*.
+
+**SQL migration must be run manually in Supabase** (`20260817000000_notification_message_identity_dedupe.sql`) — not auto-applied. So must the prior round's `20260816000000` if it hasn't been already; this sandbox cannot confirm either has been applied to production. To check from the SQL Editor:
+```sql
+select
+  pg_get_functiondef(p.oid) ilike '%body is not distinct from p_body%' as dedupe_includes_body,
+  pg_get_functiondef(p.oid) ilike '%p_message_id%' as has_message_identity_param
+from pg_proc p
+join pg_namespace n on p.pronamespace = n.oid
+where n.nspname = 'public' and p.proname = 'create_notification';
+```
+Both columns must read `true` for both fixes to be live.
+
+## Third real-device QA round: withdrawal push fixed, badge diagnostics added (`4b350ec5` on `main`, 2026-08-15)
+
+**IMPORTANT — sandbox limitation, read before the next round:** this Claude Code sandbox has NO real Supabase project access (`.env.local`'s `NEXT_PUBLIC_SUPABASE_URL` is a placeholder, `https://example.supabase.co`), no real iPhone, and no network egress to the production app. Every round's "root cause" for these three issues has come from code-level tracing only — genuine live verification requires an actual real-device retest by a human with dashboard/device access. Don't expect a future session in this environment to produce different evidence without that.
+
+Three issues reported still broken after the prior round's fixes; run-sheet push confirmed working and explicitly untouched this round (`lib/eventRunSheet.ts`, `EventRunSheetSection.tsx` — zero diff, verified).
+
+**Issue 3 — DJ withdrawal produced no push at all: real code fix.** `cancelBookingRequest` (`lib/bookingRequests.ts`)'s `createNotification` call was the one call site in this file with no try/catch — every sibling call is wrapped (two OTHER bare call sites were also found, `acceptProposedBookingRate` and the pending-decline branch of `updateBookingRequestStatus`, but left untouched as out of scope for this round). `cancel_booking_request` (the SQL RPC) had already committed the cancellation by the time the bare call ran, so any failure there — an auth/RLS edge case, a network blip, anything — propagated uncaught through `cancelAcceptedBookingRequest` (also no try/catch) to the UI, surfacing "Failed to cancel accepted booking" for a cancellation that had, in fact, already succeeded, and skipping the DM system-message insert and `notifyBookingRequestsChanged()` below it since neither ever ran. This is exactly the "planner receives no push, nothing else visibly wrong" shape reported. Fixed by wrapping it in try/catch, soft-failing and logging via `getNotificationCreateErrorMessage`, matching the established pattern.
+
+**Issue 2 — Home Screen badge still never appears: no new code bug found, real-device diagnostics added instead.** No defect beyond the previous round's already-shipped fix (removing the DJ-role zero-count shortcut in `getNavBadgeCounts`) was found on this pass. New module `lib/navigation/badgeDiagnostics.ts` tracks `unreadTotal`, `badgingApiSupported`, `lastSetValue`, `lastResult` (a DOMException/Error name only, via a new `safeBadgeErrorName` helper — never the message), and `standalone` (reusing a newly-exported `isInstalledPWA` from `lib/push/client.ts`), recorded at every branch of `NavBadgeProvider.tsx`'s badge-sync effect and surfaced in a new "Badge diagnostics (temporary)" block in Settings, in the exact field shape requested. QA caught a hydration-mismatch risk in the first version (the `useSyncExternalStore` server snapshot reused the live reader, which depends on `navigator`/`window`); fixed with a fixed `SERVER_BADGE_DIAGNOSTICS_SNAPSHOT` constant as `getServerSnapshot`. This diagnostics panel is what the NEXT real-device test should read to finally pin down whether iOS is rejecting the Badging API call, never reaching it, or something else entirely.
+
+**Issue 1 — crew-chat image push still doesn't arrive: no new code bug found.** Re-traced the entire attachment-upload-to-notification path fresh; found nothing beyond the previous round's already-shipped fix (the `create_notification` dedupe migration requiring body to also match, not just title+link). No code changed for this issue this round. **Most likely explanation: the SQL migration (`supabase/migrations/20260816000000_notification_dedupe_includes_body.sql`) has not actually been run in the Supabase SQL Editor yet** — this sandbox cannot confirm either way. Run it before the next retest.
+
+**Not touched:** VAPID, webhook secret, pg_net, JWT config, service-role grants, auth/session persistence, unsupported-iOS handling, reconnect flow, and the confirmed-working run-sheet notification path.
+
+**Verified:** two independent QA passes (withdrawal fix traced end-to-end including both real UI call sites and the SQL authorization condition; badge diagnostics checked for zero secret exposure and correct wiring at every branch; a second pass specifically re-verified the hydration fix). `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*.
+
+## Real-device Production QA follow-up: crew-image push, badge, run-sheet push, withdrawal audit (`08140c49` on `main`, 2026-08-15)
+
+**Status: SQL migration in this round (`supabase/migrations/20260816000000_notification_dedupe_includes_body.sql`) must be run manually in the Supabase SQL Editor — not auto-applied. Issue 1 and Issue 3's fixes are inert on Production until it's run.**
+
+Four issues reported from real-device Production QA, each root-caused via actual runtime tracing (not source-inspection assumptions) and verified by two independent QA passes (one caught and fixed a real bug — see Issue 3).
+
+**Issue 1 — crew-chat image push never arrived.** `create_notification`'s dedupe SELECT (live via `20250730120000_reaction_notification_lifecycle.sql`) matched unread rows on `(user_id, type, title, link)` within 10 minutes — NOT body — and returned the existing row's id without inserting a new one. Crew-chat push title (`"<sender> · <event>"`) and link are identical for every message a sender posts to that chat, text or image, so a second unread message within the window collided with the first's still-unread row, never inserted, and `supabase/functions/push-send/index.ts` only fires on `payload.type === "INSERT"` — so the second message never pushed. This reproduces exactly "crew text push arrives, crew image sent shortly after does not." Fix: new migration adds `and n.body is not distinct from p_body` to the dedupe SELECT — every other authorization/recipient-gating branch is byte-identical to the live function. Different content now always inserts and pushes; a genuinely identical repeat still collapses, unchanged.
+
+**Issue 2 — Home Screen numeric badge never appeared.** `getNavBadgeCounts` (`lib/notifications.ts`) hard-zeroed the booking-notification portion of the count for `role === "dj"` — a leftover optimization from when nothing in the DJ nav bar read `badgeCounts.bookings` (confirmed: no DJ nav item has `badgeKey: "bookings"`). Harmless for the old nav-bar-only use, but broke the prior round's OS badge sync the moment `badgeCounts.total` started feeding it — a DJ's new unread booking_request never moved the badge, the exact "DJ receives a booking request → badge increments" case from spec. Fixed by counting both `booking_request`/`booking_update` types for every role (`getUnreadNotifications` is already scoped to the caller's own rows). Also: badge-sync `.catch(() => {})` calls were silently swallowing any `setAppBadge`/`clearAppBadge` rejection; now logged via `console.error` so a real API failure is distinguishable from a genuine zero count on the next real-device check.
+
+**Issue 3 — run-sheet edits produced no DJ push.** An earlier commit (`6df737ae`, "Remove runsheet update DM notifications, keep crew chat only") left the crew-chat post as the ONLY notify channel, which requires crew chat unlocked (throws and is silently caught otherwise) and shares Issue 1's exact dedupe-collision class. Fix: `lib/eventRunSheet.ts` adds an independent per-DJ push (`notifyRunSheetUpdatesForChangedBookings`, type `"message"`, link is the booking DM — not the crew-chat link, so it has its own dedupe key), gated by a new stricter change-detector (`collectRunSheetDjFacingChanges`/`describeRunSheetDjFacingChange`) that only counts real stage/time changes — notes, pure reorders, and still-blank freshly-added rows are excluded. Does not insert a DM message bubble; the crew-chat post is still the visible record. Wired into `EventRunSheetSection.tsx`'s `handleSave` alongside the unchanged crew-chat notify (neither channel replaced the other). **QA caught a real bug on first pass:** the change-detector picked only the last of a multi-set DJ's rows for its label instead of aggregating all of them (unlike the sibling crew-chat function) — fixed to aggregate via the same `.map().filter(Boolean).join(" / ")` pattern, verified by a second QA pass with a hand-traced before/after regression case.
+
+**Issue 4 — withdrawal push still showed old copy on a real device.** Investigated, no code fix made. Traced every call site of `cancelBookingRequest`/`cancelAcceptedBookingRequest`: exactly one string source exists repo-wide (`lib/bookingRequests.ts`, from the prior round's already-merged fix), `previousStatus: "accepted"` is correctly threaded from both real UI withdraw entry points, and `public/sw.js` has no `fetch` listener at all (so it cannot be serving a stale JS bundle). Conclusion: most likely a stale/not-yet-relaunched client on the test device, or Production not yet reflecting the prior round's merge at test time — not a code defect. Locked the current (correct) wiring down with a regression test so this can't silently regress.
+
+**Not touched:** VAPID key values, webhook secret, pg_net trigger config, JWT config, push-send auth, RLS policies, service-role grants, `lib/push/client.ts` (reconnect/VAPID-decode logic), the Device diagnostics panel.
+
+**Verified:** two independent QA passes (SQL migration diffed clause-by-clause against the live function for zero authorization weakening; push-send's INSERT-only trigger dependency confirmed by reading the edge function; badge fix confirmed to have no other UI-visible side effect; run-sheet change-detector hand-traced across 5+ cases; withdrawal audit independently re-verified with a fresh repo-wide grep, not just accepted). `npm run build` passed. `npm run test:regressions` halted early *(superseded 2026-08-16 — that halt was a set of broken assertions, since fixed; the suite now runs end to end)*.
+
+## Final notification UX polish pass: copy + badge count (`58007d15` on `main`, 2026-08-15)
+
+**Goal:** clean up push copy to read like a mature messaging app now that iOS shows its own "from Follow The Crowd" attribution under every push, so FTC's title/body must never repeat the app name — plus an audit of the numeric badge on the Home Screen icon seen in real-device screenshots.
+
+**Already correct, left unchanged (verified against the spec, no diff):** DM text/image push (title = sender's resolved display name alone, body = preview/"Sent a photo"/"Sent N photos", caption wins — `lib/dm/resolveDmOtherUserId.ts`, `lib/dmAttachments.ts`); crew chat text/image push (title `"<sender> · <event>"` — `lib/eventCrewChat.ts`, `lib/groupChatAttachments.ts`); booking accepted (`"<DJ name> · Booking accepted"` / event name — `lib/bookingRequests.ts`); crew chat ready (`"<event> · Crew chat ready"` / "Your event crew chat is now available" — `lib/eventCrewChat.ts`); event updated (`"<event> · Event updated"` / e.g. "Time changed to 9:00 PM" — `lib/events/eventGroupChatUpdate.ts`).
+
+**Fixed this round, all in `lib/bookingRequests.ts` / `lib/events.ts` / `lib/notifications.ts` / `lib/dm/dmReactionNotifications.ts`:**
+- New `formatEventVenueLine(eventName, venue)` (`lib/notifications.ts`) replaces raw `` `${eventName} at ${venue}` `` interpolation, which produced a dangling "... at " whenever venue was an empty string (a real runtime case — venue defaults to `""`, not `null`, in a few code paths). Wired into the booking-request push body.
+- Booking declined/cancelled/withdrawn pushes had no actor name in the title (static `"Booking declined"` / `"DJ withdrew from event"` / `"Booking cancelled"` / `"Booking request cancelled"`) and repeated the same empty-venue bug in the body. Now resolve the relevant person's display name (the declining DJ via `booking.recipient_id`, or the cancelling party via `booking.cancelled_by`, null-guarded) and use `"<name> · Booking declined"` / `"<name> · Booking cancelled"` / `"<name> · Withdrew from event"` / `"<name> · Booking request cancelled"`, body = event name alone. Recipient routing (`notifyUserId`, who gets notified) is untouched — only the title/body text changed.
+- Whole-event-cancellation push to each affected DJ (`lib/events.ts`, `notifyCancelledBookingsFromEventCancellation`): same fix, title now `"<planner name> · Booking cancelled"` reusing the `plannerName` already resolved earlier in that function.
+- DM reaction notification body (`lib/dm/dmReactionNotifications.ts`) had a trailing period, removed. Its title ("New reaction", no sender name) was deliberately left as-is — not one of the required copy categories, and changing it risked disturbing the existing 10-minute dedupe-by-title/reaction_id behavior.
+
+**Badge count audit:** grepped the whole repo — no `navigator.setAppBadge`/`clearAppBadge`/Badging API call existed anywhere before this round; `public/sw.js`'s `badge: '/icon-192.png'` is a monochrome notification *icon image* (Android-style), unrelated to a numeric count. Conclusion: the numeric badge visible on the real-device screenshots was entirely iOS's own default per-delivered-push accumulation — zero relationship to FTC's actual unread state, never cleared by FTC, grows indefinitely/goes stale by construction. Small, client-only fix (not a new subsystem): `app/components/navigation/NavBadgeProvider.tsx` (already computes `NavBadgeCounts.total` = messages + bookings unread, mounted app-wide for every signed-in user) now mirrors that same total onto `navigator.setAppBadge(total)` / `clearAppBadge()` whenever it changes, gated on `state.badgesReady` (never fires from a placeholder/loading count) and clears immediately on sign-out. Feature-detected, silent no-op on unsupported browsers. Only runs in the foreground tab — a badge left by a push delivered while FTC was fully closed self-corrects the next time the app is opened, not instantly; fixing that would require the service worker or push payload to know the real unread count, which was judged out of scope (would mean touching push infra). No `public/sw.js`, VAPID, push-send, or server-side changes.
+
+**Not touched:** VAPID, webhook secret, pg_net, JWT config, push-send, the reconnect-state/VAPID-decode logic from the prior round (`lib/push/client.ts`), the Device diagnostics panel, `NotificationType` (still exactly `"message" | "booking_request" | "booking_update"` — no new category added).
+
+**Verified:** independent QA pass (spec-copy correctness character-by-character, venue-fallback math, actor-naming/recipient-routing correctness, scope discipline via full diff, badge-fix skepticism check for pre-existing Badging API usage, test coverage re-derivation) — no defects found. `npm run build` passed. `npm run test:regressions` halted early. *(Superseded 2026-08-16: the halt was broken assertions earlier in the file; `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` was never failing.)*
+
+## Push reconnect state + VAPID URL-safe decode fix (`1afd622b` on `main`, 2026-08-15)
+
+**Two bugs, reported together from real-device diagnostics on a supported small iPhone:** Service worker registered/activated/controlling the page, Notification permission granted, installed standalone — but Push subscription exists: **false**. Despite that, Settings said "Notifications enabled on this device" AND a red error "The string contains invalid characters." appeared.
+
+**Root cause 1 (false "enabled"):** `detectNotificationState()` (`lib/push/client.ts`) only ever checked the `push_subscriptions` DB row (`hasActivePushSubscriptionForCurrentUser()`) when `Notification.permission === "granted"` — it never checked whether the browser itself still had a real `PushSubscription` object. iOS can silently drop a device's subscription without resetting `Notification.permission` or telling the app, producing exactly this split-brain: DB says active, browser has nothing. Fixed: a new `getBrowserPushSubscription()` helper (`registration.pushManager.getSubscription()`) is checked FIRST; if it's null, the function returns unconditionally with a new `"reconnect"` state — it does not fall through to the DB check. `"granted"` now requires both the real browser subscription AND the DB row. The old `"granted_not_subscribed"` state (added in the prior round, below) was renamed/replaced by `"reconnect"` — no live references to `granted_not_subscribed` remain in the codebase.
+
+**Root cause 2 ("The string contains invalid characters"):** VAPID public keys are URL-safe base64 per RFC 8292 (`-`/`_` instead of `+`/`/`, typically unpadded). `enableNotifications()` decoded the key with the browser's native `atob()`, which only accepts standard base64 — an 87-char random key is overwhelmingly likely to contain at least one `-` or `_`, which is exactly what `atob()` rejects with that message. This surfaced most visibly on a fresh subscribe attempt (e.g. the new reconnect flow, triggered after the browser silently lost its old subscription). Not a corrupted/wrong VAPID key — the production key was not touched, rotated, or regenerated. Fixed: new `urlSafeBase64ToStandardBase64()` helper runs before `atob()`; the `atob()` call is wrapped in try/catch so a decode failure throws a clean `Error("VAPID public key could not be decoded")` instead of a raw DOMException reaching the UI.
+
+**Self-heal:** `savePushSubscription()` now deactivates (`is_active: false`, not deleted) any OTHER active row for the same `user_id` with a different endpoint after a successful save — a browser only ever has one live `PushSubscription` per origin, so any other active row is provably stale. Scoped by `.eq("user_id", userId)` where `userId` comes from `getCurrentUserId()` (the authenticated caller); RLS on `push_subscriptions` independently enforces `user_id = auth.uid()` server-side as a backstop.
+
+**UI:** new "reconnect" state — title "Reconnect notifications", body "Notifications need to be reconnected on this device", button "Reconnect notifications"/"Reconnecting...". Reuses the same `handleEnable()` flow as first-time enable. On success, re-derives state via `detectNotificationState()` rather than assuming "granted". On failure, reconnect shows static friendly copy ("Couldn't reconnect notifications" / "Try again or restart FTC") instead of the raw error — the raw error is still `console.error`'d for diagnosis, never a secret (endpoint/key/token were never in this error to begin with). First-time-enable failure copy is unchanged.
+
+**Copy consistency:** removed trailing full stops from the unsupported-iOS-version copy (added in the prior round) — now three lines with no periods: "Push notifications require iOS 16.4 or later", "You can still use FTC normally, but this device can't receive push notifications", "If your iPhone supports a newer iOS version, update iOS to enable notifications".
+
+**Not touched:** VAPID key values, webhook secret, pg_net, JWT config, push-send auth, any `createNotification()` call site — confirmed via diff inspection, 100% client-side (`lib/push/client.ts` + `PushNotificationsSection.tsx` + tests). Temporary Device diagnostics panel kept (removal is a later cleanup task, only after real-device retest passes).
+
+**Verified:** independent QA pass (state-model control flow, VAPID decode math against a real 87-char sample, RLS-scoped self-heal safety, copy exactness, scope discipline via full diff grep, test coverage re-derivation) — no defects found. `npm run build` passed. `npm run test:regressions` halted early, confirmed identical with/without this change. *(Superseded 2026-08-16: the halt was broken assertions earlier in the file; `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` was never failing.)*
+
+## Unsupported-iOS push state added (`40412f7a` on `main`, 2026-08-14)
+
+**Confirmed:** an iPhone on iOS 16.1.2 cannot use FTC Web Push at all — Apple requires iOS 16.4+ for Home Screen PWA Web Push. Before this change, `detectNotificationState()` (`lib/push/client.ts`) checked "is this iOS but not installed to Home Screen?" BEFORE checking whether the Push API even exists. Since the Push API (`Notification`/`ServiceWorker`/`PushManager`) genuinely doesn't exist in WebKit pre-16.4 — Safari tabs or standalone alike, since every iOS browser is WebKit under Apple's rules — a user on an unsupported iOS version who hadn't installed FTC yet was told to "Add Follow The Crowd to your Home Screen to receive push notifications," advice that could never work regardless of install state.
+
+**Fix:** capability detection now runs first. `isIOS()` only picks which copy to show when capability is missing (new `"unsupported_ios_version"` state with iOS-specific copy, vs. the existing generic `"unsupported"` state) — it never changes whether the branch is entered, so non-iOS unsupported browsers are unaffected, and devices with full capability reach the unchanged install-guidance/permission checks exactly as before.
+
+**New Settings UI state** (Notifications section): title "Push notifications unavailable", body "Push notifications require iOS 16.4 or later. You can still use FTC normally, but this device can't receive push notifications.", secondary line "If your iPhone supports a newer iOS version, update iOS to enable notifications." — no enable button, no Add to Home Screen instructions. `ios_not_installed`/`prompt`/`granted_not_subscribed` (since renamed to `reconnect`, see 2026-08-15 entry above)/`granted` states unchanged; FTC's own subscription state remains authoritative over raw `Notification.permission`, unchanged from the prior round. Also added a defense-in-depth guard in `enableNotifications()` for the new state (currently unreachable via the UI, but throws a clean error rather than falling through if ever called directly).
+
+Purely informational — no change to login, bookings, DMs, crew chat, or in-app notifications. No SMS/email/native-app/alternate-provider/preferences work, per beta scope. Temporary Device diagnostics panel (from the prior DJ-push-display investigation) kept, not removed.
+
+## DJ push notifications silently not displaying — sw.js fix shipped, awaiting device confirmation (`e97a86d2` on `main`, 2026-08-14)
+
+**Status: fix shipped, root cause NOT yet confirmed on-device — do not treat as closed.**
+
+**Bug:** Planner pushes worked; DJ pushes did not display at all, across every DJ-facing notification type. Traced one specific failing case (notification `56290bca-09a3-4711-9e65-a7e9ca255881`, recipient `c8bb1f0f-7248-4257-bf52-b7f04fcae3da`) through the full production pipeline: notification row correct, active `push_subscriptions` row correct, `push-send` delivered 1/1, Apple Web Push returned `success:true, status:201`. The iPhone never showed it — so the failure boundary is strictly client-side, after Apple already accepted delivery.
+
+**Confirmed code-level defect (real, but not yet proven to be THE cause of this exact case):** `public/sw.js`'s `push` handler had three early `return` statements — no `event.data`, `event.data.json()` throwing, or a falsy `payload.title` — each of which skipped `self.registration.showNotification()` entirely. Apple's 201 only confirms the push service queued the payload for the device; it says nothing about whether the service worker went on to display anything. Any of those three conditions reproduces exactly the observed symptom, with no server-side signal surviving past the point Apple accepts it — undebuggable from the DB/Edge Function side alone.
+
+**Fix:** the push handler now has zero early returns — every path falls through to a defined `title`/`body`/`link` (falling back to `"Follow The Crowd"` / empty body / `/` when the real payload can't be used) and unconditionally reaches `showNotification()` inside the existing `event.waitUntil()`. No role/DJ-specific logic existed or was added.
+
+**Two possibilities this fix cannot address in code**, flagged for on-device confirmation: (1) the DJ's Home Screen icon may have been added from a stale/preview deployment origin (`middleware.ts` redirects `follow-the-crowd-<hash>-itcunninghams-projects.vercel.app` to canonical, but a service worker/push subscription created under that origin before the redirect, or under a since-decommissioned preview URL, is tied to THAT origin's own separate service worker — a fix to the canonical production `sw.js` never reaches it); (2) iOS system-level notification settings for the installed PWA could be off even though `Notification.permission === "granted"` at the web layer (this is an OS setting outside the web app's control entirely).
+
+**Diagnostics added (temporary, keep until confirmed resolved):** `getPushDiagnostics()` (`lib/push/client.ts`) and an always-visible "Device diagnostics (temporary)" block in Settings → Notifications (`PushNotificationsSection.tsx`) showing: service worker registered/state/script URL, whether the current page is service-worker-controlled, whether a push subscription exists (boolean only), `Notification.permission`, standalone-install state, and `window.location.origin`. No endpoint/key/token ever read or shown.
+
+**Not touched:** notification creation, `push-send`'s recipient lookup, pg_net, VAPID, webhook auth, service-role grants, DB subscription selection — none of that was implicated by the trace, none of it changed.
+
+**Next step:** retrigger a push to the same DJ (or the same recipient `c8bb1f0f-...`) and check the Device Diagnostics panel on that exact phone — specifically `Origin` (must read `https://follow-the-crowd.vercel.app`) and `Service worker script`. If origin is wrong, the only fix is deleting and re-adding the Home Screen icon from the canonical URL — no code change can reach a service worker registered under a different origin.
+
+## iOS Home Screen PWA session loss on reopen — fixed (`673d23ff` on `main`, 2026-08-14)
+
+**Bug:** Log in on iPhone Safari, Add to Home Screen, open the installed app — works. Fully close it (swipe away) and reopen from the Home Screen icon — bounced back to `/login`, even though the session was still valid. Reported on a small/older iPhone with a fresh account.
+
+**Root cause:** `lib/supabaseClient.ts` called `createClient(url, key)` with no explicit `auth.storage`. `@supabase/auth-js` (2.110.0) runs a ONE-SHOT localStorage write-test at client construction (`supportsLocalStorage()` in `node_modules/@supabase/auth-js/dist/module/lib/helpers.js`) when no storage is given; on ANY failure it falls back to an in-memory store for that client's entire lifetime, no retry (`GoTrueClient.js` ~line 219-231). A cold-launched standalone PWA — a fresh WKWebView process on every full close/reopen, more likely to hit a transient localStorage hiccup on an older/lower-storage device — can trip that self-test once and then never see the real, unexpired session sitting untouched in actual localStorage for the rest of that launch. `getSession()` returns null; `OnboardingGuard` correctly (from its own view) redirects to `/login`.
+
+**Fix:** `lib/supabaseClient.ts` now passes an explicit `auth.storage` (`resilientLocalStorage`) to `createClient()`, which makes auth-js skip its own self-test entirely per its constructor logic (`if (settings.storage) {...} else {...}`). Same `window.localStorage` underneath, same token format/handling/expiry — just independent try/catch per `getItem`/`setItem`/`removeItem` call instead of one probe that can permanently disable persistence on a single transient failure. `persistSession`/`autoRefreshToken`/`detectSessionInUrl` made explicit (unchanged defaults, now documented in code). Added a temporary, boolean-only diagnostic (`app/components/OnboardingGuard.tsx`) on the redirect-to-login path — logs whether a raw token was found in storage vs whether `getSession()` found a user, no token/session/user-id values — to confirm on a real device whether this is the failure signature.
+
+**Not touched:** Supabase project/auth settings, token storage location/format/lifetime, sign-out cleanup (still `disableNotifications()` before `supabase.auth.signOut()`), any other browser Supabase client (there isn't one — verified the only browser-facing client is this one; server routes/edge functions use their own non-persistent clients).
+
+**Residual risk, not addressed here:** if a device is closed longer than the refresh token's real lifetime, or iOS itself evicts the standalone app's site data under storage pressure, logout is still correct/expected — this fix only removes the SDK's own self-inflicted single-point-of-failure, not iOS's own storage eviction behavior (not directly controllable from application code).
+
+## Web Push Notifications (2026-08-14)
+
+**Status:** Live in production end-to-end on multiple iPhones. Full notification-coverage audit complete; the one confirmed beta-blocking gap (event schedule changes not reaching a single confirmed DJ) is fixed, along with three copy/correctness issues found during the audit.
+
+**What's shipped:**
+- Push subscription lifecycle with endpoint ownership enforcement
+- Service Worker for background push reception and deep-linking
+- Notification permission UI in Settings
+- PWA manifest with home screen installation support
+- Database schema with RLS policies for push_subscriptions; `service_role` granted on `public.notifications` (push-send reads via service role — was missing, caused silent "Notification not found")
+- Supabase Edge Function for Web Push delivery (RFC 8188 encryption + VAPID ES256 signing), JWT verification disabled for this function only, authenticated via constant-time `x-push-webhook-secret` comparison
+- `create_notification()` RPC upgraded to 6-arg (adds `p_reaction_id` for reaction notification lifecycle) — `20250730120000_reaction_notification_lifecycle.sql` applied to production
+- Logout cleanup wired into signOut() with proper ordering (DB delete first, then browser unsubscribe) — verified still intact after content polish pass
+- Security hardening: constant-time webhook secret comparison, shared device safety, safe deep-link validation
+- VAPID keys and `PUSH_WEBHOOK_SECRET` rotated multiple times after accidental exposure in chat during setup; current values live only in Supabase/Vercel secrets, never committed
+
+**Push content (`ff821ba9` on `main`, 2026-08-14):** DM pushes previously showed a hardcoded title **"New message"** with the raw message body. Now the title is the sender's resolved display name (falls back to "Someone"), and the body runs through a shared `formatNotificationPreview()` (lib/notifications.ts) that collapses whitespace/newlines and truncates to 120 chars. Applies to 1:1 DM sends/attachments (`lib/dm/resolveDmOtherUserId.ts`), run-sheet update DMs (`lib/eventRunSheet.ts`), the two booking rate-proposal DM system messages (`lib/bookingRequests.ts`), and the whole-event-cancellation DM notice (`lib/events.ts`). Crew/event chat pushes changed from title = event name only, body = "Sender: message" to title = **"Sender · Event name"**, body = preview alone (`lib/eventCrewChat.ts`, `lib/groupChatAttachments.ts`). Booking request/update notification style was left as-is (already good). Removed the temporary `diagnostics` UI state/panel from `PushNotificationsSection.tsx` and the stage-by-stage `console.log` calls added in `lib/push/client.ts` while debugging production delivery; genuine `console.error` failure logging kept. Did not touch `push-send`, VAPID handling, webhook secret, JWT config, pg_net, or RLS.
+
+**Known beta limitations (reported, not fixed — explicitly out of scope):**
+- **Reactions already push.** `lib/dm/dmReactionNotifications.ts` creates a `type: "message"`, title `"New reaction"` notification on every DM reaction add/change, keyed by `reaction_id` so an emoji change updates in place rather than spamming. Flagged as a possible noise source for a busy thread; no reaction-push change was made this round.
+- **No active-conversation push suppression.** There is no mechanism today that skips sending a push to a user who is actively viewing the exact conversation being pushed to (`push-send` has no notion of client focus/route; `public/sw.js` shows every push it receives unconditionally). Not built — would require a presence system disproportionate to a beta.
+
+**Beta fixes 2 (`91e5ba65` on `main`, 2026-08-14):** Two follow-up issues after two-iPhone verification.
+
+- **Booking-request push had no sender.** Title was hardcoded `"New booking request"`. Now `"<planner display name> · Booking request"` (`lib/bookingRequests.ts`, `sendBookingRequestToDj`), resolved via `getCurrentUserProfile()` + `resolveUserDisplayName()`. Body/link unchanged. `booking_update` notifications (accepted/declined/cancelled/rate-related) were inspected and deliberately left as-is — each is already scoped to one specific 1:1 booking conversation and states the concrete status change, so a name wasn't judged to add enough clarity to justify touching five more call sites.
+- **Fresh account on a reused device couldn't enable push.** Two independent root causes, both in `lib/push/client.ts`:
+  1. `detectNotificationState()` treated the browser's origin-scoped `Notification.permission === "granted"` as proof the CURRENT FTC account had a working subscription. A device that previously granted permission under a different account (no clean sign-out) showed "Notifications enabled on this device" for a brand-new account without ever creating its `push_subscriptions` row. Fixed by checking for an actual active row for the current user before returning `"granted"`; added `"granted_not_subscribed"` state (since renamed to `"reconnect"`, see 2026-08-15 entry above) with its own copy + enable button in `PushNotificationsSection.tsx` for when permission is granted but the account has no row yet — never claims "enabled" in that case.
+  2. `push_subscriptions.endpoint` is unique DB-wide; the client's existence check is RLS-scoped to the caller's own rows, so a stale browser-level `PushSubscription` still tied to a *different* account's row (same device, prior account never signed out) passed the check invisibly and then failed the insert with Postgres 23505 — previously surfaced as "please try again," which could never actually resolve anything by retrying. `enableNotifications()` now catches that specific collision (`PushEndpointCollisionError`), unsubscribes its own just-created browser subscription (local operation, never touches the other account's row), resubscribes for a genuinely new endpoint, and retries once.
+  - Did not touch push-send, VAPID, webhook secret, JWT, pg_net, or any SQL/RLS — client-side query/state logic only, against the existing schema.
+
+**Commit:** `91e5ba65` — "Merge feature/push-beta-fixes into main" (Builder branch: `feature/push-beta-fixes`, HEAD `c72b4115`). Prior: `ff821ba9` — "Merge feature/push-notification-content-polish into main" (Builder branch: `feature/push-notification-content-polish`, HEAD `1d490984`)
+
+**Full notification-coverage audit (2026-08-14):** Read-only pass mapping every `createNotification()` call site against every user-facing state change in booking/DM/crew-chat/run-sheet flows. 15 of 16 candidate events already had working push; one confirmed beta-blocking gap found (event schedule changes only reached DJs through the crew-chat-post path, which requires 2+ accepted DJs or a manual planner start — a single confirmed DJ on a locked crew chat got nothing). Full classification (currently-working / missing-before-beta / post-beta / do-not-add) is in this session's transcript, not duplicated here.
+
+**Beta fixes 3 (`f6ebf58b` on `main`, 2026-08-14):** Four fixes from the audit, verified against real code paths (not just inspection) via an independent QA pass.
+
+1. **Crew chat image-only push ignored a caption.** `lib/groupChatAttachments.ts` always sent "Sent a photo"/"Sent N photos" even when the sender typed a caption alongside the image(s) — the DM equivalent already preferred the caption. Fixed: `text || genericPhotoPreview`.
+2. **Booking-accepted push didn't name the DJ.** `lib/bookingRequests.ts`, `updateBookingRequestStatus` — title was a static `"Booking accepted"`; now `"<DJ name> · Booking accepted"` (resolved via `getUserProfileById(booking.recipient_id)`), body is just the event name. Also hardens `create_notification`'s 10-minute dedupe (keyed on user_id/type/title/link) against a 2nd/3rd DJ's acceptance colliding with an unread notification from the 1st — link was already unique per DJ (separate DM conversations), title is now unique too.
+3. **Crew-chat-ready push copy.** `lib/eventCrewChat.ts`, `notifyCrewChatStarted` — push title/body changed to `"<event> · Crew chat ready"` / `"Your event crew chat is now available"`. The in-thread system pill message (separate insert, same shared constant it used to reuse) is untouched.
+4. **New: confirmed DJs notified of event date/set-time/venue changes independently of crew-chat unlock state.** `lib/events/eventGroupChatUpdate.ts` gained `selectDjFacingScheduleChanges` (filters the existing field-diff helper down to Date/Set time/Venue — excludes Event name and Rate) and `notifyConfirmedDjsOfEventScheduleChange` (one push per accepted booking, type `"message"` since `booking_update`'s RPC-side authorization only covers rate-proposal-linked acceptances, not a plain accept). Wired into `app/events/[eventId]/page.tsx`'s save handler unconditionally (not gated on `crewChatUnlock`). `postEventGroupChatUpdate`'s own push is now suppressed (`notifyParticipants: false`) so a DJ on an already-unlocked crew chat isn't pushed twice for the same edit — the crew-chat thread message itself still posts when unlocked, only its push side-effect was disabled.
+
+Did not touch push-send, VAPID, webhook secret, JWT config, pg_net, service-role grants, or push_subscriptions/RLS. One regression test appended (`scripts/test-regressions.mts`, `testBetaPushFinalPassFourFixes`) covering all four via pure-logic + source-wiring assertions.
+
+**Commit:** `f6ebf58b` — "Merge feature/push-beta-final-pass into main" (Builder branch: `feature/push-beta-final-pass`, HEAD `162859e9`)
+
+---
+
+## Edit Profile avatar Save hung on “Saving”
+
+**Bug:** Changing avatar on mobile left the form on **Saving** indefinitely. Uploads sent full iPhone camera files (often multi‑MB) with no timeout; post-save navigation wasn’t awaited and Saving wasn’t cleared if redirect stalled. The claimed 30s timeout was never on `main`.
+
+**Fix:** Client resize/re-encode to ≤1024px JPEG before storage upload; 30s upload timeout with a clear error; HEIC allowed when the browser can decode; Save clears Saving in `finally` before follow-up navigation; real upload error messages surface in the form.
 
 ---
 
@@ -677,7 +1612,7 @@ Verified in-browser via a throwaway route mounting the real `RunSheetEntry` (tem
 - **Display Name / Bio validation and UX (2026-08-01):** proactive UX/validation improvement (not a bug fix). Display name: new **30-character max** (was unbounded) — `MAX_PROFILE_DISPLAY_NAME_LENGTH` + `applyDisplayNameInputLimit` in `lib/user/profileFormUtils.ts` (reuses the existing `applyTextInputLimit` primitive from `lib/textInputLimits.ts`, same pattern as the Event Brands name cap), wired into `EditProfileForm.tsx`'s `handleDisplayNameChange` so typing/pasting past 30 chars truncates live rather than waiting for save; server-side enforced too — `saveUserProfile()` (`lib/user/currentUser.ts`) now does `input.display_name.trim().slice(0, MAX_PROFILE_DISPLAY_NAME_LENGTH)` before persisting (no Supabase schema/SQL change — out of scope per `FTC_WORKFLOW.md`, and unnecessary since this is an application-layer cap). Bio: kept its existing 150-char limit but gained a **3-visible-row cap** — reused the existing `.ftc-fixed-scroll-textarea` / `.ftc-fixed-scroll-textarea-3` CSS classes (already used by `ProposeBookingRateSheet.tsx`'s notes field) so the textarea has a fixed height with internal scroll instead of growing, and reused `applyCappedMultilineInputLimit` (`lib/cappedMultilineInput.ts`, the same dual length+line-count limiter already backing that same notes field) so pasting or typing several consecutive blank lines can't balloon the field past 3 explicit lines even though blank lines are "cheap" on the 150-char budget — natural 3-line bios are preserved in full. `ProfileFormField.tsx` gained `textareaRows`/`textareaOnKeyDown`/`textareaOnCompositionStart`/`textareaOnCompositionEnd` props, mirroring the identical prop surface `BookingFormField.tsx` already used for the same purpose, for cross-domain consistency; IME composition is handled the same way `ProposeBookingRateSheet.tsx` does (raw passthrough mid-composition, cap applied on `compositionend`) since line-counting is more fragile mid-composition than simple length capping. Deleted the now-orphaned `.ftc-profile-bio-textarea` CSS rule it replaced. Layout-safety audit: grepped every `display_name` render site app-wide; most already had safe `min-w-0 truncate` (DM inbox/header) or `break-words [overflow-wrap:anywhere]` (profile heading — a heading wraps rather than truncates) wrapping; found and fixed 4 genuine gaps that had no overflow protection at all — `DiscoverFeaturedProfileCard.tsx`'s name heading, `EventLineupBookingCard.tsx`'s DJ name link, the shared `DjInviteSelectionRow` in `SendBookingRequestsPanel.tsx` (covers both the Events-create and Event-Plans DJ-invite flows at once), and `bookings/page.tsx`'s "From {name}" planner label — each fixed with the exact same `min-w-0 truncate` (or bare `truncate`, parent already `min-w-0`) idiom already proven elsewhere in the codebase, no new CSS. Regression tests added: `testDisplayNameInputLimit`, `testBioInputLimit` (includes the specific "5 consecutive blank lines" collapse case), `testProfileDisplayNameAndBioFieldUx` (source-regex wiring checks), `testLongDisplayNameLayoutSafety` (source-regex checks on all render sites above) — all in `scripts/test-regressions.mts`. Verified live at 390px and 1280px: display name hard-caps at exactly 30 chars while typing (counter turns red only when — pre-existing legacy values — already over the limit), a simulated paste of many blank lines collapses to 3 explicit lines immediately (not just on next keystroke), repeated Enter at the 3-line cap is silently blocked, and a natural 3-line bio renders in full with the container's `scrollHeight` only marginally exceeding `clientHeight` (internal scroll, not growth). Did not live-verify the 4 layout-safety fixes with an actual long saved name on affected surfaces (Discover is DJ-only — the QA planner test account redirects away from it; the event-lineup-card/DJ-invite-row/booking-label surfaces need real booking data to reach) — relied on the source-regex regression tests plus the fact that each fix is a minimal, precedent-matched one-line class addition, not new logic.
 - **Regression suite: 12 permanently-disabled tests re-enabled (2026-08-01):** `scripts/test-regressions.mts`'s `main()` had 12 test calls commented out with `// TEMP-SKIP (pre-existing, unrelated failure...)` prefixes — left disabled (not fixed, not reverted) by an earlier "multi-photo work" session, meaning any real regression in booking-card scroll math, proposal-notes line capping, event-detail parallel loading, composer keyboard-dismiss math, DM reaction gestures, chat message grouping/bubble geometry, event-create field limits, or the planner title-feedback row would have gone completely undetected. Investigated each: read the actual current source each assertion checks against, and determined the FUNCTION/APP CODE was correct in every case — every failure was the TEST's own expectation that was wrong, either (a) an authoring bug present since the exact same commit that introduced both the test and the function it tests (arithmetic/off-by-one errors in hand-computed expected values, e.g. `computeScrollTopAfterShrink`/`computeManualMessageListScrollTop`/`getComposerLineBeforeCursor`'s clamped-boundary and cursor-position cases, or a test written for a function signature edge case the author's own code doesn't hit the way they assumed, e.g. `applyCappedMultilineInputLimit` returning a truncated string instead of `null` at the exact-limit boundary), or (b) a source-regex that was too broad/specific and a later, legitimate refactor invalidated it — e.g. `isOwnMessage`/`disabled:opacity-50` checks scanning a whole file that also contains an unrelated component (`DmReactionPicker`) using those same strings for a different purpose; `shellLayout` renamed to `bubbleHandlers`; `DmReactionPicker` moved from being referenced per-bubble-component to living only in the shared `ChatMessageBubbleShell`; a `Promise.all` destructure gaining a 4th `sentBookings` query; `getEventNameVenueFieldErrors` superseded by the more complete `getEventFormFieldErrors` when inline event-date/time validation was added; `previousInGroupHadReactions` intentionally kept as a deprecated-but-unused typed prop rather than removed outright; the shared `relative` positioning and `ftc-mobile-nav-offset` class literals consolidated into their own token/constants files instead of being duplicated inline. Fixed every assertion to match current, correct behaviour (never touched app code, since no actual bug was found) and, for `testMessageHistoryGestureTarget` specifically — which needs real DOM `instanceof` checks (`Node`/`Element`) that can't be duck-typed — extracted it into a new standalone `scripts/test-message-history-gesture-target.ts` using `happy-dom` (already an installed devDependency, same established pattern as `scripts/test-dm-chat-reopen-scroll.ts` and siblings) instead of leaving it permanently skipped; also fixed a second, previously-undiscovered `shouldStabilizeComposerTouchMove` DOM-wiring bug in that same test (the button under test was never actually appended to the composer root it was tested against). All 12 calls uncommented in `main()`; full `npm run test:regressions` now passes clean (only the separate, already-known `testQaEnvironmentResetScript` SQL-formatting issue remains, unrelated and untouched).
 - **Event Brands (2026-08-01):** promoter/both-role profile field replaces the old single "Event brand name" text field with a Music-Genres-style removable chip list (`ProfileEventBrandsField.tsx`) — tap **+ Add brand** for an inline single-line text input, Enter/blur commits, max **10 brands**, max **40 characters** each, trims + collapses internal whitespace, case-insensitive duplicate rejection, blank entries ignored, live `N / 10 brands` counter; read-only public profile shows the same chips (`PromoterProfileSections.tsx`) via a new shared `ProfileTagChipList.tsx` (also now used by `ProfileGenreTags.tsx` — no behaviour change there). **No schema change**: reuses the existing `public.users.promoter_brand_name` text column as a `|`-joined list (mirrors how `genre` already stores a delimited tag list in one column) — `parseStoredEventBrands`/`serializeEventBrands`/`addEventBrandTag` in `lib/user/profileFormUtils.ts`. An existing user's single brand name has no separator, so it parses as a one-item list automatically — zero migration, zero data loss, zero deploy-ordering risk (a column *rename* was considered and rejected specifically because `PROFILE_FIELDS` in `lib/user/currentUser.ts` has no missing-column fallback and is on the hot path of every authenticated page load via `OnboardingGuard`; reusing the existing column sidesteps that entirely). `resolveProfileIdentityPresentation`'s brand-name identity fallback now derives the *first* brand instead of the raw delimited string. DJ profile editing (`DjProfileSections.tsx`) untouched.
-- **Event Brands — event creation (2026-08-01):** the promoter/both-role create-event form (`EventsPageClient.tsx`) gained an optional **Event brand** chip picker (`EventBrandSelectField.tsx`, reuses the same chip styling, single-select): 0 saved brands → field doesn't render, event creation unaffected; 1 saved brand → auto-preselected on opening the create flow (still changeable — deselect by tapping it again); 2+ → tap to choose one, none selected by default. Never required. Adds a genuinely new, optional `event_brand text` column (`scripts/setupEventBrands.sql`, **not yet run in production — Isaac needs to run this**) — unlike the profile side, there was no existing column to reuse, so this one *does* need a migration. Protected against the deploy-before-migration window the same way `crew_chat_started_at`/`history_hidden_at` already are: `lib/events/eventQueryFields.ts` gained the same missing-column-detect-and-retry-without machinery for `event_brand` on reads. Reads alone aren't enough for an *insert* — `mapEventInputToRow` (now exported from `lib/events.ts` for testability) only includes `event_brand` in the payload when a brand is actually selected *and* the column isn't already known to be missing; this specific check exists because `withEventFieldsFallback`'s retry only varies the `.select()` fields, not the insert payload, so an unconditional `event_brand` key would retry the identical failing insert forever — verified with a dedicated test (`testMapEventInputToRowEventBrandFallback`) exercising the missing-column path directly. Net effect: event creation is unaffected today (no brand can be selected until a promoter saves one, and even then the brand silently won't persist until the migration runs, without breaking creation). Event *editing* and the event detail page do not show/edit the brand — out of scope for this MVP pass, creation-only per the spec.
+- **Event Brands — event creation (2026-08-01):** the promoter/both-role create-event form (`EventsPageClient.tsx`) gained an optional **Event brand** chip picker (`EventBrandSelectField.tsx`, reuses the same chip styling, single-select): 0 saved brands → field doesn't render, event creation unaffected; 1 saved brand → auto-preselected on opening the create flow (still changeable — deselect by tapping it again); 2+ → tap to choose one, none selected by default. Never required. Adds a genuinely new, optional `event_brand text` column (`scripts/setupEventBrands.sql`, **applied in Production 2026-08-16**) — unlike the profile side, there was no existing column to reuse, so this one *does* need a migration. Protected against the deploy-before-migration window the same way `crew_chat_started_at`/`history_hidden_at` already are: `lib/events/eventQueryFields.ts` gained the same missing-column-detect-and-retry-without machinery for `event_brand` on reads. Reads alone aren't enough for an *insert* — `mapEventInputToRow` (now exported from `lib/events.ts` for testability) only includes `event_brand` in the payload when a brand is actually selected *and* the column isn't already known to be missing; this specific check exists because `withEventFieldsFallback`'s retry only varies the `.select()` fields, not the insert payload, so an unconditional `event_brand` key would retry the identical failing insert forever — verified with a dedicated test (`testMapEventInputToRowEventBrandFallback`) exercising the missing-column path directly. Net effect while the column was missing: event creation was unaffected, but a selected brand silently did not persist. **Since the column was applied (2026-08-16) that caveat no longer applies** — `isEventBrandColumnMissing()` never trips, so `mapEventInputToRow` includes the `event_brand` key whenever a brand is resolved. Event *editing* and the event detail page do not show/edit the brand — out of scope for this MVP pass, creation-only per the spec.
 - **Event Brands — auto-preselect fix (2026-08-01):** live production verification (real authenticated session, real QA account with one saved brand) caught the 1-brand auto-preselect not actually applying — the chip rendered but never showed as selected. Root cause: it was implemented as a separate `useEffect` setting `form.eventBrand`, which raced against `openCreateFlow()` / the "From scratch" handler / `handleSelectPlan()` — all of which reset the *entire* form (including `eventBrand` back to `null`) and are declared later in the component, so in the same effect flush they ran after and clobbered the auto-select effect's own update. Fixed by removing the effect and computing the default (`defaultEventBrand`) inline at every place the form resets for a new event instead, so there's no separate update left for a later reset to undo; also covers the one reset path with no such call site at all (a calendar-origin bootstrap can open the form already-populated on the very first render, before `guardProfile` has loaded — falls back to unselected in that instant rather than getting it wrong). Verified live after the fix: chip now shows selected (`aria-pressed="true"`, primary-coloured border) on opening the create form, and remains deselectable by tapping it again.
 - **Event Brand chips match Genre chips (2026-08-01):** UX polish pass — `ProfileTagChipList.tsx` now exports a shared `PROFILE_TAG_CHIP_BASE_CLASS` (border, background, rounding, `text-xs font-medium`) consumed by the read-only chip list itself *and* by both editable pickers (`ProfileGenrePicker.tsx`'s selected-tag chip, `ProfileEventBrandsField.tsx`'s removable brand chip) — Event Brand and Genre chips are now guaranteed byte-for-byte identical wherever they appear, not just visually similar independently-typed literals. Only the brand chip's horizontal padding differs (`pl-3 pr-2` instead of `px-3`), and only because it carries an inline remove ✕ button that Genre's edit-mode chip doesn't have — same height, border, and typography in every other respect. Confirmed (via the existing `PromoterProfileSections.tsx` early-return) that a profile with zero event brands already renders nothing, no empty card.
 - **Event Brand chips overflowing on long/unbroken names — fixed (2026-08-01):** confirmed root cause: the existing 40-char limit (`MAX_EVENT_BRAND_NAME_LENGTH`) alone can't prevent overflow — a 40-character brand with no spaces has no natural line-break point, and none of the chip components had a `max-width`/truncation, so an otherwise-valid unbroken name could still force the chip (and the page) wider than the viewport instead of wrapping. Also found a *separate* latent gap while implementing: `parseStoredEventBrands`/`serializeEventBrands` (`lib/user/profileFormUtils.ts`) previously shared the SAME truncating helper as `addEventBrandTag`, meaning any pre-existing stored brand already over 40 chars (legacy data, or anything that reached storage another way) got silently and irreversibly shortened the next time the profile was merely *loaded or saved for an unrelated reason* — not just when the user actively edited that brand. Split into two paths: `normalizeNewEventBrandName` (still enforces the 40-char cap, used only by `addEventBrandTag` — the actual point of entry) vs. `dedupeEventBrandsPreservingLength` (trims/dedupes but never truncates, used by parse/serialize — so existing stored values, even oversized ones, pass through untouched). Rendering fix: `ProfileTagChipList.tsx` now exports `PROFILE_TAG_CHIP_MAX_WIDTH_CLASS = "max-w-[12rem]"`, paired with `min-w-0 truncate` on every chip that renders a saved/selected brand — the read-only list itself (also covers Genre tags, harmless since those are all short/curated), `ProfileGenrePicker`'s selected-tag chips (same plain-text shape), `ProfileEventBrandsField`'s editable brand chips (text wrapped in its own inner `min-w-0 truncate` span so only the text ellipsizes — the remove ✕ stays a separate `shrink-0` sibling, always fully visible/tappable), and `EventBrandSelectField.tsx` (event-creation selector, previously had its own untouched styling with the same overflow gap). 10-brand max, case-insensitive dedup, whitespace collapsing, and add/remove behaviour are all unchanged. Verified live (390px and desktop): short brand, exactly-40-char, a 60-char unbroken word, and 10 brands at once all render cleanly with zero horizontal overflow (`document.documentElement.scrollWidth <= window.innerWidth` confirmed at both widths); live-typing a >40-char name into the add-brand input still caps at exactly 40 via the existing `applyEventBrandNameInputLimit`, commits without erroring, and displays truncated with the ✕ intact.
@@ -991,6 +1926,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 | Feature | Script / migration |
 |---------|-------------------|
+| **Web Push notifications** | `supabase/migrations/20260812000000_push_subscriptions.sql` — push_subscriptions table with RLS. **Also requires:** Edge Function deployment, webhook creation, VAPID secrets (see Web Push section above) |
+| **⚠️ Active-thread push suppression** | **`supabase/migrations/20260818000000_active_chat_presence.sql` — NOT applied. Verified missing from production 2026-08-16;** `public.active_chat_presence` does not exist, so the eighth round's "skip a push for a thread the recipient is reading" feature is inert. Fails safe (both the client upsert and `push-send`'s read swallow the error and fall through to a normal send), so nothing is broken by leaving it — the feature just does nothing until pasted. |
 | Event history hide | `supabase/migrations/20250710120000_event_history_hide.sql` |
 | Gig history hide (per-user) | `supabase/migrations/20250710130000_booking_request_history_hides.sql` |
 | Planner Archived tab | `scripts/setupBookingRequestArchiving.sql` (sender `archived_at`) |
@@ -999,12 +1936,27 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew-chat auto-start auth | `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql` |
 | Remove legacy public message INSERT | `supabase/migrations/20250715213000_remove_legacy_public_message_insert.sql` |
 | **QA beta data reset** | `scripts/resetQaEnvironment.sql` — see `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md` |
-| Event Brands (per-event `event_brand` column) | `scripts/setupEventBrands.sql` — optional, app degrades gracefully without it (see Core product entry above) |
+| ~~Event Brands (per-event `event_brand` column)~~ | `scripts/setupEventBrands.sql` — **APPLIED in Production 2026-08-16.** Verified: `events.event_brand` selectable, and the first events request now returns 200 with no fallback retry. Nothing outstanding. |
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `1b0198d2` — fix(presence): actually dispatch the active-chat heartbeat queries
+- `4e24ff1c` — chat: hold the deep-link target through the whole settle burst
+- `b1f58ca4` — fix(dm): stop the booking card panning the chat sideways below 390px
+- `dba69b37` — chat: hold the deep-link target while layout settles
+- `c197aa1f` — sw: navigate the existing window on notification click
+- `4ac98fe3` — Deploy push-send; document that Vercel never deploys Edge Functions
+- `591c5fbe` — docs(handoff): document scroll-priority fix and active-thread push suppression
+- `51058c41` — fix: target-message scroll survives layout changes; suppress push for active thread
+- `cf8cf1e8` — feat: deep-link push notifications to the exact chat message
+- `7c6cf928` — Integrate PushNotificationsSection into Settings
+- `4923a9b1` — Merge Web Push feature branch to main
+- `6a4f24db` — Remove local-only allowedDevOrigins config
+- `8b3ebd05` — Allow local network dev access for iPhone testing on same Wi-Fi
+- `0454f7b0` — Fix three critical blockers for production deployment
+- `6cf8160e` — fix(profile): stop avatar Save hanging on mobile uploads
 - `83d62519` — fix(booking): hide Accept/Decline for DJ after rate proposal
 - `72475554` — fix(cancel): clear Crew Chats badge — no crew cancel msg, mark event read
 - `9a1b56f4` — fix(cancel): unique per-event cancel DM so DJ unread can fire

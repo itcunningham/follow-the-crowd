@@ -35,6 +35,7 @@ import {
 } from "@/lib/bookingDateTime";
 import {
   collectRunSheetBookingChanges,
+  collectRunSheetDjFacingChanges,
   computeRunSheetSetLabels,
   ensureRunSheetRowsForAcceptedBookings,
   filterRunSheetRowsToAcceptedBookings,
@@ -47,6 +48,7 @@ import {
   mergeAcceptedDjsIntoRunSheetRows,
   moveRunSheetRow,
   notifyCrewChatOfRunSheetUpdate,
+  notifyRunSheetUpdatesForChangedBookings,
   reorderRunSheetRows,
   resolveRunSheetRowDjDisplay,
   saveEventRunSheet,
@@ -1033,6 +1035,7 @@ export default function EventRunSheetSection({
 
     const nextRows = reorderRunSheetRows(rows);
     const runSheetChanges = collectRunSheetBookingChanges(savedRows, nextRows);
+    const djFacingChanges = collectRunSheetDjFacingChanges(savedRows, nextRows);
 
     try {
       const saved = await saveEventRunSheet(eventId, {
@@ -1060,14 +1063,20 @@ export default function EventRunSheetSection({
         setExpandedRowIds(new Set());
       }, 1500);
 
-      // Soft: Save already succeeded. Post to crew chat.
-      // Failures are logged inside the helper.
+      // Soft: Save already succeeded. Post to crew chat, and independently
+      // push each confirmed DJ whose own stage/time materially changed --
+      // failures are logged inside each helper.
       await notifyCrewChatOfRunSheetUpdate({
         eventId,
         eventName,
         changes: runSheetChanges,
         lineup,
         profiles,
+      });
+      await notifyRunSheetUpdatesForChangedBookings({
+        eventName,
+        lineup,
+        changes: djFacingChanges,
       });
     } catch (saveError) {
       logRunSheetSaveError(saveError);

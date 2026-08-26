@@ -81,10 +81,24 @@ export default function DeleteAccountSection({
     onError(null);
 
     try {
+      // Server deletion is authoritative and must not be retried.
+      // Once this succeeds, the account is gone server-side.
       await deleteAccount(confirmation);
-      await signOut();
-      window.location.href = LOGIN_PATH;
+
+      // After server deletion succeeds, local cleanup is best-effort only.
+      // Even if sign-out fails, the account is already deleted and we must navigate away.
+      try {
+        await signOut();
+      } catch (signOutError) {
+        console.error("Sign-out after successful deletion failed:", signOutError);
+        // Continue to redirect; account is deleted server-side regardless
+      }
+
+      // Navigate away using replace() so Back button does not return to deleted-account Settings.
+      window.location.replace(LOGIN_PATH);
     } catch (deleteError) {
+      // Only server-side deletion errors should be reported as deletion failures.
+      // Client-side cleanup failures do not undo server deletion and should not block navigation.
       console.error("Failed to delete account:", deleteError);
       const message =
         deleteError instanceof Error ? deleteError.message : ACCOUNT_DELETION_FAILED_MESSAGE;
@@ -100,15 +114,10 @@ export default function DeleteAccountSection({
     <>
       <section className="rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4 sm:p-5">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-red-300">
-          Danger zone
+          Account deletion
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-          Permanently delete your Follow The Crowd account and personal app data. This
-          removes your profile, signs you out, deletes attachments you uploaded, and
-          cannot be undone. Pending bookings and draft or upcoming events you own will be
-          cancelled automatically. Messages you sent may remain in conversations as
-          &quot;Deleted User&quot; so other users&apos; chats and booking history stay
-          intact.
+          Permanently delete your Follow The Crowd account and personal data. This cannot be undone. Your profile and uploaded attachments will be deleted, and you&apos;ll be signed out. Pending bookings and upcoming events you own will be cancelled. Messages you&apos;ve sent may remain as &quot;Deleted User&quot; to preserve conversations and booking history
         </p>
 
         {loadingWarnings ? (
@@ -116,7 +125,7 @@ export default function DeleteAccountSection({
         ) : warningItems.length > 0 ? (
           <div className="mt-4 rounded-xl border border-0 bg-[var(--ftc-color-warning)] px-4 py-3 text-ftc-bg">
             <p className="text-sm font-medium text-ftc-bg">
-              The following will be cancelled automatically when you delete your account:
+              The following will be cancelled when you delete your account:
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ftc-bg/90">
               {warningItems.map((warning) => (
@@ -152,12 +161,7 @@ export default function DeleteAccountSection({
               Delete your account permanently?
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-              This permanently removes your account, profile, attachments you uploaded,
-              notifications, blocks, and your side of personal app data. Pending booking
-              requests and accepted bookings on upcoming events involving you will be
-              cancelled. Draft or upcoming events you own will be cancelled or removed.
-              Other users&apos; completed history is preserved. Messages you sent may
-              remain as &quot;Deleted User&quot;. This cannot be undone.
+              This will permanently delete your account, profile, and attachments. Pending bookings and upcoming events you own will be cancelled. Messages you&apos;ve sent may remain as &quot;Deleted User&quot; to preserve other users&apos; conversations and booking history. This cannot be undone
             </p>
 
             {warningItems.length > 0 ? (

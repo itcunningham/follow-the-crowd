@@ -11,10 +11,6 @@ export const HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS = INLINE_TAB_FEEDBACK_FADE_MS;
 export const HISTORY_REMOVAL_FEEDBACK_FADE_MS = 300;
 export const HISTORY_REMOVAL_FEEDBACK_CLEAR_MS = INLINE_TAB_FEEDBACK_CLEAR_MS;
 
-/** Shared muted inline feedback typography (Event Plans toolbar + history header slot). */
-export const INLINE_TAB_FEEDBACK_TEXT_CLASS =
-  "text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-300 sm:text-xs";
-
 export function formatEventsHistoryRemoveSuccessMessage(count: number): string {
   return `${count} event${count === 1 ? "" : "s"} removed from history`;
 }

@@ -297,6 +297,7 @@ function Harness({
     scrollRef: chatScrollApi.scrollRef,
     highlightBookingFocus: () => {},
     suppressAutoScrollRef,
+    pinnedToBottomRef: chatScrollApi.pinnedToBottomRef,
   });
 
   apiRef.current = chatScrollApi;

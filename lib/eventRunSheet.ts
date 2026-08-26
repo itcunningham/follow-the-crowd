@@ -1,10 +1,6 @@
 import type { BookingRequest } from "@/lib/bookingRequests";
 import { SET_TIME_RANGE_JOINER } from "@/lib/bookingDateTime";
-import { formatRunSheetUpdatedDmMessage } from "@/lib/dm/dmBookingSystemMessages";
-import {
-  createNotification,
-  getNotificationCreateErrorMessage,
-} from "@/lib/notifications";
+import { createNotification, getNotificationCreateErrorMessage } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 import { getCurrentUserId } from "@/lib/user/currentUser";
@@ -843,6 +839,110 @@ export function collectChangedRunSheetBookingIds(
 }
 
 /**
+ * Stricter than `describeRunSheetBookingChange` (the crew-chat notice, which
+ * also surfaces notes and pure reorders): only a real stage or set-time value
+ * counts as DJ-facing here. Notes are planner-only -- the crew-chat notice
+ * already excludes them from its own summary for the same reason -- and a
+ * pure reorder never materially affects a DJ whose own stage/time didn't
+ * move. Never fires from a still-blank value, so adding a fresh row to the
+ * sheet doesn't push before it actually carries a real assignment (a
+ * draft/unassigned row). Returns null when nothing DJ-facing changed.
+ */
+function describeRunSheetDjFacingChange(
+  savedRows: RunSheetRowInput[],
+  currentRows: RunSheetRowInput[],
+  bookingRequestId: string,
+): string | null {
+  const savedForBooking = rowsForBookingRequest(savedRows, bookingRequestId);
+  const currentForBooking = rowsForBookingRequest(currentRows, bookingRequestId);
+
+  if (currentForBooking.length === 0) {
+    return null;
+  }
+
+  const pairs = pairRunSheetRowsForBooking(savedForBooking, currentForBooking);
+  let stageChanged = false;
+  let timeChanged = false;
+
+  for (const { saved, current } of pairs) {
+    if (!current) {
+      continue;
+    }
+
+    const stageValue = current.stage_area.trim();
+    const timeValue = formatRunSheetSetTimeForDm(current.start_time, current.finish_time);
+
+    if (!saved) {
+      if (stageValue) stageChanged = true;
+      if (timeValue) timeChanged = true;
+      continue;
+    }
+
+    if (stageValue && stageValue !== saved.stage_area.trim()) {
+      stageChanged = true;
+    }
+
+    if (timeValue && timeValue !== formatRunSheetSetTimeForDm(saved.start_time, saved.finish_time)) {
+      timeChanged = true;
+    }
+  }
+
+  if (!stageChanged && !timeChanged) {
+    return null;
+  }
+
+  if (stageChanged && timeChanged) {
+    return "Your run sheet details were updated";
+  }
+
+  // Multi-set DJs can have more than one row for the same booking (see
+  // pairRunSheetRowsForBooking above) -- aggregate every current row's value
+  // rather than picking one arbitrarily, same as describeRunSheetBookingChange
+  // does for the crew-chat notice, so the copy can't show a stale/wrong set's
+  // value when the row that actually changed isn't the last one.
+  if (timeChanged) {
+    const times = currentForBooking
+      .map((row) => formatRunSheetSetTimeForDm(row.start_time, row.finish_time))
+      .filter(Boolean);
+    return times.length > 0
+      ? `Set time changed to ${times.join(" / ")}`
+      : "Your run sheet details were updated";
+  }
+
+  const stages = currentForBooking.map((row) => row.stage_area.trim()).filter(Boolean);
+  return stages.length > 0
+    ? `Stage changed to ${stages.join(" / ")}`
+    : "Your run sheet details were updated";
+}
+
+/** Booking request ids + DJ-facing push copy for confirmed DJs who need a push after Save. */
+export function collectRunSheetDjFacingChanges(
+  savedRows: RunSheetRowInput[],
+  currentRows: RunSheetRowInput[],
+): RunSheetBookingChange[] {
+  const ids = new Set<string>();
+
+  for (const row of [...savedRows, ...currentRows]) {
+    const id = row.booking_request_id?.trim();
+    if (id) {
+      ids.add(id);
+    }
+  }
+
+  const changes: RunSheetBookingChange[] = [];
+
+  for (const bookingRequestId of ids) {
+    const changeSummary = describeRunSheetDjFacingChange(savedRows, currentRows, bookingRequestId);
+
+    if (changeSummary) {
+      changes.push({ bookingRequestId, changeSummary });
+    }
+  }
+
+  return changes;
+}
+
+/**
  * After a successful Save: post a system message to crew chat about the runsheet update.
  * Soft-fail — never throws; Save already succeeded.
  */
@@ -899,71 +999,61 @@ export async function notifyCrewChatOfRunSheetUpdate(options: {
 }
 
 /**
- * After a successful Save: DM + in-app notification to each DJ whose row
- * changed. Soft-fail — never throws; Save already succeeded.
+ * After a successful Save: push directly to each confirmed DJ whose stage or
+ * set time materially changed. Soft-fail — never throws; Save already
+ * succeeded.
  *
- * Channel is the booking DM (not crew chat). Notification type is `message`
- * so `create_notification` allows planner → DJ without a booking_update gate.
+ * Independent of `notifyCrewChatOfRunSheetUpdate` above, which requires crew
+ * chat to be unlocked (2+ accepted DJs, or a manual planner start) and posts
+ * one push per sender+event+crew-chat-link — identical to every other message
+ * in that chat, so it collides with `create_notification`'s dedupe window if
+ * anything else was posted to the same crew chat in the last 10 minutes. A
+ * single confirmed DJ on a still-locked crew chat, or a run-sheet save that
+ * happens to land inside that window, previously got no push at all — the
+ * same class of gap `notifyConfirmedDjsOfEventScheduleChange`
+ * (`lib/events/eventGroupChatUpdate.ts`) already fixed for whole-event
+ * schedule edits. This mirrors that fix: type is `message` so
+ * `create_notification` allows planner → DJ without the booking_update gate,
+ * the link is the booking DM (always reachable, independent of crew-chat
+ * state, and gives this push its own dedupe key so it can never collide with
+ * a crew-chat message), and it never inserts a DM message of its own — the
+ * crew chat post above is already the visible record of what changed.
  */
 export async function notifyRunSheetUpdatesForChangedBookings(options: {
+  eventName: string;
   lineup: BookingRequest[];
   changes: RunSheetBookingChange[];
 }): Promise<void> {
-  const { lineup, changes } = options;
+  const { eventName, lineup, changes } = options;
 
   if (changes.length === 0) {
     return;
   }
 
-  let authorId: string;
+  const title = `${eventName} · Run sheet updated`;
 
-  try {
-    authorId = await getCurrentUserId();
-  } catch (authorError) {
-    console.warn("[run-sheet] Could not resolve author for DM notify:", authorError);
-    return;
-  }
+  await Promise.all(
+    changes.map(async (change) => {
+      const booking = lineup.find((item) => item.id === change.bookingRequestId);
 
-  for (const change of changes) {
-    const booking = lineup.find((item) => item.id === change.bookingRequestId);
-
-    if (!booking?.conversation_id || booking.status !== "accepted") {
-      continue;
-    }
-
-    const messageText = formatRunSheetUpdatedDmMessage(
-      booking.event_name,
-      change.changeSummary,
-    );
-
-    try {
-      const { error: insertError } = await supabase.from("messages").insert({
-        conversation_id: booking.conversation_id,
-        user_id: authorId,
-        text: messageText,
-      });
-
-      if (insertError) {
-        console.warn("[run-sheet] Failed to insert run-sheet DM:", insertError);
-        continue;
+      if (!booking?.conversation_id || booking.status !== "accepted") {
+        return;
       }
 
       try {
         await createNotification(
           booking.recipient_id,
           "message",
-          "New message",
-          messageText,
+          title,
+          change.changeSummary,
           `/dm/${booking.conversation_id}`,
         );
       } catch (notificationError) {
         console.warn(
-          "[run-sheet] Run-sheet DM inserted but notification failed:",
+          "[run-sheet] Run-sheet push failed:",
           getNotificationCreateErrorMessage(notificationError),
         );
       }
-    } catch (notifyError) {
-      console.warn("[run-sheet] Run-sheet DJ notify failed:", notifyError);
-    }
-  }
+    }),
+  );
 }

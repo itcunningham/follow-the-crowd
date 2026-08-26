@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, formatNotificationPreview } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
 import { getEventById, isEventCancelled, type EventStatus } from "@/lib/events";
 import {
@@ -323,8 +323,8 @@ export async function notifyCrewChatStarted(options: {
           await createNotification(
             participantId,
             "message",
-            eventName,
-            CREW_CHAT_STARTED_NOTICE,
+            `${eventName} · Crew chat ready`,
+            "Your event crew chat is now available",
             link,
           );
         } catch (notificationError) {
@@ -446,11 +446,20 @@ export async function sendEventCrewChatMessage(
     throw new Error("Crew chat is not available for this event yet");
   }
 
-  const { error: insertError } = await supabase.from("messages").insert({
-    event_id: eventId,
-    user_id: userId,
-    text: trimmed,
-  });
+  // .select("id").single() (not a bare insert) so the id can be threaded
+  // through as the notification's message identity below -- the exact same
+  // shape sendEventCrewChatMessageWithAttachments already uses successfully
+  // for every image send, so the sender's own RLS read-back of a row they
+  // just wrote is already proven to work on this table.
+  const { data: messageRow, error: insertError } = await supabase
+    .from("messages")
+    .insert({
+      event_id: eventId,
+      user_id: userId,
+      text: trimmed,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     throw insertError;
@@ -477,9 +486,9 @@ export async function sendEventCrewChatMessage(
   const senderProfile = await getCurrentUserProfile();
 
   const senderName = senderProfile?.display_name?.trim() || "Group member";
-  const preview =
-    trimmed.length > 80 ? `${trimmed.slice(0, 77)}...` : trimmed;
+  const preview = formatNotificationPreview(trimmed);
   const link = getEventCrewChatLink(eventId);
+  const title = `${senderName} · ${eventName}`;
 
   await Promise.all(
     participants
@@ -489,9 +498,11 @@ export async function sendEventCrewChatMessage(
           await createNotification(
             participantId,
             "message",
-            eventName,
-            `${senderName}: ${preview}`,
+            title,
+            preview,
             link,
+            null,
+            messageRow?.id as string | undefined,
           );
         } catch (notificationError) {
           console.error(

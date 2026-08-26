@@ -76,7 +76,11 @@ import {
   resolveBookingDateKey,
   sortDjGigsCalendarAgendaBookings,
 } from "../lib/bookingRequests";
-import { formatEventGroupChatUpdateMessage } from "../lib/events/eventGroupChatUpdate";
+import {
+  formatEventGroupChatUpdateMessage,
+  formatEventScheduleChangeSummary,
+  selectDjFacingScheduleChanges,
+} from "../lib/events/eventGroupChatUpdate";
 import { parseEventGroupChatUpdateMessage } from "../lib/events/eventGroupChatUpdateMessage";
 import {
   getAppendedMessageIds,
@@ -92,6 +96,11 @@ import {
 } from "../lib/dm/dmBookingCardExpandScroll";
 import { CHAT_NEAR_BOTTOM_THRESHOLD_PX } from "../lib/useChatScroll";
 import { computeChatMessageCenterScrollTop } from "../lib/dm/chatBookingTarget";
+import {
+  CHAT_MESSAGE_TARGET_PARAM,
+  parseChatMessageTargetIdParam,
+} from "../lib/chat/messageTargetScroll";
+import { buildNotificationTargetHref } from "../lib/notifications";
 import {
   applyManualMessageListScrollDelta,
   computeManualMessageListScrollTop,
@@ -125,6 +134,11 @@ import {
   resolveAvatarImageUrl,
   resolveAvatarObjectUrl,
 } from "../lib/user/avatarImageUrl";
+import {
+  PROFILE_IMAGE_MAX_EDGE_PX,
+  PROFILE_IMAGE_UPLOAD_TIMEOUT_MS,
+  withProfileImageUploadTimeout,
+} from "../lib/user/uploadProfileImage";
 import {
   buildChatMessageGroupLayout,
   CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS,
@@ -232,6 +246,7 @@ import { resolveCrewChatSeenLabel } from "../lib/events/crewChatReadReceipts";
 import {
   collectChangedRunSheetBookingIds,
   collectRunSheetBookingChanges,
+  collectRunSheetDjFacingChanges,
   computeRunSheetSetLabels,
   describeRunSheetBookingChange,
   hasUnsavedRunSheetEdits,
@@ -314,7 +329,14 @@ import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation, addEventBrandTag, parseStoredEventBrands, serializeEventBrands, MAX_PROMOTER_EVENT_BRANDS, MAX_EVENT_BRAND_NAME_LENGTH, PROFILE_GENRE_OPTIONS, applyDisplayNameInputLimit, MAX_PROFILE_DISPLAY_NAME_LENGTH, applyBioInputLimit, MAX_PROFILE_BIO_LENGTH, MAX_PROFILE_BIO_LINES } from "../lib/user/profileFormUtils";
 import { mapEventInputToRow, type EventInput } from "../lib/events";
-import { markEventBrandColumnMissing, resetEventBrandColumnMissingFlag } from "../lib/events/eventQueryFields";
+import {
+  markEventBrandColumnMissing,
+  resetEventBrandColumnMissingFlag,
+  markHistoryHiddenAtColumnMissing,
+  resetHistoryHiddenAtColumnMissingFlag,
+  resetCrewChatStartedAtColumnMissingFlag,
+  withEventFieldsFallback,
+} from "../lib/events/eventQueryFields";
 import { PROPOSE_RATE_HELPER_MAX_OPENS } from "../lib/booking/proposeRateHelperPreference";
 import {
   applyCappedMultilineInputLimit,
@@ -880,7 +902,11 @@ function testDmBookingSystemMessages() {
   assert.match(bookingRequestsSource, /formatRateProposedDmSystemMessage/);
   assert.match(bookingRequestsSource, /DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_RATE_DECLINED_MESSAGE/);
-  assert.match(bookingRequestsSource, /DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE/);
+  // The accepted-proposal notice is now written through its versioned
+  // per-booking formatter rather than the bare constant -- see
+  // testRateProposalLifecycleNoticesAreVersionedPerBooking.
+  assert.match(bookingRequestsSource, /formatProposedRateAcceptedDmMessage/);
+  assert.match(bookingRequestsSource, /formatRateProposalDeclinedDmMessage/);
   // Acceptance inserts the per-booking form of the confirmed message; see
   // testBookingAcceptedDmMessageIsScopedToTheBooking for why the bare constant
   // (and event-name-only form) could not be used here.
@@ -4473,6 +4499,85 @@ function testMapEventInputToRowEventBrandFallback() {
   }
 }
 
+/**
+ * Beta-blocker: event Save could get stuck on "Saving" forever.
+ * withEventFieldsFallback's while loop kept retrying as long as
+ * markMissingOptionalEventColumn(error) returned true -- but that function
+ * returns true purely on error-pattern match, not on whether the flag
+ * actually changed. If a column was already marked missing (e.g. from an
+ * earlier call in the same browser session) and the query errors again with
+ * that same pattern, selectEventFields() comes back byte-identical and the
+ * loop retried the exact same query forever: the promise never settled, no
+ * catch/finally ever ran, and setSaving(false) never fired.
+ */
+function testWithEventFieldsFallbackStopsWhenProjectionCannotNarrowFurther() {
+  resetHistoryHiddenAtColumnMissingFlag();
+  resetCrewChatStartedAtColumnMissingFlag();
+  resetEventBrandColumnMissingFlag();
+
+  try {
+    // Simulates the column already being marked missing from an earlier
+    // call in this session, so this call's very first projection already
+    // excludes it -- yet the query keeps erroring with that same pattern.
+    markHistoryHiddenAtColumnMissing();
+
+    const staleColumnError = { code: "42703", message: 'column "history_hidden_at" does not exist' };
+    let callCount = 0;
+    const alwaysFailingQuery = async (_fields: string) => {
+      callCount += 1;
+      return { data: null, error: staleColumnError };
+    };
+
+    return withEventFieldsFallback(alwaysFailingQuery).then(
+      () => {
+        throw new Error("withEventFieldsFallback must reject, not resolve, when the query never succeeds");
+      },
+      (error) => {
+        assert.equal(error, staleColumnError, "the real error must surface, not be swallowed");
+        assert.ok(
+          callCount <= 2,
+          `must stop retrying once the projection can't narrow further -- query was called ${callCount} times`,
+        );
+      },
+    );
+  } finally {
+    resetHistoryHiddenAtColumnMissingFlag();
+    resetCrewChatStartedAtColumnMissingFlag();
+    resetEventBrandColumnMissingFlag();
+  }
+}
+
+/** Genuine narrowing must still work: each real 42703 makes real progress. */
+function testWithEventFieldsFallbackStillNarrowsOnGenuineMissingColumns() {
+  resetHistoryHiddenAtColumnMissingFlag();
+  resetCrewChatStartedAtColumnMissingFlag();
+  resetEventBrandColumnMissingFlag();
+
+  try {
+    const seenFields: string[] = [];
+    const query = async (fields: string) => {
+      seenFields.push(fields);
+
+      if (fields.includes("event_brand")) {
+        return { data: null, error: { code: "42703", message: 'column "event_brand" does not exist' } };
+      }
+
+      return { data: { id: "evt-1" }, error: null };
+    };
+
+    return withEventFieldsFallback(query).then((data) => {
+      assert.deepEqual(data, { id: "evt-1" });
+      assert.equal(seenFields.length, 2, "must retry exactly once after genuinely narrowing the projection");
+      assert.notEqual(seenFields[0], seenFields[1], "the retried projection must actually be different");
+      assert.ok(!seenFields[1].includes("event_brand"));
+    });
+  } finally {
+    resetHistoryHiddenAtColumnMissingFlag();
+    resetCrewChatStartedAtColumnMissingFlag();
+    resetEventBrandColumnMissingFlag();
+  }
+}
+
 function testEventPlanUseButtonKeepsStableCardLayout() {
   assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /hidden min-w-0 justify-end sm:flex/);
   assert.match(EVENT_PLANS_TOOLBAR_ROW_CLASS, /h-\[1\.875rem\]/);
@@ -5197,6 +5302,126 @@ async function testDmBookingReturnScroll() {
   testBookingReturnScrollPlumbing();
   testHasSavedDmChatScrollPositionIsNonDestructive();
   await runDmBookingReturnScrollRuntimeTest();
+}
+
+/**
+ * Eighth real-device QA round: tapping a push's ?message=<id> deep link
+ * opened the right DM, but still landed at the bottom -- a prior
+ * source-level trace and an independent QA pass had both concluded the
+ * suppression logic was correct, and it wasn't. Runs the REAL
+ * useChatMessageTargetScroll hook against a happy-dom container with a
+ * fake, manually-triggerable ResizeObserver to prove the fix (syncing
+ * pinnedToBottomRef in the same tick as the direct scrollTop write, before
+ * releasing suppression) actually survives a post-scroll layout change --
+ * something no source-text regex assertion could ever catch, and which the
+ * prior round's tests all passed while this was still broken.
+ */
+async function testMessageTargetScrollPriority() {
+  const { runMessageTargetScrollPriorityTests } = await import(
+    "./test-message-target-scroll-priority.js"
+  );
+  await runMessageTargetScrollPriorityTests();
+}
+
+/**
+ * Ninth real-device QA round: fresh pushes still opened the chat at the
+ * bottom. Every stage upstream was provably correct -- the break was
+ * notificationclick handing the targeted link to the page via postMessage,
+ * which is silently dropped whenever the page has not yet attached its
+ * listener (iOS restores the PWA onto its previous URL and fires
+ * notificationclick before React hydrates). Executes the real public/sw.js
+ * and asserts the full ?message= link reaches the browser on BOTH the
+ * existing-client and closed-app paths.
+ */
+async function testServiceWorkerNotificationClickKeepsTheTarget() {
+  const { run } = await import("./test-sw-notification-click.js");
+  await run();
+}
+
+/**
+ * Round 11: the small-iPhone chat panned sideways. BookingCardFocusRing wraps
+ * every DM booking card and sat in a `flex flex-col items-start` column, where
+ * a child is sized to fit-content and NOT clamped to the column width. Its
+ * child card is `w-full max-w-xs` (a fixed 320px), so the wrapper took 320px
+ * inside a ~271px column and pushed the chat's scrollWidth past the viewport.
+ * Invisible at 390px (row starts at x=64; 64 + 320 = 384 < 390) and only
+ * overflowing below that -- which is why every 390px parity check passed.
+ */
+/**
+ * Round 13: active-chat push suppression never worked in production because
+ * useActiveChatPresence did `void supabase.from(...).upsert(...)`. Supabase's
+ * PostgrestBuilder is a THENABLE, not a promise -- it only issues the HTTP
+ * request when .then() is invoked. `void builder` constructs the query and
+ * discards it, so nothing was ever sent: zero network calls, zero rows, and
+ * no error anywhere, while RLS/grants/schema all tested fine.
+ *
+ * This asserts the builders are actually dispatched, and that no `void`-ed
+ * supabase call sneaks back into this file.
+ */
+function testActiveChatPresenceActuallyDispatchesItsQueries() {
+  const source = readFileSync(
+    new URL("../lib/chat/useActiveChatPresence.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(
+    source,
+    /void\s+supabase\s*\./,
+    "`void supabase.…` never dispatches -- PostgrestBuilder only sends its request when .then() " +
+      "is called. Use the dispatch() helper (or await) instead, or presence silently stops writing.",
+  );
+
+  assert.match(
+    source,
+    /builder\.then\(/,
+    "the presence queries must be dispatched by invoking .then() on the builder",
+  );
+
+  for (const call of ["upsert", "delete"]) {
+    assert.ok(
+      new RegExp(`dispatch\\(\\s*\\n?\\s*supabase[\\s\\S]{0,200}?\\.${call}\\(`).test(source),
+      `the ${call} must go through dispatch() so the request is actually sent`,
+    );
+  }
+
+  // The heartbeat has to stay comfortably inside push-send's PRESENCE_TTL_MS
+  // (45s) or a genuinely-open thread goes stale between beats.
+  const heartbeat = source.match(/ACTIVE_CHAT_PRESENCE_HEARTBEAT_MS = ([\d_]+)/);
+  assert.ok(heartbeat, "heartbeat interval constant must exist");
+  const heartbeatMs = Number(heartbeat![1].replace(/_/g, ""));
+  assert.ok(
+    heartbeatMs > 0 && heartbeatMs <= 30_000,
+    `heartbeat (${heartbeatMs}ms) must stay well under push-send's 45s presence TTL`,
+  );
+}
+
+function testBookingCardFocusRingCannotOverflowItsColumn() {
+  const source = readFileSync(
+    new URL("../app/components/dm/BookingCardFocusRing.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /className=\{`relative max-w-full \$\{roundedClassName\}`\}/,
+    "BookingCardFocusRing's wrapper must keep max-w-full -- without it the fixed max-w-xs card " +
+      "escapes its bubble column and makes the whole chat scroll horizontally on any viewport " +
+      "narrower than 390px",
+  );
+
+  const layout = readFileSync(
+    new URL("../app/components/booking/DmBookingCardLayout.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // If the card ever stops being a fixed width, the cap above is still correct
+  // but this test's rationale changes -- fail loudly so it gets re-reasoned.
+  assert.match(
+    layout,
+    /DM_BOOKING_CARD_MAX_WIDTH_CLASS = "max-w-xs"/,
+    "the booking card is still expected to be a fixed max-w-xs; if this changed, re-check " +
+      "whether BookingCardFocusRing still needs its max-w-full cap",
+  );
 }
 
 function testResolvePlannerHistoryHideEventIds() {
@@ -8047,12 +8272,9 @@ function testAccountDeletionClearsEveryProfileColumn() {
 
   // Structural columns, not profile content.
   const notProfileContent = new Set(["user_id", "role", "onboarding_complete"]);
-  // username carries a unique index; clearing it collides on the second
-  // deletion. Deliberately retained - see the comment in the SQL.
-  const deliberatelyKept = new Set(["username"]);
 
   for (const column of profileColumns) {
-    if (notProfileContent.has(column) || deliberatelyKept.has(column)) {
+    if (notProfileContent.has(column)) {
       continue;
     }
 
@@ -8063,16 +8285,55 @@ function testAccountDeletionClearsEveryProfileColumn() {
     );
   }
 
-  // The two private fields specifically, since they are the ones a deleted user
-  // most expects to be gone.
-  assert.match(anonymiseBlock, /\bfull_name\s*=/);
-  assert.match(anonymiseBlock, /\bdj_booking_contact_name\s*=/);
+  // The two private fields specifically: must be set to NULL to preserve
+  // the zero-non-null invariant, not empty strings.
+  assert.match(anonymiseBlock, /\bfull_name\s*=\s*NULL/);
+  assert.match(anonymiseBlock, /\bdj_booking_contact_name\s*=\s*NULL/);
 
-  // username must NOT be cleared - the unique index makes it a collision.
-  assert.doesNotMatch(
+  // username must be set to NULL (safe per unique index WHERE clause that excludes NULL)
+  // rather than a tombstone, to avoid exposing the internal user_id as a public identifier.
+  assert.match(
     anonymiseBlock,
-    /\busername\s*=/,
-    "username is unique-indexed and must stay retained",
+    /\busername\s*=\s*NULL/,
+    "username must be set to NULL to prevent exposing user_id linkability",
+  );
+}
+
+/**
+ * Account deletion success state: after server deletion succeeds, local cleanup failures
+ * must not mask deletion success or leave user stranded on Settings with stale session.
+ */
+function testAccountDeletionSuccessState() {
+  const deleteAccountSectionSource = readFileSync(
+    new URL("../app/components/settings/DeleteAccountSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // After deleteAccount() succeeds, sign-out is best-effort and must not block navigation.
+  // Pattern: deleteAccount() call followed by nested try-catch for signOut().
+  assert.match(
+    deleteAccountSectionSource,
+    /await deleteAccount\(/,
+    "DeleteAccountSection must call deleteAccount()",
+  );
+  assert.match(
+    deleteAccountSectionSource,
+    /try\s*\{\s+await signOut\(\);\s*\}\s*catch/,
+    "Sign-out after successful deletion must be in its own try-catch block",
+  );
+
+  // Navigation must use replace() to prevent Back button returning to deleted-account Settings.
+  assert.match(
+    deleteAccountSectionSource,
+    /window\.location\.replace\(LOGIN_PATH\)/,
+    "Navigation after deletion must use replace() to prevent Back button returning to deleted Settings",
+  );
+
+  // Comment explaining that only server-side deletion errors should be reported
+  assert.match(
+    deleteAccountSectionSource,
+    /Only server-side deletion errors/,
+    "Code must document that only server-side deletion errors should be reported",
   );
 }
 
@@ -8106,16 +8367,16 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
   const stripComments = (source: string) =>
     source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--[^\n]*/g, "");
 
-  const viewSqlRaw = readFileSync(
-    new URL("../scripts/setupPrivateProfileFieldsView.sql", import.meta.url),
+  const tableSetupSqlRaw = readFileSync(
+    new URL("../scripts/setupPrivateProfileFieldsTable.sql", import.meta.url),
     "utf8",
   );
-  const revokeSqlRaw = readFileSync(
-    new URL("../scripts/setupPrivateProfileFieldsRevoke.sql", import.meta.url),
+  const tableSetupSql = stripComments(tableSetupSqlRaw);
+  const deletionSqlRaw = readFileSync(
+    new URL("../scripts/setupAccountDeletion.sql", import.meta.url),
     "utf8",
   );
-  const viewSql = stripComments(viewSqlRaw);
-  const revokeSql = stripComments(revokeSqlRaw);
+  const deletionSql = stripComments(deletionSqlRaw);
   const currentUserSource = stripComments(
     readFileSync(new URL("../lib/user/currentUser.ts", import.meta.url), "utf8"),
   );
@@ -8126,40 +8387,154 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
       .map((entry) => entry.trim())
       .filter((entry) => /^[a-z_]+$/.test(entry));
 
-  // --- the phases must stay separate -------------------------------------
-  // Phase A must be purely additive. A revoke on public.users here would fire
-  // before the code is deployed and break the live owner-profile read.
-  assert.doesNotMatch(
-    viewSql,
-    /revoke[^;]*on table public\.users/,
-    "Phase A must not revoke anything on public.users - it runs before the code is live",
-  );
-  // Phase C must not create the view: if the view only appears here, there is
-  // no safe intermediate state at all.
-  assert.doesNotMatch(
-    revokeSql,
-    /create view public\.my_profile/,
-    "Phase C must not create the view - Phase A has to be runnable on its own first",
-  );
-  // Neither file may contain both halves.
-  for (const [name, sql] of [["Phase A", viewSql], ["Phase C", revokeSql]] as const) {
-    const hasView = /create view public\.my_profile/.test(sql);
-    const hasRevoke = /revoke select on table public\.users from authenticated/.test(sql);
-    assert.ok(
-      !(hasView && hasRevoke),
-      `${name} contains both the view and the revoke - the phases must never be recombined`,
-    );
-  }
-  // The ordering must be documented where someone about to run it will look.
-  assert.match(viewSqlRaw, /PHASE A/);
-  assert.match(revokeSqlRaw, /PHASE C/);
+  // --- Private table setup ------------------------------------------------
+  // The new design uses a separate user_private_data table for owner-only fields
   assert.match(
-    revokeSqlRaw,
-    /DEPLOYED/,
-    "Phase C must state that the code has to be deployed first",
+    tableSetupSql,
+    /create table.*public\.user_private_data/i,
+    "Private table setup must create user_private_data",
+  );
+  assert.match(
+    tableSetupSql,
+    /alter table public\.user_private_data enable row level security/i,
+    "user_private_data must have RLS enabled",
   );
 
-  // --- the projections the app actually asks for -------------------------
+  // Explicit permissions: revoke from all roles first, then grant to authenticated
+  assert.match(
+    tableSetupSql,
+    /revoke all on public\.user_private_data from public;/i,
+    "Must explicitly revoke from public role",
+  );
+  assert.match(
+    tableSetupSql,
+    /revoke all on public\.user_private_data from anon;/i,
+    "Must explicitly revoke from anon role",
+  );
+  assert.match(
+    tableSetupSql,
+    /revoke all on public\.user_private_data from authenticated;/i,
+    "Must explicitly revoke from authenticated role before granting",
+  );
+  assert.match(
+    tableSetupSql,
+    /grant select, insert, update on public\.user_private_data to authenticated;/i,
+    "Must grant SELECT, INSERT, UPDATE to authenticated (no DELETE)",
+  );
+  assert.doesNotMatch(
+    tableSetupSql,
+    /grant.*delete.*on public\.user_private_data/i,
+    "DELETE must NOT be granted to authenticated on user_private_data",
+  );
+
+  // RLS policies: all with explicit TO authenticated clause
+  assert.match(
+    tableSetupSql,
+    /create policy[\s\S]*?for select[\s\S]*?to authenticated\s*using/i,
+    "SELECT policy must have TO authenticated",
+  );
+  assert.match(
+    tableSetupSql,
+    /create policy[\s\S]*?for insert[\s\S]*?to authenticated\s*with check/i,
+    "INSERT policy must have TO authenticated",
+  );
+  assert.match(
+    tableSetupSql,
+    /create policy[\s\S]*?for update[\s\S]*?to authenticated\s*using[\s\S]*?with check/i,
+    "UPDATE policy must have TO authenticated",
+  );
+  assert.doesNotMatch(
+    tableSetupSql,
+    /create policy.*for delete/i,
+    "No DELETE policy should exist on user_private_data (deletion via RPC only)",
+  );
+
+  // RLS protection: owner-only using auth_user_id()
+  assert.match(
+    tableSetupSql,
+    /using \(user_id = public\.auth_user_id\(\)::text\)/i,
+    "RLS must check user_id = auth_user_id()::text for read access",
+  );
+
+  // --- Account deletion must handle private data -------------------------
+  assert.match(
+    deletionSql,
+    /delete from public\.user_private_data/,
+    "Account deletion RPC must delete from user_private_data",
+  );
+  assert.match(
+    deletionSql,
+    /to_regclass.*public\.user_private_data/,
+    "Account deletion RPC must guard user_private_data deletion with to_regclass",
+  );
+
+  // --- Explicit permission hardening for deletion functions ----------------
+  // All three functions must have explicit revokes from public, anon, authenticated
+  // before granting specific execute permissions. This ensures idempotency.
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.check_account_deletion_blockers\(\) from public;/,
+    "check_account_deletion_blockers must explicitly revoke from public",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.check_account_deletion_blockers\(\) from anon;/,
+    "check_account_deletion_blockers must explicitly revoke from anon",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.check_account_deletion_blockers\(\) from authenticated;/,
+    "check_account_deletion_blockers must explicitly revoke from authenticated",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.cleanup_account_deletion_dependencies\(\) from public;/,
+    "cleanup_account_deletion_dependencies must explicitly revoke from public",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.cleanup_account_deletion_dependencies\(\) from anon;/,
+    "cleanup_account_deletion_dependencies must explicitly revoke from anon",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.cleanup_account_deletion_dependencies\(\) from authenticated;/,
+    "cleanup_account_deletion_dependencies must explicitly revoke from authenticated",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.delete_account_data\(\) from public;/,
+    "delete_account_data must explicitly revoke from public",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.delete_account_data\(\) from anon;/,
+    "delete_account_data must explicitly revoke from anon",
+  );
+  assert.match(
+    deletionSql,
+    /revoke all on function public\.delete_account_data\(\) from authenticated;/,
+    "delete_account_data must explicitly revoke from authenticated",
+  );
+
+  // Grant execute only to the public-facing functions, not the internal one
+  assert.match(
+    deletionSql,
+    /grant execute on function public\.check_account_deletion_blockers\(\) to authenticated;/,
+    "check_account_deletion_blockers must grant EXECUTE to authenticated",
+  );
+  assert.match(
+    deletionSql,
+    /grant execute on function public\.delete_account_data\(\) to authenticated;/,
+    "delete_account_data must grant EXECUTE to authenticated",
+  );
+  assert.doesNotMatch(
+    deletionSql,
+    /grant execute on function public\.cleanup_account_deletion_dependencies\(\) to authenticated;/,
+    "cleanup_account_deletion_dependencies must NOT grant EXECUTE to authenticated (internal only)",
+  );
+
+  // --- Profile field projections -----------------------------------------
   const profileFields = listOf(
     currentUserSource.slice(
       currentUserSource.indexOf('const PROFILE_FIELDS =\n  "') + 26,
@@ -8172,75 +8547,128 @@ function testPrivateProfileFieldsAreDatabaseEnforced() {
     "PROFILE_FIELDS must not carry either private column",
   );
 
-  // --- Phase C: the grant on public.users --------------------------------
-  const grantBlock = revokeSql.slice(
-    revokeSql.indexOf("grant select ("),
-    revokeSql.indexOf(") on table public.users to authenticated;"),
-  );
-  const granted = listOf(grantBlock.slice(grantBlock.indexOf("(") + 1));
+  // my_profile view now omits dj_booking_contact_name (fetched separately)
+  // This assertion verifies the read behavior described below
+  // after the cleanupMyProfileView.sql has been run
+  const ownsProfileAssert = currentUserSource.indexOf("OWN_PROFILE_FIELDS");
+  assert.ok(ownsProfileAssert >= 0, "OWN_PROFILE_FIELDS must be defined");
 
-  assert.ok(!granted.includes("full_name"), "full_name must never be granted to authenticated");
-  assert.ok(
-    !granted.includes("dj_booking_contact_name"),
-    "dj_booking_contact_name must never be granted to authenticated",
-  );
-  for (const column of profileFields) {
-    assert.ok(granted.includes(column), `PROFILE_FIELDS column not granted: ${column}`);
-  }
-  assert.ok(
-    granted.includes("deleted_at"),
-    'deleted_at is filtered with .is("deleted_at", null) and must be granted',
-  );
-  assert.match(revokeSql, /revoke select on table public\.users from authenticated;/);
-  assert.doesNotMatch(
-    revokeSql,
-    /revoke (insert|update)[^;]*on table public\.users from authenticated/,
-    "INSERT/UPDATE must be left alone - restricting them breaks profile editing",
-  );
-
-  // --- Phase A: the owner view -------------------------------------------
-  const viewBlock = viewSql.slice(
-    viewSql.indexOf("create view public.my_profile"),
-    viewSql.indexOf("from public.users"),
-  );
-  const viewColumns = listOf(viewBlock.slice(viewBlock.indexOf("select") + 6));
-
-  assert.match(
-    viewSql,
-    /where user_id = public\.auth_user_id\(\)/,
-    "my_profile must be filtered to the caller's own row",
-  );
-  assert.match(viewSql, /security_invoker = false/);
-  assert.match(viewSql, /grant select on public\.my_profile to authenticated;/);
-  assert.match(viewSql, /revoke all on public\.my_profile from anon;/);
-
-  assert.ok(
-    viewColumns.includes("dj_booking_contact_name"),
-    "my_profile must expose dj_booking_contact_name or the owner cannot edit it",
-  );
-  assert.ok(
-    !viewColumns.includes("full_name"),
-    "full_name has no runtime read and must not be exposed through my_profile",
-  );
-  assert.deepEqual(
-    [...viewColumns].sort(),
-    [...profileFields, "dj_booking_contact_name"].sort(),
-    "my_profile must match OWN_PROFILE_FIELDS exactly",
-  );
-
-  // Both phases must reload the PostgREST schema cache or the change is
-  // invisible to the API until something else reloads it.
-  assert.match(viewSql, /notify pgrst, 'reload schema';/);
-  assert.match(revokeSql, /notify pgrst, 'reload schema';/);
-
-  // --- the read path -------------------------------------------------------
+  // --- Two-query read path (final phase, no fallback) -----
+  // The owner's profile is fetched with two queries:
+  // 1. Public fields from my_profile (does NOT include dj_booking_contact_name)
+  // 2. Private contact from user_private_data (authoritative source)
   assert.match(
     currentUserSource,
     /const OWN_PROFILE_SOURCE = "my_profile";/,
-    "the owner profile read must come from the view, not the table",
+    "owner profile comes from my_profile",
   );
-  assert.match(currentUserSource, /\.from\(OWN_PROFILE_SOURCE\)\s*\.select\(OWN_PROFILE_FIELDS\)/);
-  assert.match(currentUserSource, /\.from\("users"\)\s*\.select\(PROFILE_FIELDS\)/);
+
+  // Final phase: OWN_PROFILE_FIELDS equals PROFILE_FIELDS (no dj_booking_contact_name)
+  assert.match(
+    currentUserSource,
+    /const OWN_PROFILE_FIELDS = PROFILE_FIELDS;/,
+    "OWN_PROFILE_FIELDS must equal PROFILE_FIELDS (no private column in public view)",
+  );
+
+  // Two-query pattern: both tables queried, user_private_data is authoritative
+  assert.match(
+    currentUserSource,
+    /\.from\(OWN_PROFILE_SOURCE\)[\s\S]*?\.from\("user_private_data"\)/,
+    "getCurrentUserProfile must query both my_profile and user_private_data",
+  );
+
+  // No fallback: user_private_data is authoritative; if no row exists, value is NULL
+  assert.match(
+    currentUserSource,
+    /privateData\?\.dj_booking_contact_name \?\? null/,
+    "dj_booking_contact_name must use private table as authoritative source (no fallback)",
+  );
+
+  // --- Field distribution in save ----------------------------------------
+  // saveUserProfile distributes fields: public to users, private ONLY to user_private_data
+  // The private field NEVER goes back into the users table - it's a one-way migration
+  assert.match(
+    currentUserSource,
+    /publicUpdatePayload/,
+    "saveUserProfile must separate public fields into their own update",
+  );
+  assert.match(
+    currentUserSource,
+    /privateData.*dj_booking_contact_name/,
+    "saveUserProfile must extract dj_booking_contact_name for private table",
+  );
+  assert.match(
+    currentUserSource,
+    /\.from\("users"\)[\s\S]*?\.from\("user_private_data"\)/,
+    "saveUserProfile must update users AND user_private_data separately",
+  );
+  // The real call is `.from("user_private_data").upsert(privateData, { onConflict: "user_id" })`
+  // -- the table name PRECEDES upsert and the call spans lines, so the original
+  // `/upsert.*user_private_data/` could never match. Also pins onConflict, so a
+  // switch to insert() (which would throw on an existing row) is caught too.
+  assert.match(
+    currentUserSource,
+    /\.from\("user_private_data"\)\s*\n?\s*\.upsert\([\s\S]{0,160}?onConflict:\s*"user_id"/,
+    "saveUserProfile must upsert private data onto user_private_data, keyed on user_id",
+  );
+
+  // Verify private field is NOT in the public update payload
+  assert.doesNotMatch(
+    currentUserSource.slice(
+      currentUserSource.indexOf("const publicUpdatePayload"),
+      currentUserSource.indexOf("if (options && \"avatarUrl\" in options)"),
+    ),
+    /dj_booking_contact_name/,
+    "dj_booking_contact_name must NOT be in publicUpdatePayload; write only to user_private_data",
+  );
+
+  // --- Backfill safety -----
+  // Backfill must use ON CONFLICT DO NOTHING so users who save after code
+  // deployment get their newer private row preserved, not overwritten by the
+  // backfill of older values from the users table.
+  const backfillSql = readFileSync(
+    new URL("../scripts/backfillPrivateProfileFields.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    backfillSql,
+    /ON CONFLICT.*DO NOTHING/,
+    "Backfill must use ON CONFLICT DO NOTHING to preserve newer saves",
+  );
+
+  // --- Phase 8 transition: remove fallback and clean view ---
+  // Once backfill is complete and verified, Phase 8 removes the fallback:
+  // 1. my_profile is recreated without dj_booking_contact_name
+  // 2. OWN_PROFILE_FIELDS reverts to PROFILE_FIELDS (no private column)
+  // 3. The fallback logic is removed (use only private table, never users)
+  // This assertion documents the expected state AFTER Phase 8:
+  // The cleanupMyProfileView.sql should not include dj_booking_contact_name
+  const cleanupViewSql = stripComments(
+    readFileSync(
+      new URL("../scripts/cleanupMyProfileView.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.doesNotMatch(
+    cleanupViewSql,
+    /select[\s\S]*?dj_booking_contact_name[\s\S]*?from public\.users/i,
+    "Phase 8 cleanup must remove dj_booking_contact_name from my_profile view",
+  );
+  assert.match(
+    cleanupViewSql,
+    /security_invoker = false/i,
+    "Phase 8 cleanup must preserve security_invoker = false",
+  );
+  assert.match(
+    cleanupViewSql,
+    /revoke all on public\.my_profile from public;/i,
+    "Phase 8 cleanup must explicitly revoke from public",
+  );
+  assert.match(
+    cleanupViewSql,
+    /revoke all on public\.my_profile from anon;/i,
+    "Phase 8 cleanup must explicitly revoke from anon",
+  );
 }
 
 /**
@@ -8322,6 +8750,225 @@ function testDmAttachmentsRenderOnlySignedUrls() {
   // Path extraction decodes: filenames carry spaces, stored percent-encoded,
   // but storage addresses objects by raw path.
   assert.match(stripComments(helperSource), /decodeURIComponent/);
+}
+
+function testDmAttachmentsBucketIsPrivate() {
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+  const sql = stripComments(
+    readFileSync(
+      new URL("../scripts/setupDmAttachmentsAndReactions.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // Bucket must be private. `[\s\S]*?` rather than `.*`: the statement spans
+  // four lines and `.` does not cross newlines without /s, so the original
+  // pattern could never match the SQL it was written to guard.
+  assert.match(
+    sql,
+    /insert into storage\.buckets[\s\S]*?public\s*=\s*false/i,
+    "dm-attachments bucket must have public = false",
+  );
+  assert.match(
+    sql,
+    /on conflict \(id\) do update\s+set public = false/i,
+    "update clause must also set public = false for idempotency",
+  );
+
+  // Public read policy must not be created — it was removed for security.
+  assert.doesNotMatch(
+    sql,
+    /create policy\s+"dm_attachments_public_read"/i,
+    "dm_attachments_public_read policy must not be created (bucket is private)",
+  );
+
+  // Member-scoped SELECT policy must exist with UUID-safe CASE guard.
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_select_member"/i,
+    "Member-scoped SELECT policy dm_attachments_select_member must exist",
+  );
+  assert.match(
+    sql,
+    /dm_attachments_select_member[\s\S]*?for select[\s\S]*?to authenticated/i,
+    "dm_attachments_select_member must be SELECT policy for authenticated role",
+  );
+
+  // UUID-safe regex CASE guard must prevent malformed UUIDs from casting.
+  assert.match(
+    sql,
+    /case\s+when[\s\S]*?\[1\]\s*~\*\s*'\^?\[0-9a-f\]\{8\}-/i,
+    "SELECT policy must have UUID-safe regex CASE guard before ::uuid casting",
+  );
+  assert.match(
+    sql,
+    /then[\s\S]*?is_conversation_member[\s\S]*?or[\s\S]*?is_event_crew_member/i,
+    "SELECT CASE then-branch must check both conversation and event membership",
+  );
+  assert.match(
+    sql,
+    /else\s+false\s+end/i,
+    "SELECT CASE else-branch must deny (false) for malformed UUIDs",
+  );
+
+  // INSERT policy must use is_event_crew_member_for_message, not is_event_crew_member.
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_insert_member"/i,
+    "INSERT policy dm_attachments_insert_member must exist",
+  );
+  assert.match(
+    sql,
+    /is_event_crew_member_for_message/,
+    "INSERT policy must use is_event_crew_member_for_message (for-message variant)",
+  );
+  assert.doesNotMatch(
+    sql,
+    /dm_attachments_insert_member[\s\S]*?is_event_crew_member\(\s*\(\(storage\.foldername/i,
+    "INSERT policy must NOT use generic is_event_crew_member() — only is_event_crew_member_for_message()",
+  );
+
+  // UPDATE and DELETE policies must be unchanged (own-folder scope only).
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_update_own"/i,
+    "UPDATE policy dm_attachments_update_own must exist",
+  );
+  assert.match(
+    sql,
+    /create policy\s+"dm_attachments_delete_own"/i,
+    "DELETE policy dm_attachments_delete_own must exist",
+  );
+  assert.match(
+    sql,
+    /dm_attachments_update_own[\s\S]*?foldername.*\[2\]\s*=\s*public\.auth_user_id/i,
+    "UPDATE policy must check own-folder ownership",
+  );
+  assert.match(
+    sql,
+    /dm_attachments_delete_own[\s\S]*?foldername.*\[2\]\s*=\s*public\.auth_user_id/i,
+    "DELETE policy must check own-folder ownership",
+  );
+}
+
+/**
+ * P1 security: mark_conversation_unread and mark_conversation_unread_for_cancellation
+ * are internal SECURITY DEFINER helpers that must never be directly callable from the
+ * browser/client. They must be explicitly revoked from PUBLIC, anon, and authenticated
+ * roles to enforce this boundary.
+ */
+function testMessageReadsUnreadHelpersAreInternalOnly() {
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+  const sql = stripComments(
+    readFileSync(
+      new URL("../scripts/setupMessageReadsRpc.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // mark_conversation_unread must explicitly revoke ALL from PUBLIC to deny default access.
+  assert.match(
+    sql,
+    /revoke all on function public\.mark_conversation_unread\(text,\s*uuid,\s*uuid\) from public;/i,
+    "mark_conversation_unread must revoke ALL from PUBLIC",
+  );
+
+  // Must revoke from anon to prevent unauthenticated access.
+  assert.match(
+    sql,
+    /revoke all on function public\.mark_conversation_unread\(text,\s*uuid,\s*uuid\) from anon;/i,
+    "mark_conversation_unread must revoke ALL from anon",
+  );
+
+  // Must revoke from authenticated to prevent direct browser calls.
+  assert.match(
+    sql,
+    /revoke all on function public\.mark_conversation_unread\(text,\s*uuid,\s*uuid\) from authenticated;/i,
+    "mark_conversation_unread must revoke ALL from authenticated",
+  );
+
+  // No GRANT statements to this function for any client-facing role.
+  assert.doesNotMatch(
+    sql,
+    /grant\s+execute\s+on\s+function\s+public\.mark_conversation_unread/i,
+    "mark_conversation_unread must not grant EXECUTE to any client-facing role",
+  );
+}
+
+function testCancelEventAndLegacyFunctionPrivilegesHardened() {
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/--[^\n]*/g, "");
+
+  const eventSql = stripComments(
+    readFileSync(
+      new URL("../scripts/setupEventLifecycle.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  const legacySql = stripComments(
+    readFileSync(
+      new URL("../scripts/secureLegacyMessageReadsFunction.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  // cancel_event(uuid) must revoke from PUBLIC, anon, and authenticated before granting to authenticated.
+  // This ensures it is never accessible to unauthenticated callers even in fresh environments.
+  assert.match(
+    eventSql,
+    /revoke all on function public\.cancel_event\(uuid\) from public;/i,
+    "cancel_event must revoke ALL from PUBLIC",
+  );
+  assert.match(
+    eventSql,
+    /revoke all on function public\.cancel_event\(uuid\) from anon;/i,
+    "cancel_event must revoke ALL from anon",
+  );
+  assert.match(
+    eventSql,
+    /revoke all on function public\.cancel_event\(uuid\) from authenticated;/i,
+    "cancel_event must revoke ALL from authenticated before granting",
+  );
+  assert.match(
+    eventSql,
+    /grant execute on function public\.cancel_event\(uuid\) to authenticated;/i,
+    "cancel_event must grant EXECUTE to authenticated",
+  );
+
+  // Legacy mark_conversation_unread_for_cancellation must be explicitly revoked from all public roles.
+  assert.match(
+    legacySql,
+    /revoke all on function public\.mark_conversation_unread_for_cancellation\(text,\s*uuid\) from public;/i,
+    "mark_conversation_unread_for_cancellation must revoke ALL from PUBLIC",
+  );
+  assert.match(
+    legacySql,
+    /revoke all on function public\.mark_conversation_unread_for_cancellation\(text,\s*uuid\) from anon;/i,
+    "mark_conversation_unread_for_cancellation must revoke ALL from anon",
+  );
+  assert.match(
+    legacySql,
+    /revoke all on function public\.mark_conversation_unread_for_cancellation\(text,\s*uuid\) from authenticated;/i,
+    "mark_conversation_unread_for_cancellation must revoke ALL from authenticated",
+  );
+
+  // Legacy function must not be granted to any public role.
+  assert.doesNotMatch(
+    legacySql,
+    /grant\s+execute\s+on\s+function\s+public\.mark_conversation_unread_for_cancellation/i,
+    "mark_conversation_unread_for_cancellation must not grant EXECUTE to any role",
+  );
 }
 
 /**
@@ -9000,9 +9647,12 @@ function testDmMessageReactionGestureInteractions() {
 }
 
 function testDmReactionNotifications() {
+  // No trailing full stop: commit b919c06c ("Final notification UX polish
+  // pass") deliberately dropped it to match sibling notification copy such as
+  // "Your event crew chat is now available". The test was not updated then.
   assert.equal(
     buildDmReactionNotificationBody("Isaac", "❤️"),
-    "Isaac reacted ❤️ to your message.",
+    "Isaac reacted ❤️ to your message",
   );
 
   const helperSource = readFileSync(
@@ -9783,9 +10433,11 @@ function testLoginScreenPolish() {
   assert.match(loginSource, /"Sign in to continue"/);
 
   // Primary Log in button renders in title case (no forced text-transform: uppercase) --
-  // scoped to the login submit button specifically; the recovery ("Update password") button
+  // scoped to the login submit button specifically; the recovery ("Set password") button
   // keeps its existing uppercase styling untouched, matching every other .ftc-btn-primary
-  // in the app (password reset flow must not change).
+  // in the app (password reset flow must not change). The recovery button was renamed
+  // "Update password" -> "Set password" in 99d87b49, to match its "Set a new password"
+  // heading; this assertion was not updated then.
   assert.doesNotMatch(
     loginSource,
     /className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide[^"]*"\s*>\s*\{submitting \? "Logging in" : "Log in"\}/,
@@ -9796,7 +10448,7 @@ function testLoginScreenPolish() {
   );
   assert.match(
     loginSource,
-    /className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide[^"]*"\s*>\s*\{submitting \? "Saving" : "Update password"\}/,
+    /className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide[^"]*"\s*>\s*\{submitting \? "Saving" : "Set password"\}/,
   );
 
   // Browser/page title has no AI marketing wording -- single global metadata source for
@@ -12624,7 +13276,14 @@ function testBookingAcceptedDmMessageIsScopedToTheBooking() {
   // The planner's acceptance notification is a booking outcome, and is no longer
   // gated on the DM insert -- that gate meant a skipped system message silently
   // swallowed the only notification the planner would have received.
-  assert.match(bookingRequestsSource, /"booking_update",\s*\n\s*"Booking accepted"/);
+  // Title gained a DJ-name prefix in 162859e9 ("DJ-named accept push"), so it is
+  // now a template literal rather than the bare string this used to expect. The
+  // property under test is unchanged: the planner still gets a booking_update
+  // for the acceptance, ungated from the DM insert.
+  assert.match(
+    bookingRequestsSource,
+    /"booking_update",\s*\n\s*`\$\{djName\} · Booking accepted`/,
+  );
   assert.doesNotMatch(
     bookingRequestsSource,
     /const dmResult = await insertBookingAcceptedDmMessageIfNeeded/,
@@ -14381,6 +15040,48 @@ function testChatEmptyStateComponentized() {
     groupEmptyStateSource,
     /flex flex-col items-center justify-center px-6/,
     "layout markup lives in the shared component now, not duplicated here",
+  );
+}
+
+/**
+ * Edit Profile avatar Save was hanging on “Saving” when iPhone camera JPEGs
+ * (multi‑MB) uploaded with no timeout, and Saving was not cleared if post-save
+ * navigation stalled.
+ */
+async function testProfileAvatarUploadCannotHangOnSaving() {
+  const uploadSource = readFileSync(
+    new URL("../lib/user/uploadProfileImage.ts", import.meta.url),
+    "utf8",
+  );
+  const formSource = readFileSync(
+    new URL("../app/components/profile/EditProfileForm.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.ok(PROFILE_IMAGE_MAX_EDGE_PX <= 1280);
+  assert.ok(PROFILE_IMAGE_UPLOAD_TIMEOUT_MS <= 30_000);
+  assert.match(uploadSource, /prepareProfileImageForUpload/);
+  assert.match(uploadSource, /withProfileImageUploadTimeout/);
+  assert.match(uploadSource, /createImageBitmap/);
+  assert.match(uploadSource, /image\/jpeg/);
+
+  assert.match(formSource, /finally \{\s*[\s\S]*?setSaving\(false\)/);
+  assert.match(formSource, /await onSaved\(\)/);
+  assert.doesNotMatch(
+    formSource,
+    /setUploadError\("Image upload failed"\)/,
+    "upload errors must surface the real message, not a dead-end label",
+  );
+
+  // Timeout helper must reject — not hang — when the underlying call never settles.
+  const hang = new Promise<void>(() => {});
+
+  await assert.rejects(
+    () => withProfileImageUploadTimeout(hang, 20),
+    (error: unknown) => {
+      assert.match(String((error as Error).message ?? error), /timed out/i);
+      return true;
+    },
   );
 }
 
@@ -17873,9 +18574,13 @@ async function main() {
   testDmImageGridNoCropping();
   testDmImageGroupFullViewerAndOwnershipAlignment();
   testDmAttachmentsRenderOnlySignedUrls();
+  testDmAttachmentsBucketIsPrivate();
+  testMessageReadsUnreadHelpersAreInternalOnly();
+  testCancelEventAndLegacyFunctionPrivilegesHardened();
   testToStorageObjectPathResolvesStoredUrls();
   testPrivateProfileFieldsAreDatabaseEnforced();
   testAccountDeletionClearsEveryProfileColumn();
+  testAccountDeletionSuccessState();
   testDmImageGalleryOverviewForLargeGroups();
   testDmMediaViewerCloseButtonConsistentAndClickable();
   testDmImageLightboxUsesPagedTrackNotFloatingCard();
@@ -17945,6 +18650,8 @@ async function main() {
   testEventBrandEditFormHydration();
   testEventBrandSafeSave();
   testMapEventInputToRowEventBrandFallback();
+  await testWithEventFieldsFallbackStopsWhenProjectionCannotNarrowFurther();
+  await testWithEventFieldsFallbackStillNarrowsOnGenuineMissingColumns();
   testQaEnvironmentResetScript();
   testLoginScreenPolish();
   testEventNotesTextareaScrollsWhenContentExceedsCap();
@@ -17997,6 +18704,7 @@ async function main() {
   testCrewChatComposerKeepsFocusAfterSend();
   testCrewChatMessageGrouping();
   testChatMediaLoadsWithoutARefresh();
+  await testProfileAvatarUploadCannotHangOnSaving();
   testChatBubbleCannotCollapseToOneCharacterColumn();
   testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();
@@ -18006,6 +18714,10 @@ async function main() {
   await testDmImageAttachmentDimensions();
   await testDmMessageOrderDeterminism();
   await testDmBookingReturnScroll();
+  await testMessageTargetScrollPriority();
+  await testServiceWorkerNotificationClickKeepsTheTarget();
+  testBookingCardFocusRingCannotOverflowItsColumn();
+  testActiveChatPresenceActuallyDispatchesItsQueries();
   testCrewChatAttachmentRealtimeAndStateReconciliation();
   testCrewChatUnreadUsesTheSharedUnreadSystem();
   await testGroupInboxUnreadSurvivesOverlappingRefreshes();
@@ -18039,6 +18751,49 @@ async function main() {
   testAuthEmailsRedirectThroughTheSharedHelper();
   testForgotPasswordFlow();
   testPlannerRosterMigrationGrantsTablePrivileges();
+  testBetaPushFinalPassFourFixes();
+  testSupabaseClientHasResilientAuthStorage();
+  testServiceWorkerPushHandlerAlwaysShowsANotification();
+  testUnsupportedIosPushStateDoesNotSuggestInstalling();
+  testPushReconnectStateAndVapidKeyUrlSafeDecoding();
+  testNotificationCopyPolishPass();
+  testPushBadgeRunSheetWithdrawalRealDeviceFollowups();
+  testWithdrawalNotificationSoftFails();
+  testMessageIdentityDedupeForAttachmentPushes();
+  testOneMessageOnePushIdentityDedupe();
+  testTemporaryDiagnosticsPanelsRemoved();
+  testCreateNotificationRpcPayloadIncludesMessageId();
+  testChatMessageTargetParamParsing();
+  testBuildNotificationTargetHrefAppendsMessageParam();
+  testNotificationLinkColumnStaysBareForReadTracking();
+  testNotificationTypeAndNotificationsPageUseMessageId();
+  testPushSendForwardsMessageIdIntoLink();
+  testBookingRequestPushDeepLinksToTheBookingCard();
+  testBookingLifecyclePushesCarryAMessageTarget();
+  testDeepLinkTargetsSurviveImagesAndHiddenNotices();
+  await testBookingCancellationNoticesAreUniquePerBookingAndAction();
+  await testVersionedLifecycleNoticesNeverRenderAsChat();
+  await testVersionedLifecycleRowsAreHiddenFromTheDmTimeline();
+  await testHiddenLifecycleRowsStillDriveInboxRecencyAndUnread();
+  await testNoBookingUuidIsEverUserFacing();
+  await testDmBookingLifecycleToast();
+  await testLifecycleToastRendersTheNeutralFeedbackSurface();
+  await testBookingLifecycleTransitionIdentityIncludesTheActor();
+  await testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget();
+  await testRateProposalLifecycleNoticesAreVersionedPerBooking();
+  await testNegotiationHistoryStaysVisibleInTheDmTimeline();
+  await testTwoRateDeclinesInOneThreadDoNotCollide();
+  await testRateProposalPushesCarryTheirOwnMessageTarget();
+  await testDeclinedBookingPushTargetsTheBookingRequestMessage();
+  testDmPageWiresMessageTargetScroll();
+  testCrewChatPageWiresMessageTargetScroll();
+  testChatMessageTargetScrollSuppressionIsAsymmetric();
+  testPinnedToBottomRefWiredIntoBothScrollTargetFlows();
+  testActiveChatPresenceHookHeartbeatAndCleanup();
+  testDmAndCrewChatPagesWireActiveChatPresence();
+  testPushSendSuppressesActivePushForExactThread();
+  testActiveChatPresenceMigrationScopesAccessToOwnRow();
+  testServiceWorkerProviderSilentlyReconcilesStaleSubscription();
   console.log("All regression checks passed.");
 }
 
@@ -18457,20 +19212,35 @@ function testProfileProjectionOmitsPrivateFields() {
     "utf8",
   );
 
+  // Scope to the string literal itself. Slicing up to `const OWN_PROFILE_FIELDS`
+  // used to swallow the doc comment between them, which *mentions*
+  // dj_booking_contact_name -- so the doesNotMatch below was failing on prose,
+  // not on a projection.
+  const profileFieldsStart = source.indexOf("const PROFILE_FIELDS =");
+  assert.ok(profileFieldsStart >= 0, "PROFILE_FIELDS must exist");
   const publicProjection = source.slice(
-    source.indexOf("const PROFILE_FIELDS ="),
-    source.indexOf("const OWN_PROFILE_FIELDS"),
+    profileFieldsStart,
+    source.indexOf(";", profileFieldsStart),
   );
-  assert.ok(publicProjection.length > 0, "PROFILE_FIELDS must exist");
 
   // full_name is never written and rendered nowhere; it should not be fetched.
   assert.doesNotMatch(publicProjection, /full_name/);
   assert.doesNotMatch(publicProjection, /dj_booking_contact_name/);
 
-  // ...and the owner projection is the only place the contact field appears.
-  assert.match(
-    source,
-    /const OWN_PROFILE_FIELDS = `\$\{PROFILE_FIELDS\}, dj_booking_contact_name`;/,
+  // Phase 8 moved the contact field out of the users/my_profile projections
+  // entirely -- it is now read only from user_private_data. This assertion used
+  // to demand the OLD Phase 7 shape
+  // (`OWN_PROFILE_FIELDS = \`${PROFILE_FIELDS}, dj_booking_contact_name\``),
+  // i.e. it required the private column to be present in the owner projection,
+  // which is the opposite of the property we now want. The Phase 8 shape below
+  // is strictly stronger: no projection of `users` selects the private column.
+  assert.match(source, /const OWN_PROFILE_FIELDS = PROFILE_FIELDS;/);
+
+  const ownProjectionStart = source.indexOf("const OWN_PROFILE_FIELDS");
+  assert.doesNotMatch(
+    source.slice(ownProjectionStart, source.indexOf(";", ownProjectionStart)),
+    /dj_booking_contact_name/,
+    "the owner projection must not select the private contact column either",
   );
 
   // full_name is gone from the type too, so it cannot be reintroduced by a
@@ -18835,6 +19605,4489 @@ function testForgotPasswordFlow() {
   );
   assert.match(currentUser, /FORGOT_PASSWORD_PATH = "\/forgot-password"/);
   assert.doesNotMatch(stripComments(login), /"\/forgot-password"/);
+}
+
+/**
+ * Beta push-notification final pass, four fixes verified together:
+ *
+ * 1. Crew chat image-only push must prefer an accompanying caption over the
+ *    generic "Sent a photo" copy (the DM path already did this).
+ * 2. Booking-accepted push to the planner must name the accepting DJ, so
+ *    dedupe (keyed on user_id/type/title/link within 10 minutes) cannot
+ *    collapse a 2nd/3rd DJ's acceptance into the 1st DJ's push — link was
+ *    already unique per DJ (separate DM conversations), and title is now
+ *    unique too.
+ * 3. Crew-chat-ready push copy changed to "<event> · Crew chat ready" /
+ *    "Your event crew chat is now available".
+ * 4. A confirmed DJ must be notified of a meaningful event date/time/venue
+ *    change independently of crew-chat unlock state — the old mechanism
+ *    only fired through the crew-chat post, which requires 2+ accepted DJs
+ *    or a manual start, silently excluding the common single-DJ case.
+ */
+function testBetaPushFinalPassFourFixes() {
+  // --- Fix 4: pure filtering/formatting logic ---------------------------
+  const allFieldChanges = [
+    { label: "Event name", from: "Old Name", to: "New Name" },
+    { label: "Venue", from: "Old Venue", to: "Revolver" },
+    { label: "Date", from: "Aug 10", to: "Aug 20" },
+    { label: "Set time", from: "8:00 PM", to: "9:00 PM" },
+    { label: "Rate", from: "$500", to: "$600" },
+  ];
+
+  // Name and rate are excluded from the DJ-facing schedule push -- name is
+  // cosmetic to a DJ already in the conversation, and rate changes on an
+  // accepted booking flow through the rate-proposal notification instead.
+  assert.deepEqual(
+    selectDjFacingScheduleChanges(allFieldChanges).map((change) => change.label),
+    ["Venue", "Date", "Set time"],
+  );
+
+  assert.equal(selectDjFacingScheduleChanges([allFieldChanges[0], allFieldChanges[4]]).length, 0);
+
+  const summary = formatEventScheduleChangeSummary(
+    selectDjFacingScheduleChanges(allFieldChanges),
+  );
+  assert.equal(summary, "Venue changed to Revolver · Date changed to Aug 20 · Time changed to 9:00 PM");
+
+  // --- Fix 4: wiring must not depend on crew-chat unlock -----------------
+  const eventDetailPage = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    eventDetailPage,
+    /notifyConfirmedDjsOfEventScheduleChange/,
+    "the independent DJ schedule-change notify must be wired into the save flow",
+  );
+
+  const saveEditBody = eventDetailPage.slice(
+    eventDetailPage.indexOf("async function performSaveEdit"),
+    eventDetailPage.indexOf("async function handleSaveEdit"),
+  );
+
+  // The DJ notify call must appear before the crewChatUnlock-gated block --
+  // this is what proves it isn't only reachable through crew chat.
+  const djNotifyIndex = saveEditBody.indexOf("notifyConfirmedDjsOfEventScheduleChange");
+  const groupChatGateIndex = saveEditBody.indexOf("shouldNotifyGroupChat && groupChatFieldChanges.length > 0");
+  assert.ok(djNotifyIndex > -1 && groupChatGateIndex > -1 && djNotifyIndex < groupChatGateIndex);
+
+  // The call site itself must not be inside the crewChatUnlock-gated branch.
+  const djNotifyCallSite = saveEditBody.slice(
+    Math.max(0, djNotifyIndex - 200),
+    djNotifyIndex,
+  );
+  assert.doesNotMatch(djNotifyCallSite, /crewChatUnlock/);
+
+  // Crew chat's own push must be suppressed now that the DJ notify above is
+  // the single source of push delivery for this edit -- otherwise a DJ on
+  // an already-unlocked crew chat gets pushed twice for the same edit.
+  assert.match(eventDetailPage, /shouldNotifyGroupChat/);
+  const groupChatUpdateSource = readFileSync(
+    new URL("../lib/events/eventGroupChatUpdate.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    groupChatUpdateSource,
+    /sendEventCrewChatMessage\(eventId, text, eventName, \{ notifyParticipants: false \}\)/,
+  );
+
+  // --- Fix 1: crew chat image-only push prefers the caption --------------
+  const groupChatAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    groupChatAttachmentsSource,
+    /const preview = formatNotificationPreview\(text \|\| genericPhotoPreview\)/,
+    "a caption alongside crew-chat photos must win over generic 'Sent a photo' copy",
+  );
+
+  // --- Fix 2: booking-accepted push names the DJ --------------------------
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{djName\} · Booking accepted`/,
+    "planner's booking-accepted push must name the accepting DJ",
+  );
+  // Recipient-scoped: must resolve the ACCEPTING DJ (recipient_id), not the
+  // planner who is about to receive this notification.
+  assert.match(
+    bookingRequestsSource,
+    /getUserProfileById\(booking\.recipient_id\)[\s\S]{0,120}createNotification\(\s*booking\.sender_id/,
+  );
+
+  // --- Fix 3: crew-chat-ready push copy -----------------------------------
+  const eventCrewChatSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventCrewChatSource, /`\$\{eventName\} · Crew chat ready`/);
+  assert.match(eventCrewChatSource, /"Your event crew chat is now available"/);
+  // The in-thread system pill text must be untouched by the push-copy change.
+  assert.match(eventCrewChatSource, /text: CREW_CHAT_STARTED_NOTICE/);
+}
+
+/**
+ * iOS Home Screen PWA session-loss root cause: @supabase/auth-js, when no
+ * explicit `auth.storage` is given, runs a ONE-SHOT localStorage write-test
+ * at client construction (`supportsLocalStorage()` in
+ * node_modules/@supabase/auth-js/dist/module/lib/helpers.js) and, on any
+ * failure, permanently falls back to an in-memory store for that client's
+ * entire lifetime -- silently, with the real (unexpired, valid) session
+ * left untouched in actual localStorage. A cold-launched standalone PWA
+ * (fresh WKWebView process, worse on older/lower-storage iPhones) can hit a
+ * transient localStorage access failure at exactly that moment, and the
+ * user is bounced to /login as if signed out.
+ *
+ * The fix passes an explicit `storage` so auth-js never runs that
+ * self-test at all -- every call gets its own try/catch instead of one
+ * make-or-break probe. This locks in that the wiring cannot silently
+ * regress back to the bare `createClient(url, key)` call.
+ */
+function testSupabaseClientHasResilientAuthStorage() {
+  const source = readFileSync(
+    new URL("../lib/supabaseClient.ts", import.meta.url),
+    "utf8",
+  );
+
+  // An explicit storage object must be passed -- this is what makes auth-js
+  // skip its own supportsLocalStorage() self-test entirely (GoTrueClient:
+  // `if (settings.storage) { this.storage = settings.storage; } else { ... }`).
+  assert.match(source, /auth:\s*\{[\s\S]*?storage:\s*resilientLocalStorage/);
+
+  // Each of the three Storage methods must be independently try/catch
+  // wrapped -- a single failed call must not disable persistence for the
+  // rest of the client's lifetime the way the SDK's default behaviour does.
+  const storageObjectSource = source.slice(
+    source.indexOf("const resilientLocalStorage"),
+    source.indexOf("export const supabase"),
+  );
+
+  for (const method of ["getItem", "setItem", "removeItem"]) {
+    const methodSource = storageObjectSource.slice(
+      storageObjectSource.indexOf(`${method}(`),
+      storageObjectSource.indexOf(`${method}(`) + 300,
+    );
+    assert.match(
+      methodSource,
+      /try\s*\{[\s\S]*?window\.localStorage\.\w+[\s\S]*?\}\s*catch/,
+      `${method} must wrap window.localStorage access in its own try/catch`,
+    );
+  }
+
+  // Must not silently disable persistence or auto-refresh -- this is a
+  // resilience fix, not a behaviour change.
+  assert.match(source, /persistSession:\s*true/);
+  assert.match(source, /autoRefreshToken:\s*true/);
+  assert.match(source, /detectSessionInUrl:\s*true/);
+
+  // No other browser-facing client creation exists to drift out of sync
+  // with this one (server-side clients in API routes/edge functions use
+  // their own createClient calls with service-role/per-request tokens and
+  // are intentionally not persistent — out of scope here).
+  const onboardingGuardSource = readFileSync(
+    new URL("../app/components/OnboardingGuard.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The temporary diagnostic added alongside this fix must never log token
+  // contents -- only booleans/stage/pathname.
+  const diagnosticBlock = onboardingGuardSource.slice(
+    onboardingGuardSource.indexOf("[auth-diagnostic]") - 50,
+    onboardingGuardSource.indexOf("[auth-diagnostic]") + 400,
+  );
+  assert.doesNotMatch(diagnosticBlock, /access_token|refresh_token|authUser\.(?!$)/);
+  assert.match(diagnosticBlock, /rawTokenFound: Boolean\(/);
+  assert.match(diagnosticBlock, /getSessionFoundUser: Boolean\(/);
+}
+
+/**
+ * "Apple accepted the push, iPhone never displayed it" investigation.
+ * Confirmed root cause candidate: public/sw.js's `push` event handler had
+ * three early `return` statements (no event.data, JSON parse failure,
+ * missing payload.title) that skipped showNotification() entirely --
+ * Apple's 201 only confirms delivery to the device's push service, not
+ * that the service worker went on to display anything. A malformed or
+ * empty payload was therefore silently, undebuggably invisible.
+ *
+ * The fix makes every path reach showNotification(), with a generic
+ * fallback title/body/link when the real payload can't be used. This test
+ * pins that structural guarantee via source inspection (there is no DOM/
+ * ServiceWorkerGlobalScope available in this Node test runner to execute
+ * sw.js directly).
+ */
+function testServiceWorkerPushHandlerAlwaysShowsANotification() {
+  const swSource = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+
+  const pushHandlerSource = swSource.slice(
+    swSource.indexOf("addEventListener('push'"),
+    swSource.indexOf("addEventListener('notificationclick'"),
+  );
+
+  // None of the three failure paths may return before showNotification is
+  // reached -- i.e. there must be no `return;` inside the push handler at
+  // all (only inside the notificationclick handler, which is excluded by
+  // the slice above).
+  assert.doesNotMatch(
+    pushHandlerSource,
+    /return;/,
+    "push handler must not have any early return that skips showNotification()",
+  );
+
+  // showNotification must be reached unconditionally, still inside
+  // event.waitUntil() so the service worker isn't terminated mid-call.
+  assert.match(
+    pushHandlerSource,
+    /event\.waitUntil\(\s*self\.registration\.showNotification\(/,
+  );
+
+  // A malformed/missing title must fall back to a real string, not abort.
+  assert.match(pushHandlerSource, /title\.trim\(\)\s*\n?\s*\?\s*payload\.title\s*\n?\s*:\s*['"]Follow The Crowd['"]/);
+}
+
+/**
+ * Unsupported-push-capability UI. Root bug: the "iOS but not installed to
+ * Home Screen" check ran BEFORE any capability check, so a device where
+ * the Push API genuinely doesn't exist (iOS < 16.4, on any browser -- all
+ * iOS browsers are WebKit) was told to Add to Home Screen, wasting the
+ * user's effort on steps that could never work. Capability detection must
+ * run first; isIOS() only selects which copy to show afterward.
+ */
+function testUnsupportedIosPushStateDoesNotSuggestInstalling() {
+  const clientSource = readFileSync(new URL("../lib/push/client.ts", import.meta.url), "utf8");
+
+  const capabilityCheckIndex = clientSource.indexOf('typeof Notification === "undefined"');
+  const notInstalledCheckIndex = clientSource.indexOf("isIOS() && !isInstalledPWA()");
+  assert.ok(capabilityCheckIndex > -1 && notInstalledCheckIndex > -1);
+  assert.ok(
+    capabilityCheckIndex < notInstalledCheckIndex,
+    "capability detection must run before the install-guidance (ios_not_installed) check",
+  );
+
+  const capabilityBlock = clientSource.slice(capabilityCheckIndex, notInstalledCheckIndex);
+  assert.match(
+    capabilityBlock,
+    /return isIOS\(\) \? "unsupported_ios_version" : "unsupported";/,
+    "iOS gets specific copy, everything else gets the generic unsupported state",
+  );
+
+  // Unchanged: FTC's own subscription state, not Notification.permission
+  // alone, is still authoritative for the granted case. Bound widened from
+  // an original 600 (already too tight for the explanatory comment above
+  // this check even before this round's changes -- a pre-existing gap in
+  // this assertion, unrelated to this round's fix, only surfaced now
+  // because verifying this test in isolation bypasses the earlier
+  // pre-existing failure that has always halted the suite before reaching
+  // this one).
+  assert.match(
+    clientSource,
+    /Notification\.permission === "granted"\)[\s\S]{0,1200}hasActivePushSubscriptionForCurrentUser/,
+  );
+
+  const uiSource = readFileSync(
+    new URL("../app/components/settings/PushNotificationsSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // 1. iOS < 16.4 -> unsupported copy, no enable button, no Add to Home
+  // Screen guidance (that would be actively misleading here).
+  const unsupportedIosBlock = uiSource.slice(
+    uiSource.indexOf('state === "unsupported_ios_version"'),
+    uiSource.indexOf('state === "ios_not_installed"'),
+  );
+  assert.match(unsupportedIosBlock, /Push notifications unavailable/);
+  // Copy is three separate lines with no trailing periods (fixed in a later
+  // round) -- this assertion was stale (checked for an old combined-sentence
+  // wording with periods that no longer exists), only surfaced now because
+  // isolating this test bypasses the earlier pre-existing failure that has
+  // always halted the suite before reaching it.
+  assert.match(unsupportedIosBlock, /Push notifications require iOS 16\.4 or later<\/p>/);
+  assert.match(
+    unsupportedIosBlock,
+    /You can still use FTC normally, but this device can&rsquo;t receive push notifications/,
+  );
+  assert.match(unsupportedIosBlock, /update iOS to enable notifications/);
+  assert.doesNotMatch(unsupportedIosBlock, /Enable notifications/);
+  assert.doesNotMatch(unsupportedIosBlock, /Add to Home Screen/);
+  assert.doesNotMatch(unsupportedIosBlock, /handleEnable/);
+
+  // 2. Supported iOS/browser, not yet installed as standalone -> install
+  // guidance retained, unaffected by the new state above it.
+  const iosNotInstalledBlock = uiSource.slice(
+    uiSource.indexOf('state === "ios_not_installed"'),
+    uiSource.indexOf('state === "denied"'),
+  );
+  assert.match(iosNotInstalledBlock, /Add Follow The Crowd to your Home Screen/);
+  assert.match(iosNotInstalledBlock, /Add to Home Screen/);
+  assert.doesNotMatch(iosNotInstalledBlock, /Push notifications unavailable/);
+
+  // 3. Supported + installed + permission not yet requested -> normal
+  // enable flow, unaffected.
+  const promptBlock = uiSource.slice(
+    uiSource.indexOf('state === "prompt"'),
+    uiSource.indexOf('state === "reconnect"'),
+  );
+  assert.match(promptBlock, /handleEnable/);
+  assert.match(promptBlock, /Enable notifications/);
+
+  // 4. Supported + subscribed -> existing enabled state, unaffected.
+  const grantedBlock = uiSource.slice(uiSource.indexOf('state === "granted"'), uiSource.indexOf("{error &&"));
+  assert.match(grantedBlock, /Notifications enabled on this device/);
+
+  // The temporary device diagnostics panel was removed once the
+  // investigation concluded (real-device data confirmed the badge/reconnect
+  // fixes work) -- see testTemporaryDiagnosticsPanelsRemoved.
+  assert.doesNotMatch(uiSource, /Device diagnostics \(temporary\)/);
+}
+
+/**
+ * Two confirmed bugs from a real small-iPhone trace: device diagnostics
+ * showed pushSubscriptionExists: false, yet the UI said "Notifications
+ * enabled on this device" and a red "The string contains invalid
+ * characters" error appeared.
+ *
+ * Root cause 1 (false "enabled"): detectNotificationState()'s granted
+ * branch only ever checked the DB row (hasActivePushSubscriptionForCurrentUser),
+ * never the actual browser-level PushSubscription -- so a device whose
+ * subscription iOS had silently dropped (permission stays "granted";
+ * nothing tells the app) still read as fully enabled from a stale DB row
+ * alone.
+ *
+ * Root cause 2 ("invalid characters"): VAPID public keys are URL-safe
+ * base64 (RFC 8292) -- '-'/'_', not '+'/'/'. The code called the browser's
+ * native atob(), which only accepts STANDARD base64, directly on the raw
+ * key with no conversion. An 87-character random key is overwhelmingly
+ * likely to contain at least one '-' or '_', which is exactly the
+ * character atob() rejects with this exact message. Not a corrupt key --
+ * a missing conversion step, hit on any fresh subscribe attempt.
+ */
+function testPushReconnectStateAndVapidKeyUrlSafeDecoding() {
+  const clientSource = readFileSync(new URL("../lib/push/client.ts", import.meta.url), "utf8");
+
+  // --- Root cause 1: browser subscription must gate "granted" ------------
+  const grantedBranchStart = clientSource.indexOf('Notification.permission === "granted"');
+  const grantedBranchEnd = clientSource.indexOf("async function getBrowserPushSubscription");
+  assert.ok(grantedBranchStart > -1 && grantedBranchEnd > grantedBranchStart);
+  const grantedBranch = clientSource.slice(grantedBranchStart, grantedBranchEnd);
+
+  // The browser-subscription check must come BEFORE the DB check, and
+  // returning "reconnect" (not "granted") when it's absent must be
+  // unconditional -- not reachable only after the DB check fails.
+  const browserCheckIndex = grantedBranch.indexOf("getBrowserPushSubscription()");
+  const earlyReconnectIndex = grantedBranch.indexOf('if (!browserSubscription) {\n      return "reconnect";');
+  const dbCheckIndex = grantedBranch.indexOf("hasActivePushSubscriptionForCurrentUser()");
+  assert.ok(browserCheckIndex > -1 && earlyReconnectIndex > -1 && dbCheckIndex > -1);
+  assert.ok(
+    browserCheckIndex < earlyReconnectIndex && earlyReconnectIndex < dbCheckIndex,
+    "must check the real browser subscription, and bail to reconnect, before ever consulting the DB row",
+  );
+
+  // Even when the DB row IS found, no browser subscription still means
+  // reconnect, not granted -- both conditions are required.
+  assert.match(
+    grantedBranch,
+    /return \(await hasActivePushSubscriptionForCurrentUser\(\)\)\s*\?\s*"granted"\s*:\s*"reconnect";/,
+  );
+
+  // The old state name must be gone -- this task replaces it, not adds
+  // alongside it.
+  assert.doesNotMatch(clientSource, /granted_not_subscribed/);
+
+  // --- Root cause 2: VAPID key must go through URL-safe conversion -------
+  assert.match(
+    clientSource,
+    /binaryString = atob\(urlSafeBase64ToStandardBase64\(base64\)\)/,
+    "VAPID key decode must convert URL-safe base64 before calling atob()",
+  );
+  assert.match(
+    clientSource,
+    /function urlSafeBase64ToStandardBase64\(value: string\): string \{\s*\n\s*const standard = value\.replace\(\/-\/g, "\+"\)\.replace\(\/_\/g, "\/"\);/,
+  );
+  // atob() itself must still be wrapped so a genuine decode failure
+  // becomes a clean thrown Error, not a bare DOMException reaching the UI
+  // layer unmapped.
+  assert.match(clientSource, /catch \(decodeError\) \{[\s\S]{0,150}VAPID public key could not be decoded/);
+
+  // --- Self-heal: stale rows for the CURRENT user only --------------------
+  assert.match(
+    clientSource,
+    /\.update\(\{ is_active: false \}\)\s*\n\s*\.eq\("user_id", userId\)\s*\n\s*\.eq\("is_active", true\)\s*\n\s*\.neq\("endpoint", subscription\.endpoint\)/,
+    "stale-row cleanup must be scoped to the current user's own rows only",
+  );
+
+  // --- UI: reconnect state, no trailing full stops, no raw error text ----
+  const uiSource = readFileSync(
+    new URL("../app/components/settings/PushNotificationsSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(uiSource, /state === "granted_not_subscribed"/);
+
+  const reconnectBlock = uiSource.slice(
+    uiSource.indexOf('state === "reconnect"'),
+    uiSource.indexOf('state === "granted"'),
+  );
+  assert.match(reconnectBlock, /Reconnect notifications/);
+  assert.match(reconnectBlock, /Notifications need to be reconnected on this device/);
+  assert.doesNotMatch(reconnectBlock, /Notifications enabled/);
+  assert.doesNotMatch(reconnectBlock, /device\./, "reconnect copy must not end a line with a full stop");
+  assert.doesNotMatch(reconnectBlock, /notifications\.<\/p>/);
+
+  // Reconnect failures show static friendly copy, never the interpolated
+  // raw error (enableError.message) -- the ternary's isReconnect branch
+  // must be a literal string, not a template built from the caught error.
+  const handleEnableBody = uiSource.slice(
+    uiSource.indexOf("async function handleEnable"),
+    uiSource.indexOf("async function handleDisable"),
+  );
+  assert.match(
+    handleEnableBody,
+    /isReconnect\s*\n?\s*\?\s*"Couldn't reconnect notifications\\nTry again or restart FTC"/,
+  );
+  // The raw error must still be logged for developer diagnosis.
+  assert.match(handleEnableBody, /console\.error\("\[push-settings\] Failed to enable:", enableError\)/);
+
+  // Unsupported-iOS copy: no trailing full stops on any of the three lines.
+  const unsupportedIosBlock = uiSource.slice(
+    uiSource.indexOf('state === "unsupported_ios_version"'),
+    uiSource.indexOf('state === "ios_not_installed"'),
+  );
+  assert.match(unsupportedIosBlock, /Push notifications unavailable/);
+  assert.match(unsupportedIosBlock, /Push notifications require iOS 16\.4 or later<\/p>/);
+  assert.match(
+    unsupportedIosBlock,
+    /You can still use FTC normally, but this device can&rsquo;t receive push notifications\s*\n\s*<\/p>/,
+  );
+  assert.match(
+    unsupportedIosBlock,
+    /If your iPhone supports a newer iOS version, update iOS to enable notifications\s*\n\s*<\/p>/,
+  );
+  assert.doesNotMatch(unsupportedIosBlock, /notifications\.\s*<\/p>/);
+  assert.doesNotMatch(unsupportedIosBlock, /later\.\s/);
+
+  // --- Sign-out cleanup and disable flow unaffected -----------------------
+  const currentUserSource = readFileSync(new URL("../lib/user/currentUser.ts", import.meta.url), "utf8");
+  assert.match(
+    currentUserSource,
+    /disableNotifications\(\)[\s\S]{0,200}supabase\.auth\.signOut\(\)/,
+    "sign-out must still deactivate the device subscription before signing out",
+  );
+
+  assert.match(clientSource, /export async function disableNotifications\(\): Promise<void>/);
+  assert.match(uiSource, /handleDisable/);
+}
+
+/**
+ * Final notification UX polish pass: copy hierarchy so push titles/bodies
+ * don't duplicate iOS's own "from Follow The Crowd" attribution, a venue-
+ * fallback bug ("<event> at " with an empty venue), missing actor names on
+ * booking cancel/decline/withdraw pushes, a trailing period on the DM
+ * reaction body, and a real-device-observed OS badge count that never came
+ * back down. Source-inspection only -- no DOM/browser environment here.
+ */
+function testNotificationCopyPolishPass() {
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  const eventsSource = readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8");
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  const dmReactionSource = readFileSync(
+    new URL("../lib/dm/dmReactionNotifications.ts", import.meta.url),
+    "utf8",
+  );
+  const eventCrewChatSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const groupChatAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  const resolveDmOtherUserIdSource = readFileSync(
+    new URL("../lib/dm/resolveDmOtherUserId.ts", import.meta.url),
+    "utf8",
+  );
+  const eventGroupChatUpdateSource = readFileSync(
+    new URL("../lib/events/eventGroupChatUpdate.ts", import.meta.url),
+    "utf8",
+  );
+  const navBadgeProviderSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // --- 1. DM text push: title = sender name alone, no app-name duplication -
+  assert.match(
+    resolveDmOtherUserIdSource,
+    /createNotification\(\s*recipientId,\s*"message",\s*senderName,\s*formatNotificationPreview\(body\)/,
+    "DM push title must be the sender's display name alone, body the message preview",
+  );
+  assert.doesNotMatch(
+    resolveDmOtherUserIdSource,
+    /Follow The Crowd|\bFTC\b/,
+    "DM push copy must not duplicate iOS's own app attribution",
+  );
+
+  // --- 2. Crew chat text/image push: "<sender> · <event>" title -----------
+  assert.match(
+    eventCrewChatSource,
+    /const title = `\$\{senderName\} · \$\{eventName\}`/,
+    "crew chat text push title must be '<sender> · <event>'",
+  );
+  assert.match(
+    groupChatAttachmentsSource,
+    /const title = `\$\{senderName\} · \$\{input\.eventName\}`/,
+    "crew chat image push title must be '<sender> · <event>'",
+  );
+  assert.match(
+    groupChatAttachmentsSource,
+    /const preview = formatNotificationPreview\(text \|\| genericPhotoPreview\)/,
+    "crew chat image push must prefer a caption over generic photo copy",
+  );
+
+  // --- 3. formatEventVenueLine: clean fallback when venue is blank --------
+  assert.match(
+    notificationsSource,
+    /export function formatEventVenueLine\(eventName: string, venue: string\): string \{/,
+  );
+  {
+    const trimmedVenue = "  ".trim();
+    const withVenue = trimmedVenue ? `EventName at ${trimmedVenue}` : "EventName";
+    assert.equal(withVenue, "EventName", "blank venue must fall back to the event name alone, no 'at'");
+
+    const realVenue = "Revolver".trim();
+    const withRealVenue = realVenue ? `EventName at ${realVenue}` : "EventName";
+    assert.equal(withRealVenue, "EventName at Revolver");
+  }
+  assert.match(
+    bookingRequestsSource,
+    /formatEventVenueLine\(input\.eventName\.trim\(\), input\.venue\)/,
+    "booking-request push body must use the venue-safe formatter, not raw string interpolation",
+  );
+  assert.doesNotMatch(
+    bookingRequestsSource,
+    /\$\{input\.eventName\.trim\(\)\} at \$\{input\.venue\.trim\(\)\}/,
+    "the old unguarded '<event> at <venue>' interpolation must be gone",
+  );
+
+  // --- 4. Booking accepted (unchanged) -------------------------------------
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{djName\} · Booking accepted`,\s*\n\s*booking\.event_name,/,
+    "booking-accepted push must stay '<DJ name> · Booking accepted' / event name",
+  );
+
+  // --- 5. Booking declined names the declining DJ, body is just the event -
+  assert.match(
+    bookingRequestsSource,
+    /const declinedDjProfile = await getUserProfileById\(booking\.recipient_id\);/,
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,/,
+    "booking-declined push must be '<DJ name> · Booking declined' with just the event name as body",
+  );
+
+  // --- 6. Cancel/withdraw pushes name the actor, drop the broken venue body
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Withdrew from event`/,
+    "DJ withdrawal push must be '<DJ name> · Withdrew from event'",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Booking cancelled`/,
+    "planner cancellation push must be '<planner name> · Booking cancelled'",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Booking request cancelled`/,
+  );
+  assert.doesNotMatch(
+    bookingRequestsSource,
+    /\$\{booking\.event_name\} at \$\{booking\.venue\}/,
+    "the cancel-booking push body must no longer interpolate a possibly-empty venue",
+  );
+
+  // --- 7. Whole-event cancellation push names the planner, drops venue ----
+  assert.match(
+    eventsSource,
+    /`\$\{plannerName\} · Booking cancelled`,\s*\n\s*booking\.event_name,/,
+    "event-cancellation push to affected DJs must be '<planner name> · Booking cancelled'",
+  );
+  assert.doesNotMatch(
+    eventsSource,
+    /"Booking request cancelled",\s*\n\s*`\$\{booking\.event_name\} at \$\{booking\.venue\}`/,
+    "the old unnamed cancellation title + venue-interpolated body must be gone",
+  );
+
+  // --- 8. Crew chat ready / event updated (unchanged) ----------------------
+  assert.match(
+    eventCrewChatSource,
+    /`\$\{eventName\} · Crew chat ready`,\s*\n\s*"Your event crew chat is now available",/,
+  );
+  assert.doesNotMatch(eventCrewChatSource, /now available\./, "no trailing period on crew-chat-ready body");
+  assert.match(
+    eventGroupChatUpdateSource,
+    /const title = `\$\{eventName\} · Event updated`;/,
+  );
+
+  // --- 9. DM reaction body: no trailing period -----------------------------
+  assert.match(
+    dmReactionSource,
+    /return `\$\{reactorDisplayName\} reacted \$\{emoji\} to your message`;/,
+    "DM reaction notification body must not end in a period",
+  );
+
+  // --- 10. Badge count: Badging API mirrors the real unread total ---------
+  assert.match(
+    navBadgeProviderSource,
+    /badgingNavigator\.setAppBadge\(total\) : badgingNavigator\.clearAppBadge\(\)/,
+    "the OS app badge must be driven by the actual computed unread total, not left to iOS's own accumulation",
+  );
+  assert.match(
+    navBadgeProviderSource,
+    // Tolerant of formatting: the call was reflowed across lines and its
+    // silent `.catch(() => {})` replaced with a real console.error handler.
+    // The property under test -- clearAppBadge() on sign-out -- is unchanged.
+    /if \(!userId\) \{[\s\S]{0,240}?badgingNavigator\s*\n?\s*\.clearAppBadge\(\)/,
+    "the OS app badge must be cleared on sign-out",
+  );
+  assert.match(
+    navBadgeProviderSource,
+    /if \(!state\.badgesReady\) \{\s*\n\s*return;/,
+    "the badge must not be set/cleared from a placeholder count before the real total loads",
+  );
+}
+
+/**
+ * Real-device Production QA follow-up pass, four issues traced to their
+ * actual runtime cause rather than assumed from source shape alone:
+ *
+ * 1. Crew-chat image push never arrived. Root cause: crew-chat push title
+ *    ("<sender> · <event>") and link are identical for every message a
+ *    sender posts to that chat, and create_notification's 10-minute dedupe
+ *    keyed only on (user_id, type, title, link) -- not body -- so a second
+ *    unread message (e.g. a photo sent shortly after a text) matched the
+ *    first message's still-unread row, returned its id without inserting,
+ *    and push-send (which only fires on INSERT) never ran. Fixed in SQL:
+ *    the dedupe now also requires the body to match.
+ * 2. Home Screen badge never appeared. Root cause: getNavBadgeCounts hard-
+ *    zeroed the booking-notification count for role === "dj" (a leftover
+ *    optimization from when nothing in the DJ nav bar read it), so a DJ's
+ *    unread booking_request/booking_update rows never reached
+ *    badgeCounts.total -- exactly the "DJ receives a booking request, badge
+ *    should increment" case. Fixed by counting both types for every role.
+ *    Badge-sync errors were also being silently swallowed; now logged.
+ * 3. Run-sheet edits produced no DJ push. Root cause: the only remaining
+ *    notify channel after 6df737ae removed the DM path was the crew-chat
+ *    post, which requires crew chat unlocked and shares issue 1's exact
+ *    dedupe-collision class. Fixed by adding an independent per-DJ push
+ *    (type "message", link is the booking DM so it can't collide with a
+ *    crew-chat notification's dedupe key), gated on real stage/time changes
+ *    only -- notes and pure reorders are excluded, matching "do not push on
+ *    every Save when nothing DJ-facing changed."
+ * 4. Withdrawal push copy. Traced every call site of cancelBookingRequest
+ *    and cancelAcceptedBookingRequest: exactly one string source exists
+ *    repo-wide, previousStatus: "accepted" is correctly threaded through
+ *    from both real UI entry points, and the service worker has no fetch
+ *    handler (so it cannot be serving a stale JS bundle). No code-level
+ *    duplicate/legacy path found -- see the shipped report for the
+ *    conclusion. This suite locks the currently-correct wiring down so it
+ *    cannot silently regress again.
+ */
+function testPushBadgeRunSheetWithdrawalRealDeviceFollowups() {
+  // --- Issue 1: dedupe must not collapse different content -----------------
+  const dedupeMigrationSource = readFileSync(
+    new URL(
+      "../supabase/migrations/20260816000000_notification_dedupe_includes_body.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(
+    dedupeMigrationSource,
+    /and n\.body is not distinct from p_body/,
+    "the dedupe SELECT must also require the body to match, or two different messages from the same sender to the same chat within 10 minutes collapse into one and the second never pushes",
+  );
+  assert.match(dedupeMigrationSource, /n\.title = p_title/);
+  assert.match(dedupeMigrationSource, /n\.link is not distinct from p_link/);
+  assert.match(dedupeMigrationSource, /n\.read = false/);
+  assert.match(dedupeMigrationSource, /interval '10 minutes'/);
+  // Reaction notifications are keyed by reaction_id and update in place --
+  // must still return before ever reaching the body-matching dedupe select.
+  assert.match(dedupeMigrationSource, /if p_reaction_id is not null then/);
+  const reactionBlock = dedupeMigrationSource.slice(
+    dedupeMigrationSource.indexOf("if p_reaction_id is not null then"),
+    dedupeMigrationSource.indexOf("Dedupe now also requires"),
+  );
+  assert.match(reactionBlock, /return v_notification_id;/);
+
+  // --- Issue 2: badge must count unread booking rows for every role -------
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    notificationsSource,
+    /role === "dj" \? Promise\.resolve\(\[\] as Notification\[\]\)/,
+    "getNavBadgeCounts must no longer force a DJ's booking-notification count to zero",
+  );
+  assert.match(
+    notificationsSource,
+    /const bookingTypes: NotificationType\[\] = \["booking_request", "booking_update"\];/,
+    "both notification types must be counted for every role -- getUnreadNotifications already scopes to the caller's own rows",
+  );
+  assert.match(
+    notificationsSource,
+    /getUnreadNotifications\(userId, bookingTypes\)/,
+    "the booking-notifications query must run unconditionally, not be skipped for a role",
+  );
+
+  const navBadgeProviderSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    navBadgeProviderSource,
+    /\.catch\(\(\) => \{\}\)/,
+    "badge-sync errors must be logged, not silently swallowed -- otherwise a real WebKit-level rejection is indistinguishable from a genuine zero count",
+  );
+  assert.match(navBadgeProviderSource, /console\.error\("\[nav-badges\] clearAppBadge failed:"/);
+  assert.match(navBadgeProviderSource, /console\.error\("\[nav-badges\] App badge sync failed:"/);
+  assert.match(
+    navBadgeProviderSource,
+    /badgingNavigator\.setAppBadge\(total\) : badgingNavigator\.clearAppBadge\(\)/,
+    "the badge must still be driven by the actual computed unread total",
+  );
+
+  // --- Issue 3: run-sheet DJ-facing change detection + wiring -------------
+  const base = (overrides: Partial<RunSheetRowInput> = {}): RunSheetRowInput => ({
+    id: "row-1",
+    sort_order: 0,
+    artist_name: "DJ A",
+    start_time: "11:00 PM",
+    finish_time: "1:00 AM",
+    stage_area: "Front",
+    notes: "",
+    booking_request_id: "booking-a",
+    ...overrides,
+  });
+
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges([base()], [base()]),
+    [],
+    "identical rows must not push",
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges([base()], [base({ notes: "Bring USB" })]),
+    [],
+    "notes are planner-only and must not push",
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base(), base({ id: "row-2", sort_order: 1, booking_request_id: "booking-b", artist_name: "DJ B" })],
+      [base({ id: "row-2", sort_order: 0, booking_request_id: "booking-b", artist_name: "DJ B" }), base({ sort_order: 1 })],
+    ),
+    [],
+    "a pure reorder with no stage/time change must not push either DJ",
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges([base()], [base({ stage_area: "Back" })]),
+    [{ bookingRequestId: "booking-a", changeSummary: "Stage changed to Back" }],
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base()],
+      [base({ start_time: "10:00 PM", finish_time: "2:00 AM" })],
+    ),
+    [{ bookingRequestId: "booking-a", changeSummary: "Set time changed to 10:00 PM – 2:00 AM" }],
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base()],
+      [base({ stage_area: "Back", start_time: "10:00 PM", finish_time: "2:00 AM" })],
+    ),
+    [{ bookingRequestId: "booking-a", changeSummary: "Your run sheet details were updated" }],
+    "both fields changing at once uses the general fallback copy",
+  );
+  // Multi-set DJ: two rows for the same booking. Only the first row's stage
+  // changed -- the copy must aggregate every current row's value (matching
+  // describeRunSheetBookingChange's convention), not just the last row, or a
+  // change on any row but the last would show a stale/wrong set's value.
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base({ id: "set-1", stage_area: "Front" }), base({ id: "set-2", sort_order: 1, stage_area: "Back2" })],
+      [base({ id: "set-1", stage_area: "VIP" }), base({ id: "set-2", sort_order: 1, stage_area: "Back2" })],
+    ),
+    [{ bookingRequestId: "booking-a", changeSummary: "Stage changed to VIP / Back2" }],
+    "multi-set stage change must aggregate all of this DJ's current rows, not just the last one",
+  );
+  // Initial assignment: a brand-new row with real values must push once --
+  // but a brand-new row that's still blank (draft/unassigned) must not.
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [],
+      [base({ id: "row-new", booking_request_id: "booking-c", stage_area: "Main" })],
+    ),
+    [{ bookingRequestId: "booking-c", changeSummary: "Your run sheet details were updated" }],
+  );
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [],
+      [
+        base({
+          id: "row-draft",
+          booking_request_id: "booking-d",
+          stage_area: "",
+          start_time: "",
+          finish_time: "",
+        }),
+      ],
+    ),
+    [],
+    "a still-blank freshly-added row must not push",
+  );
+  // Rows with no booking_request_id (unassigned/draft rows) are never
+  // iterated at all -- collectRunSheetDjFacingChanges only walks real
+  // booking ids, so an unassigned row can never appear in its output.
+  assert.deepEqual(
+    collectRunSheetDjFacingChanges(
+      [base({ booking_request_id: undefined })],
+      [base({ booking_request_id: undefined, stage_area: "Back" })],
+    ),
+    [],
+  );
+
+  const runSheetLibSource = readFileSync(
+    new URL("../lib/eventRunSheet.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    runSheetLibSource,
+    /export async function notifyRunSheetUpdatesForChangedBookings\(options: \{\s*\n\s*eventName: string;/,
+    "the per-DJ push needs eventName to build its title",
+  );
+  assert.match(
+    runSheetLibSource,
+    /const title = `\$\{eventName\} · Run sheet updated`;/,
+  );
+  assert.match(
+    runSheetLibSource,
+    /"message",\s*\n\s*title,\s*\n\s*change\.changeSummary,\s*\n\s*`\/dm\/\$\{booking\.conversation_id\}`,/,
+    "the push must use the booking DM link, not the crew-chat link, so it carries its own dedupe key",
+  );
+  assert.match(runSheetLibSource, /booking\.status !== "accepted"/);
+  assert.doesNotMatch(
+    runSheetLibSource,
+    /supabase\.from\("messages"\)\.insert\(\{\s*\n\s*conversation_id: booking\.conversation_id,\s*\n\s*user_id: authorId,/,
+    "this path must not insert its own DM message bubble -- the crew-chat post is already the visible record",
+  );
+
+  const runSheetSectionSource = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    runSheetSectionSource,
+    /const djFacingChanges = collectRunSheetDjFacingChanges\(savedRows, nextRows\);/,
+  );
+  const handleSaveBlock =
+    runSheetSectionSource.match(/async function handleSave\(\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
+  assert.ok(handleSaveBlock, "handleSave must exist");
+  assert.match(
+    handleSaveBlock,
+    /notifyRunSheetUpdatesForChangedBookings\(\{\s*\n\s*eventName,\s*\n\s*lineup,\s*\n\s*changes: djFacingChanges,/,
+    "handleSave must actually call the per-DJ notify -- this is the exact wiring that was missing before this fix",
+  );
+  // Both notify calls fire from the same successful-save path, and crew chat
+  // still gets the broader (notes/order-inclusive) change list -- neither
+  // channel was removed, the DJ push was added alongside it.
+  assert.match(handleSaveBlock, /notifyCrewChatOfRunSheetUpdate/);
+  assert.match(handleSaveBlock, /changes: runSheetChanges,/);
+
+  // --- Issue 4: withdrawal copy wiring must not have silently regressed ---
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Withdrew from event`/,
+    "the withdrawal title must still name the actual DJ, not the old static 'DJ withdrew from event'",
+  );
+  assert.doesNotMatch(
+    bookingRequestsSource,
+    /"DJ withdrew from event"/,
+    "the old unnamed literal must not exist anywhere -- it was the exact text seen stale on a real device",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /export async function cancelAcceptedBookingRequest\([\s\S]*?previousStatus: "accepted",/,
+    "the withdraw/cancel-accepted entry point must thread previousStatus so cancelBookingRequest actually reaches the wasAccepted branch",
+  );
+  // Every real UI entry point for withdrawing from an accepted booking must
+  // route through cancelAcceptedBookingRequest (which supplies
+  // previousStatus), not the raw pending-request cancelBookingRequest.
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventDetailSource, /await cancelAcceptedBookingRequest\(/);
+  assert.match(dmPageSource, /await cancelAcceptedBookingRequest\(/);
+
+  // Only one source location in the whole repo defines this string -- no
+  // duplicate/legacy call site independently constructs the withdrawal copy.
+  const grepPaths = [
+    ["lib/bookingRequests.ts", bookingRequestsSource],
+    ["lib/events.ts", readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8")],
+    [
+      "lib/events/eventGroupChatUpdate.ts",
+      readFileSync(new URL("../lib/events/eventGroupChatUpdate.ts", import.meta.url), "utf8"),
+    ],
+  ] as const;
+  const withdrawTitleSources = grepPaths.filter(([, source]) =>
+    source.includes("Withdrew from event"),
+  );
+  assert.equal(
+    withdrawTitleSources.length,
+    1,
+    "exactly one file should construct the withdrawal push title",
+  );
+  assert.equal(withdrawTitleSources[0]?.[0], "lib/bookingRequests.ts");
+
+  // The service worker has no fetch handler, so it cannot be the source of a
+  // stale JS bundle serving old copy -- confirms the client cannot be
+  // "stuck" on old code via SW caching, ruling out that explanation.
+  const swSource = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+  assert.doesNotMatch(swSource, /addEventListener\(\s*['"]fetch['"]/);
+}
+
+/**
+ * Third real-device Production QA round: withdrawal push got an actual code
+ * fix. Tracing cancelBookingRequest found its createNotification call was
+ * the ONE call site in this file with no try/catch, unlike every sibling
+ * notification call. cancel_booking_request (the SQL RPC) had already
+ * committed by the time that call runs, so any failure there -- an
+ * auth/RLS edge case, a network blip, anything -- propagated uncaught
+ * through cancelAcceptedBookingRequest to the UI, which showed a generic
+ * "Failed to cancel" error for a cancellation that had, in fact, already
+ * succeeded -- and skipped the DM system message insert and
+ * notifyBookingRequestsChanged below it, since neither ever ran. This is
+ * exactly the "planner receives no push, nothing else visibly wrong" shape
+ * reported from a real device. Fixed by wrapping it in try/catch, matching
+ * the established soft-fail pattern used everywhere else notifications are
+ * created in this file.
+ *
+ * (That round's badge diagnostics panel -- and the Device diagnostics panel
+ * before it -- were both temporary investigation aids, removed once
+ * real-device data confirmed the underlying fixes work; see
+ * testTemporaryDiagnosticsPanelsRemoved.)
+ */
+function testWithdrawalNotificationSoftFails() {
+  // --- Issue 3: withdrawal notification must soft-fail, never abort -------
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  const cancelFnBody = bookingRequestsSource.slice(
+    bookingRequestsSource.indexOf("export async function cancelBookingRequest("),
+    bookingRequestsSource.indexOf("export type CancelAcceptedBookingRequestResult"),
+  );
+  assert.ok(cancelFnBody.length > 0, "cancelBookingRequest must exist");
+
+  // Exactly one createNotification call in this function -- no duplicate
+  // second withdrawal/cancel push was introduced alongside the fix.
+  const createNotificationCallCount = (cancelFnBody.match(/await createNotification\(/g) ?? []).length;
+  assert.equal(
+    createNotificationCallCount,
+    1,
+    "cancelBookingRequest must create exactly one notification, not a duplicate",
+  );
+
+  assert.match(
+    cancelFnBody,
+    /try \{\s*\n\s*await createNotification\(\s*\n\s*notifyUserId,\s*\n\s*"booking_update",\s*\n\s*notificationTitle,/,
+    "the withdrawal/cancel notification call must be wrapped in try/catch, matching every other notification call site",
+  );
+  assert.match(
+    cancelFnBody,
+    /\} catch \(notificationError\) \{\s*\n\s*console\.error\(\s*\n\s*"\[bookingRequests\] Booking cancelled but notification failed:",/,
+    "a notification failure must be soft-caught and logged, not thrown",
+  );
+
+  // The property this guards: the DM system-message insert and
+  // notifyBookingRequestsChanged() must both be unconditionally reachable,
+  // never skippable by a notification failure.
+  //
+  // The insert now runs BEFORE the notification (its message id is the
+  // notification's deep-link target, and does not exist until it is written),
+  // so this is no longer expressed as "appears after the catch". It is
+  // strictly stronger now: the insert sits in its own try/catch ahead of the
+  // notification, so a notification failure cannot reach it at all.
+  assert.match(
+    cancelFnBody,
+    /try \{\s*\n\s*cancelledDm = await insertBookingCancelledDmMessageIfNeeded\(booking\);\s*\n\s*\} catch \(cancelMessageError\) \{/,
+    "the DM system-message insert must sit in its own try/catch so neither it nor the " +
+      "notification can skip the other",
+  );
+
+  const afterNotificationCatch = cancelFnBody.slice(
+    cancelFnBody.indexOf('console.error(\n      "[bookingRequests] Booking cancelled but notification failed:"'),
+  );
+  assert.match(afterNotificationCatch, /notifyBookingRequestsChanged\(\);\s*\n\s*return booking;\s*\n\}/);
+
+  // Confirm insertBookingCancelledDmMessageIfNeeded itself never creates a
+  // second notification (it only inserts into `messages`) -- ruling out a
+  // duplicate push from that side effect.
+  const dmInsertFnBody = bookingRequestsSource.slice(
+    bookingRequestsSource.indexOf("async function insertBookingCancelledDmMessageIfNeeded("),
+    bookingRequestsSource.indexOf("export function formatRateProposedDmMessage("),
+  );
+  assert.ok(dmInsertFnBody.length > 0, "insertBookingCancelledDmMessageIfNeeded must exist");
+  assert.doesNotMatch(
+    dmInsertFnBody,
+    /createNotification\(/,
+    "the DM system-message insert must not itself create a notification",
+  );
+
+  // --- Issue 3: authorization SQL for the withdrawal direction is present -
+  const dedupeMigrationSource = readFileSync(
+    new URL(
+      "../supabase/migrations/20260816000000_notification_dedupe_includes_body.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  // The condition that authorizes a DJ (recipient) cancelling an accepted
+  // booking to notify the planner (sender) -- the exact direction a
+  // withdrawal needs. Present verbatim (copied from the live function).
+  assert.match(
+    dedupeMigrationSource,
+    /br\.recipient_id = v_sender_id\s*\n\s*and br\.sender_id = p_user_id\s*\n\s*and br\.status = 'cancelled'/,
+    "the booking_update authorization must allow a DJ (recipient) to notify the planner (sender) about a cancellation -- the withdrawal direction",
+  );
+
+  // --- Scope discipline: the confirmed-working run-sheet path is untouched
+  const runSheetLibSource = readFileSync(
+    new URL("../lib/eventRunSheet.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    runSheetLibSource,
+    /const title = `\$\{eventName\} · Run sheet updated`;/,
+    "the run-sheet push, confirmed working last round, must be unchanged",
+  );
+}
+
+/**
+ * Fourth real-device Production QA round, narrowed to DM/crew image-only
+ * push failing while text push works in the same conversations.
+ *
+ * Root cause: DM push title is always just "<sender>" and crew push title
+ * is always "<sender> · <event>" -- constant per sender+thread regardless of
+ * content. Two image-only sends with no caption both render the identical
+ * generic body "Sent a photo". The prior round's fix (dedupe also requires
+ * body to match, not just title+link) does NOT help here, since title AND
+ * body AND link are all genuinely identical between two such sends -- the
+ * second one still collided with the first's still-unread notification row,
+ * never inserted, and push-send (INSERT-only trigger) never fired.
+ *
+ * Fix: give message-type notifications a real identity to key dedupe on --
+ * the triggering chat message's own id (public.messages.id) -- instead of a
+ * title/body/link content fingerprint. Threaded through createNotification's
+ * new optional messageId param, wired at the two attachment call sites (DM
+ * and crew image sends) where a real message row exists. Text sends are
+ * deliberately untouched -- not reported broken, and different text
+ * messages naturally have different bodies. Booking/event/run-sheet
+ * notifications (no real message row) and reaction notifications (already
+ * keyed by reaction_id) are unaffected -- they don't pass messageId.
+ */
+function testMessageIdentityDedupeForAttachmentPushes() {
+  // --- createNotification: new messageId param, always sent to the RPC ----
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    notificationsSource,
+    /reactionId\?: string \| null,[\s\S]{0,800}messageId\?: string \| null,\s*\n\): Promise<string> \{/,
+    "createNotification must accept an optional messageId after reactionId",
+  );
+  assert.match(
+    notificationsSource,
+    /p_reaction_id: reactionId \?\? null,\s*\n\s*p_message_id: messageId \?\? null,/,
+    "p_message_id must always be sent (null when not applicable), same defensive pattern as p_reaction_id",
+  );
+
+  // --- DM image send: messageId threaded from the just-inserted row -------
+  const resolveDmOtherUserIdSource = readFileSync(
+    new URL("../lib/dm/resolveDmOtherUserId.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    resolveDmOtherUserIdSource,
+    /messageId\?: string \| null;/,
+    "notifyDmPeerOfMessage must accept an optional messageId",
+  );
+  assert.match(
+    resolveDmOtherUserIdSource,
+    /createNotification\(\s*\n\s*recipientId,\s*\n\s*"message",\s*\n\s*senderName,\s*\n\s*formatNotificationPreview\(body\),\s*\n\s*`\/dm\/\$\{conversationId\}`,\s*\n\s*null,\s*\n\s*messageId,\s*\n\s*\);/,
+    "the DM push must pass its own message's id through",
+  );
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmPageSource,
+    /body: caption \|\| getDmAttachmentNotificationBody\(sentAttachments\[0\], sentAttachments\.length\),\s*\n\s*messageId,\s*\n\s*\}\);/,
+    "the DM attachment send call site must pass the just-created message's id to notifyDmPeerOfMessage",
+  );
+
+  // --- Crew image send: messageId threaded from messageRow.id -------------
+  const groupChatAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    groupChatAttachmentsSource,
+    /createNotification\(\s*\n\s*participantId,\s*\n\s*"message",\s*\n\s*title,\s*\n\s*preview,\s*\n\s*link,\s*\n\s*null,\s*\n\s*messageRow\.id as string,\s*\n\s*\);/,
+    "the crew image push must pass its own message's id through",
+  );
+
+  // Text sends were deliberately left off messageId in THIS round (image-
+  // only was the reported bug) -- a later round (see
+  // testOneMessageOnePushIdentityDedupe) extended it to text too, making the
+  // identity-based invariant universal. This just confirms crew text send
+  // still exists and creates exactly one notification per participant; it no
+  // longer asserts messageId is absent, since that assertion became false by
+  // design in the later round.
+  const eventCrewChatSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventCrewChatSource, /export async function sendEventCrewChatMessage\(/);
+
+  // --- SQL migration correctness -------------------------------------------
+  const migrationSource = readFileSync(
+    new URL(
+      "../supabase/migrations/20260817000000_notification_message_identity_dedupe.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migrationSource, /add column if not exists message_id uuid;/);
+  assert.match(
+    migrationSource,
+    /create index if not exists notifications_message_id_idx\s*\n\s*on public\.notifications \(message_id\)\s*\n\s*where message_id is not null;/,
+  );
+  assert.match(
+    migrationSource,
+    /drop function if exists public\.create_notification\(text, text, text, text, text, uuid\);/,
+    "adding a parameter requires dropping the old signature first, or Postgres creates an ambiguous second overload",
+  );
+  assert.match(migrationSource, /p_message_id uuid default null/);
+
+  // Message-identity branch must come AFTER the reaction branch (so reaction
+  // notifications are completely unaffected) and BEFORE the content-based
+  // dedupe (so it takes priority when a real message id is supplied).
+  const reactionBranchIdx = migrationSource.indexOf("if p_reaction_id is not null then");
+  const messageIdBranchIdx = migrationSource.indexOf("if p_message_id is not null then");
+  const contentDedupeIdx = migrationSource.indexOf("Content-based dedupe for everything else");
+  assert.ok(reactionBranchIdx > 0 && messageIdBranchIdx > 0 && contentDedupeIdx > 0);
+  assert.ok(
+    reactionBranchIdx < messageIdBranchIdx && messageIdBranchIdx < contentDedupeIdx,
+    "branch order must be reaction -> message-identity -> content-based dedupe",
+  );
+
+  const messageIdBlock = migrationSource.slice(messageIdBranchIdx, contentDedupeIdx);
+  assert.match(
+    messageIdBlock,
+    /where n\.user_id = p_user_id\s*\n\s*and n\.message_id = p_message_id/,
+    "message-identity dedupe must be scoped to (user_id, message_id) -- not title/body/link",
+  );
+  assert.doesNotMatch(
+    messageIdBlock,
+    /n\.title = p_title|n\.body is not distinct from p_body/,
+    "the message-identity path must not also require title/body to match -- that would recreate the exact bug being fixed",
+  );
+  assert.match(
+    messageIdBlock,
+    /insert into public\.notifications \(user_id, type, title, body, link, read, message_id\)/,
+  );
+
+  // Content-based dedupe (booking/event/run-sheet, and reaction) must be
+  // byte-for-byte unchanged from the prior migration.
+  const contentDedupeBlock = migrationSource.slice(contentDedupeIdx);
+  assert.match(
+    contentDedupeBlock,
+    /and n\.title = p_title\s*\n\s*and n\.body is not distinct from p_body\s*\n\s*and n\.link is not distinct from p_link\s*\n\s*and n\.read = false\s*\n\s*and n\.created_at > now\(\) - interval '10 minutes'/,
+  );
+
+  // Authorization guards must be present, unweakened.
+  assert.match(migrationSource, /raise exception 'Not allowed to create booking_update notification';/);
+  assert.match(migrationSource, /raise exception 'Not allowed to notify this user for this conversation';/);
+  assert.match(migrationSource, /raise exception 'Cannot create notification for yourself';/);
+
+  assert.match(
+    migrationSource,
+    /revoke all on function public\.create_notification\(text, text, text, text, text, uuid, uuid\) from public;/,
+  );
+  assert.match(
+    migrationSource,
+    /grant execute on function public\.create_notification\(text, text, text, text, text, uuid, uuid\) to authenticated;/,
+  );
+}
+
+/**
+ * Fifth real-device Production QA round: a message with BOTH an image and a
+ * caption produced TWO pushes (one caption-shaped, one generic "Sent a
+ * photo"-shaped) instead of one. Traced every notification call site for
+ * DM/crew text and image sends: both attachment paths already preferred the
+ * caption over the generic body in a single createNotification call (no
+ * second call site found for that exact scenario despite exhaustive
+ * tracing -- see the shipped report for the full investigation). Rather
+ * than leave the one-message-one-push invariant proven only for the two
+ * attachment paths from a prior round, this extends message-identity dedupe
+ * to the text send paths too (previously deliberately left off, since text
+ * wasn't the reported bug) -- making "same recipient + same message_id =
+ * same notification identity" a universal guarantee at the RPC layer
+ * regardless of how many times or from where createNotification might ever
+ * be called for a given message, present or future. This is the "the
+ * database/RPC should safely return the same notification id" requirement,
+ * applied everywhere a real message row exists, not just attachments.
+ *
+ * Also found and fixed a genuine, unrelated duplicate-push case while
+ * auditing per this round's explicit ask: whole-event cancellation
+ * (lib/events.ts, notifyCancelledBookingsFromEventCancellation) created a
+ * booking_update notification AND a near-identical "message"-type
+ * notification for the SAME recipient and SAME link -- two push banners
+ * telling the DJ their booking was cancelled, worded two different ways.
+ * The redundant message-type call was removed; the booking_update one (the
+ * canonical shape matching every other booking status change) stays.
+ */
+function testOneMessageOnePushIdentityDedupe() {
+  // --- DM: both text and image sends now pass a real message identity ----
+  const resolveDmOtherUserIdSource = readFileSync(
+    new URL("../lib/dm/resolveDmOtherUserId.ts", import.meta.url),
+    "utf8",
+  );
+  // Exactly one createNotification call inside notifyDmPeerOfMessage --
+  // whichever send path calls it (text or image), it fires once per message.
+  const dmNotifyFnBody = resolveDmOtherUserIdSource.slice(
+    resolveDmOtherUserIdSource.indexOf("export async function notifyDmPeerOfMessage("),
+  );
+  assert.equal(
+    (dmNotifyFnBody.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "notifyDmPeerOfMessage must create exactly one notification per call",
+  );
+  assert.match(dmNotifyFnBody, /messageId,\s*\n\s*\);/, "the message id must be threaded through to createNotification");
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  // Text send: the insert now fetches its own id back and passes it through.
+  const dmTextSendBlock = dmPageSource.slice(
+    dmPageSource.indexOf("async function sendMessage() {"),
+    dmPageSource.indexOf("async function sendAttachments("),
+  );
+  assert.match(
+    dmTextSendBlock,
+    /\.select\("id"\)\s*\n\s*\.single\(\);/,
+    "DM text send must fetch the inserted message's id",
+  );
+  assert.match(
+    dmTextSendBlock,
+    /messageId: insertedMessage\?\.id as string \| undefined,/,
+    "DM text send must pass its message id through to notifyDmPeerOfMessage",
+  );
+  // Image send: exactly one notify call, caption wins, message id threaded.
+  const dmAttachmentSendBlock = dmPageSource.slice(
+    dmPageSource.indexOf("async function sendAttachments("),
+  );
+  const dmAttachmentSendBody = dmAttachmentSendBlock.slice(0, dmAttachmentSendBlock.indexOf("\n  }\n"));
+  assert.equal(
+    (dmAttachmentSendBody.match(/notifyDmPeerOfMessage\(/g) ?? []).length,
+    1,
+    "the DM attachment send path must call notifyDmPeerOfMessage exactly once per message, even when a caption is present",
+  );
+  assert.match(
+    dmAttachmentSendBody,
+    /body: caption \|\| getDmAttachmentNotificationBody\(sentAttachments\[0\], sentAttachments\.length\),/,
+    "caption must win over the generic photo body in the single notify call",
+  );
+  assert.match(dmAttachmentSendBody, /messageId,\s*\n\s*\}\);/);
+
+  // --- Crew: both text and image sends now pass a real message identity --
+  const eventCrewChatSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const crewTextSendFn = eventCrewChatSource.slice(
+    eventCrewChatSource.indexOf("export async function sendEventCrewChatMessage("),
+  );
+  const crewTextSendBody = crewTextSendFn.slice(0, crewTextSendFn.indexOf("\n}\n"));
+  assert.match(
+    crewTextSendBody,
+    /const \{ data: messageRow, error: insertError \} = await supabase\s*\n\s*\.from\("messages"\)\s*\n\s*\.insert\(\{/,
+    "crew text send must fetch the inserted message's id",
+  );
+  assert.equal(
+    (crewTextSendBody.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "crew text send's notify loop must call createNotification exactly once per participant per message",
+  );
+  assert.match(
+    crewTextSendBody,
+    /createNotification\(\s*\n\s*participantId,\s*\n\s*"message",\s*\n\s*title,\s*\n\s*preview,\s*\n\s*link,\s*\n\s*null,\s*\n\s*messageRow\?\.id as string \| undefined,\s*\n\s*\);/,
+    "crew text push must pass its own message's id through",
+  );
+
+  const groupChatAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  const crewAttachmentNotifyBlock = groupChatAttachmentsSource.slice(
+    groupChatAttachmentsSource.indexOf("if (input.notifyParticipants !== false) {"),
+    groupChatAttachmentsSource.indexOf("return {\n    messageId: messageRow.id"),
+  );
+  assert.equal(
+    (crewAttachmentNotifyBlock.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "the crew attachment send path must call createNotification exactly once per participant per message, even when a caption is present",
+  );
+  assert.match(
+    crewAttachmentNotifyBlock,
+    /const preview = formatNotificationPreview\(text \|\| genericPhotoPreview\);/,
+    "caption must win over the generic photo body in the single notify call",
+  );
+  assert.match(
+    crewAttachmentNotifyBlock,
+    /messageRow\.id as string,\s*\n\s*\);/,
+  );
+
+  // --- Message-identity dedupe is still exactly one call site's worth of
+  // logic in the SQL, unaffected by extending it to more callers -----------
+  const migrationSource = readFileSync(
+    new URL(
+      "../supabase/migrations/20260817000000_notification_message_identity_dedupe.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(
+    migrationSource,
+    /where n\.user_id = p_user_id\s*\n\s*and n\.message_id = p_message_id/,
+    "idempotency is keyed on (user_id, message_id) only -- content-blind by design, so different messages with identical rendered text still both push",
+  );
+
+  // --- Duplicate event-cancellation push removed ---------------------------
+  const eventsSource = readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8");
+  const cancelNotifyFnBody = eventsSource.slice(
+    eventsSource.indexOf("async function notifyCancelledBookingsFromEventCancellation("),
+    eventsSource.indexOf("export async function cancelEvent("),
+  );
+  assert.ok(cancelNotifyFnBody.length > 0, "notifyCancelledBookingsFromEventCancellation must exist");
+  assert.equal(
+    (cancelNotifyFnBody.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "whole-event cancellation must create exactly one notification per affected DJ -- the redundant message-type duplicate must be gone",
+  );
+  assert.match(
+    cancelNotifyFnBody,
+    /"booking_update",\s*\n\s*`\$\{plannerName\} · Booking cancelled`,\s*\n\s*booking\.event_name,/,
+    "the surviving notification must be the canonical booking_update one, unchanged in copy",
+  );
+  assert.doesNotMatch(
+    cancelNotifyFnBody,
+    /"message",\s*\n\s*plannerName,/,
+    "the redundant message-type duplicate (title = plannerName alone) must not exist anymore",
+  );
+  // formatEventCancelledInboxPreview/formatNotificationPreview were only
+  // used by the removed call -- confirm they're no longer imported here
+  // (still defined/used elsewhere for the DM inbox preview pipeline).
+  assert.doesNotMatch(eventsSource, /formatEventCancelledInboxPreview/);
+  assert.doesNotMatch(eventsSource, /formatNotificationPreview/);
+
+  // --- Existing booking/run-sheet/event pushes unchanged -------------------
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{djName\} · Booking accepted`,\s*\n\s*booking\.event_name,/,
+  );
+  assert.match(
+    bookingRequestsSource,
+    /`\$\{cancelledByName\} · Withdrew from event`/,
+  );
+  const runSheetLibSource = readFileSync(
+    new URL("../lib/eventRunSheet.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(runSheetLibSource, /const title = `\$\{eventName\} · Run sheet updated`;/);
+  assert.match(eventCrewChatSource, /`\$\{eventName\} · Crew chat ready`,\s*\n\s*"Your event crew chat is now available",/);
+  const eventGroupChatUpdateSource = readFileSync(
+    new URL("../lib/events/eventGroupChatUpdate.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventGroupChatUpdateSource, /const title = `\$\{eventName\} · Event updated`;/);
+}
+
+/**
+ * Temporary user-visible diagnostics panels (Device diagnostics, Badge
+ * diagnostics) are removed now that real-device data has confirmed the
+ * underlying push/badge fixes work. Production-safe console.error logging
+ * and the actual notification-state/badge-sync logic stay -- only the
+ * developer-facing panels and the now-dead diagnostics-gathering code they
+ * were the sole consumer of are gone. Unsupported-iOS messaging, the
+ * reconnect flow, and badge behaviour are all confirmed unchanged.
+ */
+function testTemporaryDiagnosticsPanelsRemoved() {
+  const settingsSource = readFileSync(
+    new URL("../app/components/settings/PushNotificationsSection.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(settingsSource, /Device diagnostics \(temporary\)/);
+  assert.doesNotMatch(settingsSource, /Badge diagnostics \(temporary\)/);
+  assert.doesNotMatch(settingsSource, /getPushDiagnostics/);
+  assert.doesNotMatch(settingsSource, /badgeDiagnostics/);
+  assert.doesNotMatch(settingsSource, /useSyncExternalStore/);
+
+  // The diagnostics-gathering code these panels were the only consumer of is
+  // gone too -- not just hidden, actually removed, per "do not expose
+  // developer diagnostics to beta users."
+  assert.ok(
+    !existsSync(new URL("../lib/navigation/badgeDiagnostics.ts", import.meta.url)),
+    "the temporary badge diagnostics module must be deleted, not just unused",
+  );
+  const pushClientSource = readFileSync(new URL("../lib/push/client.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(pushClientSource, /getPushDiagnostics|PushDiagnostics/);
+
+  const navBadgeProviderSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(navBadgeProviderSource, /recordBadgeSyncAttempt|badgeDiagnostics|safeBadgeErrorName/);
+  // Production-safe logging kept, and the actual badge-sync behaviour
+  // (setAppBadge/clearAppBadge driven by the real unread total) is
+  // unchanged -- "keep badge behaviour as-is."
+  assert.match(navBadgeProviderSource, /console\.error\("\[nav-badges\] clearAppBadge failed:"/);
+  assert.match(navBadgeProviderSource, /console\.error\("\[nav-badges\] App badge sync failed:"/);
+  assert.match(
+    navBadgeProviderSource,
+    /badgingNavigator\.setAppBadge\(total\) : badgingNavigator\.clearAppBadge\(\)/,
+  );
+  assert.match(
+    navBadgeProviderSource,
+    /if \(!state\.badgesReady\) \{\s*\n\s*return;/,
+    "badge must still only sync once the real count has loaded",
+  );
+
+  // Unsupported-iOS messaging, reconnect flow, and friendly reconnect
+  // errors are all untouched by this cleanup.
+  assert.match(settingsSource, /Push notifications unavailable/);
+  assert.match(settingsSource, /Push notifications require iOS 16\.4 or later/);
+  assert.match(settingsSource, /Reconnect notifications/);
+  assert.match(settingsSource, /Notifications need to be reconnected on this device/);
+  assert.match(settingsSource, /Couldn't reconnect notifications\\nTry again or restart FTC/);
+  assert.match(settingsSource, /detectNotificationState/);
+  assert.match(settingsSource, /enableNotifications/);
+  assert.match(settingsSource, /disableNotifications/);
+}
+
+/**
+ * Sixth real-device Production QA round: Production confirmed the SQL
+ * migration is live (both dedupe_includes_body and has_message_identity_param
+ * read true from pg_get_functiondef), yet recent public.notifications rows
+ * for image-only sends still showed message_id = NULL, so the second
+ * image-only message in a thread was falling back to content-based dedupe
+ * and colliding with the first's still-unread row -- no second push.
+ *
+ * The specific hypothesis handed down: createNotification()'s TypeScript
+ * signature might accept messageId as a parameter without the actual
+ * supabase.rpc(...) payload object ever including a p_message_id key at all
+ * (the object literal simply omitting it, independent of what the function
+ * signature promises).
+ *
+ * Re-inspected the actual current source at every layer asked about:
+ * createNotification()'s signature, the literal RPC payload object, every
+ * caller that passes messageId (both DM and crew attachment sends), and the
+ * TypeScript positional-argument-to-named-RPC-key mapping. All correct --
+ * the RPC payload literal does include `p_message_id: messageId ?? null`
+ * by name (confirmed by the existing assertion in
+ * testMessageIdentityDedupeForAttachmentPushes, which was already passing).
+ * No code bug found; nothing changed this round except locking the RPC
+ * payload's exact key set down with a stronger, whole-object assertion than
+ * before, per the explicit ask that a test "prove the RPC argument object
+ * itself contains p_message_id, not merely that callers pass a seventh
+ * argument." (Whether Production's deployed bundle and Supabase's PostgREST
+ * schema cache actually reflect this commit is outside what a source-level
+ * test can prove -- see the shipped report.)
+ */
+function testCreateNotificationRpcPayloadIncludesMessageId() {
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Exactly one call site in the whole repo constructs this payload --
+  // there is no second, divergent path that could omit the key.
+  const rpcCallMatches = [
+    ...notificationsSource.matchAll(/supabase\.rpc\("create_notification",/g),
+  ];
+  assert.equal(
+    rpcCallMatches.length,
+    1,
+    "exactly one call site must construct the create_notification RPC payload",
+  );
+
+  // Extract the full object literal passed to .rpc(...), not just a nearby
+  // line -- proves the ACTUAL PAYLOAD OBJECT contains every key, not merely
+  // that the word "p_message_id" appears somewhere in the file.
+  const rpcCallStart = notificationsSource.indexOf('supabase.rpc("create_notification", {');
+  assert.ok(rpcCallStart > -1, "the create_notification RPC call must exist");
+  const rpcCallEnd = notificationsSource.indexOf("});", rpcCallStart);
+  assert.ok(rpcCallEnd > rpcCallStart, "the RPC call's closing must be found");
+  const rpcPayloadBlock = notificationsSource.slice(rpcCallStart, rpcCallEnd);
+
+  const expectedKeys = [
+    "p_user_id",
+    "p_type",
+    "p_title",
+    "p_body",
+    "p_link",
+    "p_reaction_id",
+    "p_message_id",
+  ];
+
+  for (const key of expectedKeys) {
+    const keyPattern = new RegExp(`\\b${key}:`);
+    assert.match(
+      rpcPayloadBlock,
+      keyPattern,
+      `the RPC payload object literal itself must include the "${key}" key -- not merely accepted by the function signature`,
+    );
+    // Exactly once each -- catches an accidental duplicate/shadowed key.
+    const occurrences = (rpcPayloadBlock.match(new RegExp(`\\b${key}:`, "g")) ?? []).length;
+    assert.equal(occurrences, 1, `"${key}" must appear exactly once in the RPC payload`);
+  }
+
+  // The value assigned to p_message_id specifically, not just its presence.
+  assert.match(
+    rpcPayloadBlock,
+    /p_message_id: messageId \?\? null,/,
+    "p_message_id must be assigned messageId (falling back to null), not some other stale expression",
+  );
+
+  // messageId itself must be sourced from createNotification's own
+  // parameter list, not a closure variable or module-level value that could
+  // go stale between calls.
+  const createNotificationFnStart = notificationsSource.indexOf(
+    "export async function createNotification(",
+  );
+  assert.ok(createNotificationFnStart > -1 && createNotificationFnStart < rpcCallStart);
+  const fnSignatureAndBody = notificationsSource.slice(createNotificationFnStart, rpcCallEnd);
+  assert.match(
+    fnSignatureAndBody,
+    /messageId\?: string \| null,\s*\n\): Promise<string> \{/,
+    "messageId must be the function's own last parameter, in scope for the RPC call below it",
+  );
+}
+
+/**
+ * Seventh real-device QA round: tapping an older DM/crew push always landed
+ * at the bottom of the chat instead of the exact message that generated it.
+ * Fixed by threading notifications.message_id through to a `?message=<id>`
+ * query param on the notification's link, read by both chat pages to scroll
+ * to and briefly highlight that message on load.
+ */
+
+function testChatMessageTargetParamParsing() {
+  assert.equal(CHAT_MESSAGE_TARGET_PARAM, "message");
+  assert.equal(parseChatMessageTargetIdParam(" abc-123 "), "abc-123");
+  assert.equal(parseChatMessageTargetIdParam(null), null);
+  assert.equal(parseChatMessageTargetIdParam(undefined), null);
+  assert.equal(parseChatMessageTargetIdParam(""), null);
+  assert.equal(parseChatMessageTargetIdParam("   "), null);
+}
+
+function testBuildNotificationTargetHrefAppendsMessageParam() {
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123", "msg-1"),
+    "/dm/abc-123?message=msg-1",
+    "a message id must be appended as a query param",
+  );
+  assert.equal(
+    buildNotificationTargetHref("/events/abc-123/chat", "msg-1"),
+    "/events/abc-123/chat?message=msg-1",
+  );
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123", null),
+    "/dm/abc-123",
+    "a missing message id (legacy notification) must return the link unchanged",
+  );
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123", undefined),
+    "/dm/abc-123",
+  );
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123?from=profile", "msg-1"),
+    "/dm/abc-123?from=profile&message=msg-1",
+    "an existing query string must be extended with '&', not overwritten",
+  );
+  // Message ids are UUIDs (no characters requiring percent-encoding), but the
+  // helper must still be safe if that ever changes.
+  assert.equal(
+    buildNotificationTargetHref("/dm/abc-123", "a b"),
+    "/dm/abc-123?message=a%20b",
+  );
+}
+
+/**
+ * notifications.link is matched with an exact `.eq("link", link)` by
+ * markNotificationsReadForLink (lib/notifications.ts) -- baking the message
+ * id into the *stored* link would silently break that lookup for every
+ * future message in the same conversation. The message id must only ever be
+ * appended at the point of navigation (push payload, in-app list), never
+ * written into the column callers pass to createNotification().
+ */
+function testNotificationLinkColumnStaysBareForReadTracking() {
+  const dmSource = readFileSync(
+    new URL("../lib/dm/resolveDmOtherUserId.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmSource,
+    /createNotification\(\s*\n\s*recipientId,\s*\n\s*"message",\s*\n\s*senderName,\s*\n\s*formatNotificationPreview\(body\),\s*\n\s*`\/dm\/\$\{conversationId\}`,/,
+    "the DM notification's stored link must stay the bare conversation path",
+  );
+
+  const crewSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    crewSource,
+    /const link = getEventCrewChatLink\(eventId\);/,
+    "the crew chat message notification's stored link must stay the bare getEventCrewChatLink(eventId) call, with no options appended",
+  );
+
+  const groupAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    groupAttachmentsSource,
+    /getEventCrewChatLink\(input\.eventId\)/,
+    "the crew chat attachment notification's stored link must stay bare too",
+  );
+}
+
+function testNotificationTypeAndNotificationsPageUseMessageId() {
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    notificationsSource,
+    /export type Notification = \{[\s\S]*?message_id: string \| null;[\s\S]*?\};/,
+    "the Notification type must declare message_id so callers get it typed, not just present at runtime",
+  );
+  assert.match(
+    notificationsSource,
+    /export function buildNotificationTargetHref\(/,
+    "buildNotificationTargetHref must be exported for reuse by the in-app notifications list",
+  );
+
+  const notificationsPageSource = readFileSync(
+    new URL("../app/notifications/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    notificationsPageSource,
+    /buildNotificationTargetHref,/,
+    "the notifications page must import buildNotificationTargetHref",
+  );
+  assert.match(
+    notificationsPageSource,
+    /router\.push\(buildNotificationTargetHref\(notification\.link, notification\.message_id\)\);/,
+    "clicking a notification row must navigate through buildNotificationTargetHref, not a raw notification.link push",
+  );
+}
+
+/**
+ * The push-delivery edge function is a separate Deno deployable that can't
+ * import lib/notifications.ts, so it re-derives the same '?message=<id>'
+ * link shape locally. This only checks the message-id-forwarding addition;
+ * it deliberately does not touch (and this test does not re-verify) VAPID
+ * signing, webhook secret validation, or the pg_net delivery loop.
+ */
+/**
+ * Round 15: tapping a booking-request push opened the right DM but landed at
+ * the bottom instead of on the booking card. The booking card IS a real
+ * `messages` row (the DM page puts `data-chat-message-id` on its <li>), but
+ * sendBookingRequest inserted that row without reading its id back and called
+ * createNotification with only 5 arguments -- so notifications.message_id was
+ * NULL and push-send had nothing to append `?message=` from.
+ *
+ * Fixed by threading the real message id through, reusing the existing
+ * `?message=<id>` deep link rather than inventing a booking-specific one.
+ * The live create_notification RPC's `if p_message_id is not null` branch is
+ * NOT gated on p_type, so it persists and dedupes on (user_id, message_id) for
+ * booking_request exactly as it does for chat messages -- which also keeps
+ * one booking request to exactly one notification.
+ */
+/**
+ * Round 17: the planner's "DJ accepted" and "DJ withdrew" pushes opened the
+ * DM at the bottom instead of the relevant message. Same root cause as the
+ * booking-request one: the DM system message was written without its id being
+ * read back, and createNotification was called with only five arguments, so
+ * notifications.message_id stayed NULL and push-send had nothing to append.
+ *
+ * Both helpers now return the id -- including on their dedupe paths, where the
+ * already-existing row is still the correct target -- and both call sites
+ * thread it through. The cancel/withdraw path additionally had to be
+ * REORDERED: it created the notification before inserting the DM notice, so
+ * the id did not exist yet.
+ */
+/**
+ * Round 18, two measured fixes.
+ *
+ * A) Attachment images corrected themselves on decode (~20px each, ~60px with
+ *    two or three photos), sliding a deep-link target down the viewport
+ *    several seconds after landing. The aspect ratio was only remembered in a
+ *    module-scoped Map, and tapping a push is a FULL document load, so the
+ *    ratio was always absent exactly when it mattered. It now persists.
+ *
+ * B) A booking lifecycle push targets its own timeline notice, which a newer
+ *    notice hides via shouldSuppressDmBookingTimelineNotice -- measured on
+ *    Production as found=false / atBottom=true. The booking id is already in
+ *    the notice text, so it now falls back to that booking's visible card.
+ */
+/**
+ * Round 19: withdrawals targeted the WRONG message and often produced no push
+ * at all. Measured in production: a 2026-08-16 withdrawal whose notification
+ * carried message_id 854c47f5, a "Booking cancelled" row from 2026-08-14.
+ *
+ * The cancellation notice text was a bare conversation-wide constant, so
+ * insertBookingCancelledDmMessageIfNeeded's dedupe matched the FIRST such row
+ * ever written in the thread and returned its id. create_notification then
+ * deduped on (user_id, message_id) against that same stale id, so a second
+ * withdrawal created no notification and no push.
+ */
+/**
+ * "Booking withdrawn · <event> · <bookingId>" was introduced in dbe763a1 but
+ * not added to isDmBookingSystemMessage, so it rendered as an ORDINARY chat
+ * message -- leaking a raw booking UUID into the DM timeline and the Messages
+ * inbox preview. Confirmed/cancelled were recognised; withdrawn was not.
+ */
+async function testVersionedLifecycleNoticesNeverRenderAsChat() {
+  const { isDmBookingSystemMessage } = await import("../lib/dm/dmBookingSystemMessages.js");
+  const id = "7c691536-1ff0-4e1e-bd0e-959bea7ad9be";
+
+  for (const label of ["Booking confirmed", "Booking withdrawn", "Booking cancelled"]) {
+    const text = `${label} · Club 53 · ${id}`;
+    assert.equal(
+      isDmBookingSystemMessage(text),
+      true,
+      `${label} must be treated as a booking system message, or it renders as chat and exposes ` +
+        `the raw booking id to the user`,
+    );
+  }
+
+  // Legacy rows stay recognised.
+  assert.equal(isDmBookingSystemMessage("Booking cancelled"), true);
+  // Real conversation must not be swept up.
+  assert.equal(isDmBookingSystemMessage("Hey are you free Friday?"), false);
+  assert.equal(isDmBookingSystemMessage("Booking confirmed by phone earlier"), false);
+}
+
+const LIFECYCLE_BOOKING_ID = "7c691536-1ff0-4e1e-bd0e-959bea7ad9be";
+const LIFECYCLE_LABELS = ["Booking confirmed", "Booking withdrawn", "Booking cancelled"] as const;
+const ANY_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+function lifecycleNoticeText(label: string, eventName = "Club 53"): string {
+  return `${label} · ${eventName} · ${LIFECYCLE_BOOKING_ID}`;
+}
+
+/**
+ * The booking card is the ONE visible source of truth for booking state, so
+ * the three versioned lifecycle rows must never render as visible chat.
+ *
+ * Measured on a real device (WebKit, QA DJ, production data) BEFORE this
+ * change: the DM timeline rendered "Booking withdrawn"/"Booking confirmed"
+ * notices and the Messages inbox row read
+ * "Booking withdrawn · Club · a73127e1-137d-44c7-b516-9ee3b262917e" -- a raw
+ * booking UUID in the user's face. After: neither surface contains any UUID
+ * and the notices are gone from the timeline.
+ */
+async function testVersionedLifecycleRowsAreHiddenFromTheDmTimeline() {
+  const conversationId = "conversation-1";
+  const booking = createRegressionBookingRequest({
+    id: LIFECYCLE_BOOKING_ID,
+    status: "accepted",
+  });
+  const messages = [
+    { id: "booking-card", created_at: "2026-07-27T12:00:00.000Z", text: formatBookingRequestMessage(booking) },
+    { id: "chat", created_at: "2026-07-27T12:01:00.000Z", text: "See you Friday" },
+    { id: "lifecycle", created_at: "2026-07-27T12:02:00.000Z", text: "" },
+  ];
+
+  for (const label of LIFECYCLE_LABELS) {
+    messages[2].text = lifecycleNoticeText(label);
+
+    assert.equal(
+      classifyDmConversationMessageKind(messages[2].text, {
+        bookings: [booking],
+        conversationId,
+        messages,
+        messageIndex: 2,
+      }),
+      "hidden",
+      `${label} must never render in the DM timeline -- the booking card is the source of truth`,
+    );
+
+    // ...and it must stay hidden with NO neighbouring booking card to lean on.
+    // shouldSuppressDmBookingTimelineNotice only hides a notice when a visible
+    // card already reflects the same state, so relying on it would leave the
+    // row visible in exactly the threads where the card is gone.
+    assert.equal(
+      classifyDmConversationMessageKind(messages[2].text, {
+        bookings: [],
+        conversationId,
+        messages: [messages[2]],
+        messageIndex: 0,
+      }),
+      "hidden",
+      `${label} must be hidden unconditionally, not only when a sibling card happens to match`,
+    );
+
+    // The bare no-context call the layout builder can make must agree.
+    assert.equal(
+      classifyDmConversationMessageKind(messages[2].text, {
+        bookings: [booking],
+        conversationId,
+      }),
+      "hidden",
+      `${label} must be hidden even without messages/messageIndex context`,
+    );
+  }
+
+  // Hidden rows must drop out of timestamp clustering too, or they leave a
+  // phantom day/time separator behind.
+  messages[2].text = lifecycleNoticeText("Booking confirmed");
+  const layout = buildDmConversationTimestampLayout(messages, {
+    bookings: [booking],
+    conversationId,
+  });
+  assert.equal(
+    layout.has("lifecycle"),
+    false,
+    "a hidden lifecycle row must not receive a timestamp-layout entry",
+  );
+  assert.equal(layout.has("chat"), true, "ordinary chat must still be laid out");
+  assert.equal(layout.has("booking-card"), true, "the booking card must still be laid out");
+
+  // --- what must NOT be hidden -------------------------------------------
+  // Legacy unversioned rows in historical threads keep rendering.
+  for (const legacy of [
+    "Booking confirmed",
+    "Booking cancelled",
+    "Booking accepted · Club 53",
+    "Booking cancelled · Club 53",
+    "Booking request cancelled by planner.",
+    "Booking confirmed · Club 53",
+  ]) {
+    assert.equal(
+      classifyDmConversationMessageKind(legacy, { bookings: [], conversationId }),
+      "timeline",
+      `legacy row "${legacy}" must keep rendering as a timeline notice`,
+    );
+  }
+
+  // Ordinary conversation is untouched.
+  assert.equal(
+    classifyDmConversationMessageKind("Hey are you free Friday?", { bookings: [], conversationId }),
+    "chat",
+  );
+  assert.equal(
+    classifyDmConversationMessageKind(`Booking confirmed by phone · ${LIFECYCLE_BOOKING_ID}`, {
+      bookings: [],
+      conversationId,
+    }),
+    "chat",
+    "only the three exact lifecycle verbs may be hidden -- a chat message that happens to end " +
+      "in a uuid must not vanish",
+  );
+
+  // The card itself must still be a card.
+  assert.equal(
+    classifyDmConversationMessageKind(formatBookingRequestMessage(booking), {
+      bookings: [booking],
+      conversationId,
+    }),
+    "booking_card",
+  );
+
+  // The DM page must actually drop "hidden".
+  const dmPage = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmPage,
+    /if \(timelineKind === "hidden"\) \{\s*return null;/,
+    "the DM page must render nothing for a hidden classification",
+  );
+}
+
+/**
+ * The trap this round had to avoid: hidden VISUALLY, never logically.
+ *
+ * CURRENT-STATE records what happens when a lifecycle row is suppressed at the
+ * data level instead -- "the invite stayed latest, and the planner never got
+ * unread/badge". These rows are what make the conversation recent and unread.
+ */
+async function testHiddenLifecycleRowsStillDriveInboxRecencyAndUnread() {
+  const { buildDmInboxRows, applyDmInboxRealtimeMessage } = await import("../lib/dmInbox.js");
+  const { formatDmInboxConversationPreview, isDmInboxSystemPreviewMessage } = await import(
+    "../lib/dm/messagePreview.js"
+  );
+
+  const conversationId = "conversation-1";
+  const otherConversationId = "conversation-2";
+  const planner = "planner-1";
+  const dj = "dj-1";
+  const booking = createRegressionBookingRequest({ id: LIFECYCLE_BOOKING_ID, status: "accepted" });
+
+  for (const label of LIFECYCLE_LABELS) {
+    const lifecycleText = lifecycleNoticeText(label);
+    const messages = [
+      {
+        id: "invite",
+        conversation_id: conversationId,
+        user_id: planner,
+        text: formatBookingRequestMessage(booking),
+        created_at: "2026-07-27T12:00:00.000Z",
+      },
+      {
+        id: "lifecycle",
+        conversation_id: conversationId,
+        // Authored by the DJ -- this is what makes it unread for the planner.
+        user_id: dj,
+        text: lifecycleText,
+        created_at: "2026-07-27T12:05:00.000Z",
+      },
+      {
+        id: "other",
+        conversation_id: otherConversationId,
+        user_id: dj,
+        text: "unrelated",
+        created_at: "2026-07-27T12:03:00.000Z",
+      },
+    ];
+
+    // A) It is still the preview-driving message -- which is the SAME object
+    //    that supplies latestActivityAt. Skipping it here would silently
+    //    demote the conversation to the previous message's timestamp.
+    const picked = pickDmInboxPreviewMessage(messages, conversationId, [booking]);
+    assert.equal(
+      picked?.id,
+      "lifecycle",
+      `${label} must remain the latest-activity message, or the conversation loses its recency`,
+    );
+
+    // B) Inbox ordering: the lifecycle row must sort this conversation first.
+    const rows = buildDmInboxRows(
+      [
+        { id: conversationId, created_at: "2026-07-27T11:00:00.000Z" },
+        { id: otherConversationId, created_at: "2026-07-27T11:00:00.000Z" },
+      ],
+      messages,
+      { bookingsByConversationId: new Map([[conversationId, [booking]]]) },
+    );
+    assert.equal(
+      rows[0]?.conversationId,
+      conversationId,
+      `${label} must keep its conversation at the top of the inbox`,
+    );
+    assert.equal(
+      rows[0]?.latestActivityAt,
+      "2026-07-27T12:05:00.000Z",
+      `${label} must set latestActivityAt -- ordering reads this field`,
+    );
+    assert.equal(
+      rows[0]?.latestMessageUserId,
+      dj,
+      `${label} must keep its author, which is what marks it unread for the other participant`,
+    );
+
+    // C) The realtime insert path must reorder on it too.
+    const reordered = applyDmInboxRealtimeMessage(
+      [
+        { conversationId: otherConversationId, latestActivityAt: "2026-07-27T12:03:00.000Z", latestPreview: "unrelated", latestMessageUserId: dj },
+        { conversationId, latestActivityAt: "2026-07-27T12:00:00.000Z", latestPreview: "x", latestMessageUserId: planner },
+      ],
+      messages[1],
+      { allMessages: messages, bookingsByConversationId: new Map([[conversationId, [booking]]]) },
+    );
+    assert.equal(reordered.matched, true);
+    assert.equal(
+      reordered.rows[0]?.conversationId,
+      conversationId,
+      `a live ${label} row must lift its conversation to the top`,
+    );
+
+    // D) Preview copy: label only. No event name, and above all no UUID.
+    const preview = formatDmInboxConversationPreview({
+      latestPreview: lifecycleText,
+      latestMessageUserId: dj,
+      currentUserId: planner,
+      bookings: [booking],
+    });
+    assert.equal(preview, label, `${label} must preview as its bare label`);
+    assert.doesNotMatch(
+      preview,
+      ANY_UUID,
+      `${label} must never put a raw booking id in the inbox (measured leaking on production)`,
+    );
+    assert.equal(
+      formatDmInboxMessagePreview(lifecycleText, { bookings: [booking] }),
+      label,
+    );
+
+    // E) System previews never get the "You: " prefix, even for the author.
+    assert.equal(isDmInboxSystemPreviewMessage(lifecycleText), true);
+    assert.equal(
+      formatDmInboxConversationPreview({
+        latestPreview: lifecycleText,
+        latestMessageUserId: dj,
+        currentUserId: dj,
+        bookings: [booking],
+      }),
+      label,
+      `${label} must not be prefixed with "You: "`,
+    );
+  }
+
+  // F) The unread machinery must not have learned about message kinds at all.
+  //    If it ever starts filtering, hiding becomes hiding-logically and the
+  //    badge regression in CURRENT-STATE comes straight back.
+  for (const file of ["../lib/inboxUnread.ts", "../lib/messageReads.ts"]) {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.doesNotMatch(
+      source,
+      /classifyDmConversationMessageKind|isVersionedBookingLifecycleDmMessage|isDmBookingSystemMessage/,
+      `${file} must stay kind-agnostic -- unread is computed from raw messages rows`,
+    );
+  }
+
+  // G) And pickDmInboxPreviewMessage must not gain a lifecycle skip either.
+  const previewSource = readFileSync(
+    new URL("../lib/dm/messagePreview.ts", import.meta.url),
+    "utf8",
+  );
+  const picker = previewSource.slice(
+    previewSource.indexOf("export function pickDmInboxPreviewMessage("),
+    previewSource.indexOf("function findBookingForMessage("),
+  );
+  assert.ok(picker.length > 0);
+  assert.doesNotMatch(
+    picker,
+    /isVersionedBookingLifecycleDmMessage|isDmBookingSystemMessage/,
+    "skipping lifecycle rows when picking the preview would also drop their timestamp and " +
+      "author, demoting the conversation and losing unread -- hide the TEXT, never the row",
+  );
+}
+
+/**
+ * No raw booking UUID may reach any user-facing string, on any surface, for
+ * any of the three verbs -- including a legacy row and an event name that
+ * itself contains the " · " separator.
+ */
+async function testNoBookingUuidIsEverUserFacing() {
+  const { formatDmBookingSystemMessageDisplay, isVersionedBookingLifecycleDmMessage } =
+    await import("../lib/dm/dmBookingSystemMessages.js");
+  const { formatBookingMessagePreview } = await import("../lib/bookingRequests.js");
+
+  for (const label of LIFECYCLE_LABELS) {
+    for (const eventName of ["Club 53", "Club · 53 · Warehouse", "  "]) {
+      const text = lifecycleNoticeText(label, eventName);
+
+      if (eventName.trim()) {
+        assert.equal(isVersionedBookingLifecycleDmMessage(text), true, `${text} must be recognised`);
+      }
+
+      for (const rendered of [
+        formatDmBookingSystemMessageDisplay(text),
+        formatDmInboxMessagePreview(text) ?? "",
+        formatBookingMessagePreview(text),
+      ]) {
+        assert.doesNotMatch(
+          rendered,
+          ANY_UUID,
+          `"${rendered}" (from "${text}") exposes a raw booking id to the user`,
+        );
+      }
+    }
+
+    assert.equal(formatDmBookingSystemMessageDisplay(lifecycleNoticeText(label)), label);
+  }
+
+  // Legacy display copy is unchanged.
+  assert.equal(formatDmBookingSystemMessageDisplay("Booking confirmed · Club 53"), "Booking confirmed");
+  assert.equal(formatDmBookingSystemMessageDisplay("Booking accepted · Club 53"), "Booking confirmed");
+  assert.equal(
+    formatDmBookingSystemMessageDisplay("Booking request cancelled by planner."),
+    "Booking cancelled",
+  );
+  assert.equal(formatDmBookingSystemMessageDisplay("Rate proposed: $200"), "Rate proposed: $200");
+  assert.equal(
+    formatDmBookingSystemMessageDisplay("Run sheet updated · Club 53 · Stage: Back"),
+    "Run sheet updated · Club 53 · Stage: Back",
+    "run sheet notices keep their change summary -- they carry no booking id",
+  );
+}
+
+/**
+ * The temporary in-DM toast. It exists because the lifecycle rows are hidden:
+ * a reader already in the thread would otherwise watch the card mutate in
+ * silence.
+ *
+ * Verified live (WebKit, QA DJ, production realtime): flipping
+ * booking_requests.cancelled_by from the DJ to the planner produced
+ * "Planner1 cancelled your booking" 508ms later, the toast cleared itself, and
+ * no chat line was added. The two negative controls below were verified live
+ * too -- an already-cancelled booking on first load produced nothing, and the
+ * acting user got nothing.
+ */
+async function testDmBookingLifecycleToast() {
+  const { formatDmBookingLifecycleToast } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const { INLINE_TAB_FEEDBACK_FADE_MS, INLINE_TAB_FEEDBACK_CLEAR_MS } = await import(
+    "../lib/design/inlineTabFeedback.js"
+  );
+  const planner = "planner-1";
+  const dj = "dj-1";
+  const base = createRegressionBookingRequest({ event_name: "Club 53" });
+
+  const accepted = { ...base, status: "accepted" as const };
+  const withdrawn = { ...base, status: "cancelled" as const, cancelled_by: dj };
+  const cancelled = { ...base, status: "cancelled" as const, cancelled_by: planner };
+
+  // --- the three required strings, to the right person -------------------
+  assert.equal(
+    formatDmBookingLifecycleToast(accepted, planner, "Dj2"),
+    "Dj2 accepted your booking",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast(withdrawn, planner, "Dj2"),
+    "Dj2 withdrew from Club 53",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast(cancelled, dj, "Planner1"),
+    "Planner1 cancelled your booking",
+  );
+
+  // --- never to the person who did it ------------------------------------
+  assert.equal(
+    formatDmBookingLifecycleToast(accepted, dj, "Planner1"),
+    null,
+    "the DJ accepted -- they must not be told about their own action",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast(withdrawn, dj, "Planner1"),
+    null,
+    "the DJ withdrew -- they must not be told about their own action",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast(cancelled, planner, "Dj2"),
+    null,
+    "the planner cancelled -- they must not be told about their own action",
+  );
+
+  // --- everything else stays silent --------------------------------------
+  assert.equal(formatDmBookingLifecycleToast({ ...base, status: "pending" }, planner, "Dj2"), null);
+  assert.equal(
+    formatDmBookingLifecycleToast({ ...base, status: "declined" }, planner, "Dj2"),
+    null,
+    "declined writes no DM system message and links to /bookings -- silent by decision, not accident",
+  );
+  assert.equal(
+    formatDmBookingLifecycleToast({ ...base, status: "cancelled", cancelled_by: null }, planner, "Dj2"),
+    null,
+    "a cancellation with no actor cannot be attributed, so it must not guess",
+  );
+  assert.equal(formatDmBookingLifecycleToast(accepted, null, "Dj2"), null);
+  assert.equal(formatDmBookingLifecycleToast(accepted, planner, "   "), null);
+  assert.equal(
+    formatDmBookingLifecycleToast(
+      { ...withdrawn, event_name: "" },
+      planner,
+      "Dj2",
+    ),
+    "Dj2 withdrew from your booking",
+    "a nameless event must not produce a dangling 'withdrew from '",
+  );
+
+  for (const [booking, viewer, name] of [
+    [accepted, planner, "Dj2"],
+    [withdrawn, planner, "Dj2"],
+    [cancelled, dj, "Planner1"],
+  ] as const) {
+    assert.doesNotMatch(
+      formatDmBookingLifecycleToast(booking, viewer, name) ?? "",
+      ANY_UUID,
+      "the toast must not leak a booking id either",
+    );
+  }
+
+  // --- wiring: existing realtime + existing neutral surface, nothing new --
+  const dmPage = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.equal(
+    (dmPage.match(/table: "booking_requests"/g) ?? []).length,
+    1,
+    "there must be exactly ONE booking_requests subscription -- the toast reuses it, it does " +
+      "not add a second realtime system",
+  );
+  assert.match(
+    dmPage,
+    /actorDisplayName: otherUserLabel,/,
+    "the toast must be attributed to the DM's other participant, who is the actor in a 1:1 thread",
+  );
+
+  // The surface: the app's shared NEUTRAL transient feedback, not the amber
+  // warning line. "Alice accepted your booking" is not a warning.
+  assert.match(
+    dmPage,
+    /useInlineTabFeedbackDismiss\(\s*bookingLifecycleToast,\s*clearBookingLifecycleToast,\s*\)/,
+    "the toast must use the shared transient-feedback lifecycle hook, not a hand-rolled timer",
+  );
+  // The whole element, so prop presence is asserted against THIS call site
+  // rather than against a hand-built render in the sibling test.
+  const toastElementStart = dmPage.indexOf("<InlineTabFeedbackMessage");
+  assert.ok(toastElementStart > -1, "the toast must render through the shared feedback component");
+  const toastElement = dmPage.slice(toastElementStart, dmPage.indexOf("/>", toastElementStart) + 2);
+  assert.match(
+    toastElement,
+    /message=\{bookingLifecycleToast\}/,
+    "the toast must render through the shared neutral feedback component",
+  );
+  assert.match(
+    toastElement,
+    /fading=\{bookingLifecycleToastFading\}/,
+    "the toast must be driven by the shared fade lifecycle",
+  );
+  // Without `wrap` the shared component truncates, and the event name -- the
+  // informative half of "<DJ> withdrew from <event>" -- is what gets cut.
+  assert.match(
+    toastElement,
+    /\bwrap\b/,
+    "the DM toast must opt into wrapping; the default is the fixed-height tab-row truncation",
+  );
+  assert.match(
+    dmPage,
+    /setBookingLifecycleToast\(toast\);/,
+    "the toast must own its own state, so the amber notice line is untouched",
+  );
+  // The regression this replaced: routing the toast through `notice` painted
+  // it --ftc-color-warning, and sharing that state meant its auto-clear could
+  // also wipe a genuine booking warning.
+  assert.doesNotMatch(
+    dmPage,
+    /setNotice\(toast\)/,
+    "the toast must NOT reuse the amber warning line -- that is the colour bug",
+  );
+  const noticeLine = dmPage.slice(dmPage.indexOf("{notice ? ("), dmPage.indexOf("{notice ? (") + 200);
+  assert.match(
+    noticeLine,
+    /text-\[var\(--ftc-color-warning\)\]/,
+    "the existing warning line must KEEP its amber -- only the toast moved off it",
+  );
+
+  // The shared surface owns the timing, and it must stay temporary.
+  assert.ok(
+    INLINE_TAB_FEEDBACK_FADE_MS > 0 && INLINE_TAB_FEEDBACK_CLEAR_MS <= 10000,
+    "the toast must be temporary",
+  );
+  assert.ok(
+    INLINE_TAB_FEEDBACK_CLEAR_MS > INLINE_TAB_FEEDBACK_FADE_MS,
+    "the message must clear only after the opacity transition finishes, or it disappears mid-fade",
+  );
+  // It must never become a message.
+  assert.doesNotMatch(
+    dmPage,
+    /pickDmBookingLifecycleToast[\s\S]{0,400}?from\("messages"\)\s*\.insert/,
+    "the toast must add no chat line",
+  );
+}
+
+/**
+ * Hiding is a RENDER decision. The writes must be untouched: every lifecycle
+ * action still inserts its `messages` row, still reads the id back, and still
+ * hands it to create_notification -- that row is what makes the conversation
+ * recent, unread, badged and deep-linkable.
+ */
+/**
+ * QA escape #1. The colour guard asserted on INLINE_TAB_FEEDBACK_TEXT_CLASS,
+ * which had ZERO production consumers -- its only reference in the repo was the
+ * assertion itself. The component actually renders
+ * EVENTS_LIST_TAB_FEEDBACK_CLASS, so QA painted the real class amber and the
+ * whole suite still passed. The orphan is now deleted, and this asserts on
+ * what the component *renders* rather than on any constant by name, so it
+ * survives the component switching constants again.
+ */
+async function testLifecycleToastRendersTheNeutralFeedbackSurface() {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const React = (await import("react")).default;
+  const { InlineTabFeedbackMessage } = await import(
+    "../app/components/feedback/InlineTabFeedbackMessage.js"
+  );
+
+  const renderClassName = (props: Record<string, unknown>): string => {
+    const markup = renderToStaticMarkup(
+      React.createElement(InlineTabFeedbackMessage, {
+        message: "Dj2 withdrew from Club 53",
+        fading: false,
+        ...props,
+      } as never),
+    );
+    return markup.match(/class="([^"]*)"/)?.[1] ?? "";
+  };
+
+  // The DM lifecycle toast renders with wrap -- this is the exact call the page
+  // makes, so a colour regression anywhere in its class chain lands here.
+  const toastClass = renderClassName({ className: "w-full px-4 pb-2 text-center", wrap: true });
+  const tabRowClass = renderClassName({});
+
+  for (const [label, className] of [
+    ["the DM lifecycle toast", toastClass],
+    ["the tab-row feedback", tabRowClass],
+  ] as const) {
+    assert.match(
+      className,
+      /\btext-ftc-text-muted\b/,
+      `${label} must render the neutral muted colour`,
+    );
+    // The actual regression: "Alice accepted your booking" painted like a warning.
+    assert.doesNotMatch(
+      className,
+      /--ftc-color-(warning|danger|error|success)|\btext-(amber|yellow|orange|red|rose|green|emerald)-/,
+      `${label} must not render a status colour -- a lifecycle confirmation is not a warning`,
+    );
+    assert.match(className, /\btransition-opacity\b/, `${label} must keep the shared fade`);
+    assert.match(className, /\bduration-300\b/);
+  }
+
+  // --- the wrap opt-out, and its blast radius --------------------------------
+  assert.doesNotMatch(
+    toastClass,
+    /\btruncate\b/,
+    "the toast must not ellipsise -- the event name is the informative half of " +
+      '"<DJ> withdrew from <event>"',
+  );
+  assert.doesNotMatch(
+    toastClass,
+    /\bmin-w-0\b/,
+    "min-w-0 exists to let the tab row shrink the message; a chat toast must not inherit it",
+  );
+  assert.match(toastClass, /\bbreak-words\b/, "a long event name must be able to break");
+  assert.doesNotMatch(
+    toastClass,
+    /\bleading-none\b/,
+    "leading-none is unreadable once copy wraps to a second line",
+  );
+
+  // Default is the untouched slot-constrained behaviour, so the four existing
+  // consumers (Event Plans, Gigs History, Booking Plans, DJ availability, all
+  // via PlannerWorkspaceTitleFeedback) are byte-identical.
+  assert.match(
+    tabRowClass,
+    /\btruncate\b/,
+    "wrap must default OFF -- the tab row is fixed height and must keep truncating",
+  );
+  assert.match(tabRowClass, /\bmin-w-0\b/);
+  assert.match(tabRowClass, /\bleading-none\b/);
+  assert.equal(
+    tabRowClass,
+    "min-w-0 truncate text-[11px] font-normal leading-none text-ftc-text-muted " +
+      "transition-opacity duration-300 sm:text-xs w-full text-center opacity-100",
+    "the default rendering must be exactly what every existing consumer already got",
+  );
+
+  // Blast radius: the only other consumer of the component is the planner
+  // title-feedback slot, which fans out to Event Plans, Gigs History, Booking
+  // Plans and the DJ availability calendar. It must NOT opt into wrapping --
+  // those live in fixed-height rows.
+  const plannerSlot = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceTitleFeedback.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(plannerSlot, /<InlineTabFeedbackMessage /);
+  assert.doesNotMatch(
+    plannerSlot,
+    /\bwrap\b/,
+    "the planner title-feedback slot sits in a fixed-height row and must keep truncating",
+  );
+  // HistoryTabRowFeedbackCell uses the base class directly, so it cannot be
+  // reached by the prop at all -- pin that it still uses the constrained one.
+  const historyCell = readFileSync(
+    new URL("../app/components/history/HistoryTabRowFeedbackCell.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    historyCell,
+    /EVENTS_LIST_TAB_FEEDBACK_CLASS/,
+    "the history tab row must keep the slot-constrained class, not the wrap variant",
+  );
+  assert.doesNotMatch(historyCell, /EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS/);
+
+  // The derived class must not silently lose its derivation. It is built by
+  // string-replacing the base class, so a reorder of the base would make the
+  // replace a no-op and quietly reinstate truncate.
+  const { EVENTS_LIST_TAB_FEEDBACK_CLASS, EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS } = await import(
+    "../lib/design/ftcDesignSystem.js"
+  );
+  assert.match(EVENTS_LIST_TAB_FEEDBACK_CLASS, /\bmin-w-0 truncate\b/);
+  assert.doesNotMatch(EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS, /\btruncate\b|\bmin-w-0\b/);
+  assert.equal(
+    EVENTS_LIST_TAB_FEEDBACK_WRAP_CLASS.includes("text-ftc-text-muted"),
+    true,
+    "the wrap variant must inherit the base colour, not restate it",
+  );
+}
+
+/**
+ * QA escape #2. The transition identity was guarded only by a source regex over
+ * the DM page, so QA reduced the signature from
+ * `${status}:${cancelled_by}` to `${status}` and the suite passed.
+ *
+ * That single field is what separates a DJ withdrawal from a planner
+ * cancellation: both are `status: "cancelled"`, so a status-only signature sees
+ * no change between them and emits nothing -- and the planner-cancellation path
+ * is the one the live device evidence actually exercised.
+ *
+ * Behavioural: drive the real helpers through real snapshot sequences.
+ */
+async function testBookingLifecycleTransitionIdentityIncludesTheActor() {
+  const { buildDmBookingLifecycleSignatures, pickDmBookingLifecycleToast } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const planner = "planner-1";
+  const dj = "dj-1";
+  const base = createRegressionBookingRequest({
+    id: "booking-1",
+    event_name: "Club 53",
+    sender_id: planner,
+    recipient_id: dj,
+  });
+  const withdrawnByDj = { ...base, status: "cancelled" as const, cancelled_by: dj };
+  const cancelledByPlanner = { ...base, status: "cancelled" as const, cancelled_by: planner };
+
+  const step = (
+    from: typeof base | null,
+    to: typeof base,
+    viewer: string,
+    actorDisplayName: string,
+  ) =>
+    pickDmBookingLifecycleToast({
+      previousSignatures: from ? buildDmBookingLifecycleSignatures([from]) : null,
+      nextSignatures: buildDmBookingLifecycleSignatures([to]),
+      bookings: [to],
+      currentUserId: viewer,
+      actorDisplayName,
+    });
+
+  // THE decisive pair: identical `status`, different actor, different feedback.
+  // A status-only signature makes both of these null.
+  assert.equal(
+    step(withdrawnByDj, cancelledByPlanner, dj, "Planner1"),
+    "Planner1 cancelled your booking",
+    "a planner cancellation replacing a DJ withdrawal is a real transition -- status alone " +
+      "cannot see it",
+  );
+  assert.equal(
+    step(cancelledByPlanner, withdrawnByDj, planner, "Dj2"),
+    "Dj2 withdrew from Club 53",
+    "and the reverse must report the withdrawal, with the event name intact",
+  );
+
+  // The ordinary pending -> terminal transitions still work.
+  assert.equal(
+    step(base, { ...base, status: "accepted" }, planner, "Dj2"),
+    "Dj2 accepted your booking",
+  );
+  assert.equal(step(base, withdrawnByDj, planner, "Dj2"), "Dj2 withdrew from Club 53");
+  assert.equal(step(base, cancelledByPlanner, dj, "Planner1"), "Planner1 cancelled your booking");
+
+  // --- and the things that must stay silent ---------------------------------
+  assert.equal(
+    step(null, cancelledByPlanner, dj, "Planner1"),
+    null,
+    "the first snapshot only seeds the map -- opening a DM onto a settled booking must say nothing",
+  );
+  assert.equal(
+    step(cancelledByPlanner, cancelledByPlanner, dj, "Planner1"),
+    null,
+    "an unchanged signature is not a transition",
+  );
+  assert.equal(
+    pickDmBookingLifecycleToast({
+      previousSignatures: new Map(),
+      nextSignatures: buildDmBookingLifecycleSignatures([cancelledByPlanner]),
+      bookings: [cancelledByPlanner],
+      currentUserId: dj,
+      actorDisplayName: "Planner1",
+    }),
+    null,
+    "a booking id seen for the first time is a new booking, not a transition",
+  );
+  assert.equal(
+    step(withdrawnByDj, cancelledByPlanner, planner, "Dj2"),
+    null,
+    "the planner cancelled -- they must not be told about their own action",
+  );
+
+  // An unrelated column change must not move the signature at all.
+  const withUnrelatedEdits: BookingRequest = {
+    ...cancelledByPlanner,
+    proposed_rate: 400,
+    lineup_hidden_at: "2026-08-01T00:00:00.000Z",
+  };
+  assert.equal(
+    buildDmBookingLifecycleSignatures([cancelledByPlanner]).get("booking-1"),
+    buildDmBookingLifecycleSignatures([withUnrelatedEdits]).get("booking-1"),
+    "rate/hide columns must not look like a lifecycle transition",
+  );
+  assert.equal(
+    step(cancelledByPlanner, withUnrelatedEdits, dj, "Planner1"),
+    null,
+    "editing a rate on a settled booking must not re-announce the cancellation",
+  );
+
+  // The signature must actually carry the actor, stated directly so the reason
+  // for the field is not merely implied by the cases above.
+  assert.notEqual(
+    buildDmBookingLifecycleSignatures([withdrawnByDj]).get("booking-1"),
+    buildDmBookingLifecycleSignatures([cancelledByPlanner]).get("booking-1"),
+    "two cancellations by different actors must not share a signature",
+  );
+
+  // And the page must use these helpers rather than reimplementing them inline,
+  // which is how the untested version got in.
+  const dmPage = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmPage, /buildDmBookingLifecycleSignatures\(bookings\)/);
+  assert.match(dmPage, /pickDmBookingLifecycleToast\(\{/);
+  assert.doesNotMatch(
+    dmPage,
+    /\$\{booking\.status\}/,
+    "the signature must not be rebuilt inline in the page -- it belongs to the tested helper",
+  );
+}
+
+async function testLifecycleRowsAreStillWrittenAndStillCarryTheirPushTarget() {
+  const source = readFileSync(new URL("../lib/bookingRequests.ts", import.meta.url), "utf8");
+  const { formatBookingCancelledDmMessage } = await import("../lib/bookingRequests.js");
+  const { formatBookingConfirmedDmMessage } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const { isVersionedBookingLifecycleDmMessage, parseDmBookingTimelineBookingId } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+
+  // The three stored formats are still produced, and are still the exact shape
+  // the hide-and-target machinery keys off.
+  const confirmed = formatBookingConfirmedDmMessage("Club 53", LIFECYCLE_BOOKING_ID);
+  const withdrawn = formatBookingCancelledDmMessage(
+    createRegressionBookingRequest({
+      id: LIFECYCLE_BOOKING_ID,
+      event_name: "Club 53",
+      cancelled_by: "dj-1",
+      recipient_id: "dj-1",
+    }),
+  );
+  const cancelled = formatBookingCancelledDmMessage(
+    createRegressionBookingRequest({
+      id: LIFECYCLE_BOOKING_ID,
+      event_name: "Club 53",
+      cancelled_by: "planner-1",
+      recipient_id: "dj-1",
+    }),
+  );
+
+  assert.equal(confirmed, `Booking confirmed · Club 53 · ${LIFECYCLE_BOOKING_ID}`);
+  assert.equal(withdrawn, `Booking withdrawn · Club 53 · ${LIFECYCLE_BOOKING_ID}`);
+  assert.equal(cancelled, `Booking cancelled · Club 53 · ${LIFECYCLE_BOOKING_ID}`);
+
+  for (const text of [confirmed, withdrawn, cancelled]) {
+    assert.equal(isVersionedBookingLifecycleDmMessage(text), true);
+    assert.equal(
+      parseDmBookingTimelineBookingId(text),
+      LIFECYCLE_BOOKING_ID,
+      "a hidden row must still yield its booking id, or its push has nothing to fall back to",
+    );
+  }
+
+  // The inserts themselves are untouched. Extracted at exact function
+  // boundaries -- the previous `slice(start, start + 4000)` window overshot into
+  // the following function, which independently satisfied both assertions.
+  for (const [helper, nextHeader] of [
+    ["insertBookingAcceptedDmMessageIfNeeded", "export const RATE_PROPOSAL_DECLINED_DM_PREFIX"],
+    ["insertBookingCancelledDmMessageIfNeeded", "export function formatRateProposedDmMessage("],
+  ] as const) {
+    const body = extractFunctionBody(source, `async function ${helper}(`, nextHeader);
+    assert.match(
+      body,
+      /\.from\("messages"\)\s*\n?\s*\.insert\(/,
+      `${helper} must still insert a real messages row -- skipping the insert is exactly the ` +
+        `regression that cost the planner their unread and badge`,
+    );
+    assert.match(
+      body,
+      /\.select\("id"\)/,
+      `${helper} must still read the message id back for the push deep link`,
+    );
+  }
+
+  // Nothing in the write path may consult the render classifier.
+  assert.doesNotMatch(
+    source,
+    /classifyDmConversationMessageKind|shouldSuppressDmBookingTimelineNotice/,
+    "the write path must never gate on how the DM chooses to render a row",
+  );
+}
+
+const RATE_PROPOSAL_BOOKING_A = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+const RATE_PROPOSAL_BOOKING_B = "9f8e7d6c-5b4a-4938-8271-6a5b4c3d2e1f";
+
+const BOOKING_REQUESTS_SOURCE = readFileSync(
+  new URL("../lib/bookingRequests.ts", import.meta.url),
+  "utf8",
+);
+
+/**
+ * Exact function-boundary extraction from a source file.
+ *
+ * NEVER slice a fixed number of characters. A `source.slice(start, start + 4200)`
+ * window over insertRateProposedDmMessageIfNeeded (2592 chars) overshot 1608
+ * chars into insertBookingAcceptedDmMessageIfNeeded, which independently
+ * satisfied every assertion -- so all four of that helper's guards were vacuous
+ * and its mutations escaped while the identical mutations on its two siblings
+ * (whose windows happened not to overshoot) were caught.
+ */
+function extractFunctionBody(source: string, header: string, nextHeader: string): string {
+  const start = source.indexOf(header);
+  assert.ok(start > -1, `${header} must exist`);
+  const end = source.indexOf(nextHeader, start + header.length);
+  assert.ok(end > start, `${nextHeader} must follow ${header} (boundary for exact extraction)`);
+  const body = source.slice(start, end);
+
+  // The anti-vacuity guard, and it has to be a real one. `!body.includes(
+  // nextHeader)` is tautological -- the slice ends at nextHeader by
+  // construction -- and a tautological guard is the same class of bug it is
+  // meant to prevent. Counting TOP-LEVEL declarations (indented/nested ones
+  // don't match `^`) is the property that actually matters: if the window spans
+  // two functions, every assertion below can be satisfied by the neighbour.
+  const topLevelDeclarations = body.match(/^(?:export )?(?:async )?function \w+\(/gm) ?? [];
+  assert.equal(
+    topLevelDeclarations.length,
+    1,
+    `${header} must be extracted alone -- this window spans ${topLevelDeclarations.length} ` +
+      `top-level functions (${topLevelDeclarations.join(", ")}), so its assertions can be ` +
+      `satisfied by a neighbour instead of the function they name`,
+  );
+
+  return body;
+}
+
+/**
+ * `createNotification(userId, type, title, body, link, reactionId, messageId)`.
+ *
+ * The message id MUST be argument 7. `notifications.reaction_id` has no foreign
+ * key, so sliding the message id into the reactionId slot does NOT throw: the
+ * RPC takes its reaction branch, writes `reaction_id = <messageId>` and leaves
+ * `message_id` NULL -- silently recreating the exact untargeted-push bug, with
+ * no error anywhere. Pinning `null,` immediately before the message id is what
+ * makes an off-by-one argument shift a test failure instead of a silent
+ * production regression.
+ */
+function assertMessageIdIsSeventhArgument(
+  functionBody: string,
+  messageIdExpression: string,
+  siteLabel: string,
+): void {
+  const escaped = messageIdExpression.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  assert.match(
+    functionBody,
+    new RegExp(`\\n\\s*null,\\n(?:\\s*//[^\\n]*\\n)*\\s*${escaped},`),
+    `${siteLabel}: reactionId (argument 6) must be an explicit null immediately before the ` +
+      `message id, so the message id lands in argument 7. reaction_id has no FK -- a shift by ` +
+      `one writes the message id there instead and message_id stays NULL, with no error`,
+  );
+  assert.doesNotMatch(
+    functionBody,
+    new RegExp(`\`,\\n(?:\\s*//[^\\n]*\\n)*\\s*${escaped},`),
+    `${siteLabel}: the message id must not sit directly after the link argument -- that is ` +
+      `argument 6, the reactionId slot`,
+  );
+}
+
+/**
+ * The four rate-proposal notices are versioned per booking:
+ *
+ *   Rate proposed: $500 · <event> · <bookingId>
+ *   Proposed rate accepted · <event> · <bookingId>
+ *   Rate declined · <event> · <bookingId>
+ *   Original offer kept · <event> · <bookingId>
+ *
+ * They existed as bare non-unique constants ("Rate declined", "Original offer
+ * kept", "Proposed rate accepted"), which is why their message ids could not be
+ * threaded into create_notification: an exact-text dedupe on a constant returns
+ * SOME OTHER booking's row, and create_notification's (user_id, message_id)
+ * dedupe then swallows the legitimate notification -- no push at all.
+ *
+ * The identity is INTERNAL. See
+ * testNegotiationHistoryStaysVisibleInTheDmTimeline for the visibility rule.
+ */
+async function testRateProposalLifecycleNoticesAreVersionedPerBooking() {
+  const {
+    formatProposedRateAcceptedDmMessage,
+    formatRateProposalDeclinedDmMessage,
+    formatRateProposedDmSystemMessage,
+    formatVersionedRateProposedDmMessage,
+    formatVersionedBookingLifecycleDmMessage,
+    formatDmBookingSystemMessageDisplay,
+    isDmBookingSystemMessage,
+    isVersionedBookingIdentityDmMessage,
+    parseDmBookingTimelineBookingId,
+    DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+    DM_BOOKING_RATE_DECLINED_MESSAGE,
+    DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
+  } = await import("../lib/dm/dmBookingSystemMessages.js");
+
+  // --- the exact stored formats -------------------------------------------
+  assert.equal(
+    formatVersionedRateProposedDmMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    `Rate proposed: $500 · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
+  );
+  assert.equal(
+    formatProposedRateAcceptedDmMessage("Club 53", RATE_PROPOSAL_BOOKING_A),
+    `Proposed rate accepted · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
+  );
+  assert.equal(
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_RATE_DECLINED_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+    `Rate declined · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
+  );
+  assert.equal(
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+    `Original offer kept · Club 53 · ${RATE_PROPOSAL_BOOKING_A}`,
+  );
+
+  // The bare label formatter is display-only and must NOT version anything.
+  assert.equal(formatRateProposedDmSystemMessage(500), "Rate proposed: $500");
+
+  // --- a missing booking id must FAIL LOUDLY ------------------------------
+  // Returning the bare label instead would hand back the collision-prone
+  // non-unique form at the one moment nobody is watching.
+  for (const missing of [null, undefined, "", "   "]) {
+    assert.throws(
+      () => formatVersionedBookingLifecycleDmMessage("Rate declined", "Club 53", missing),
+      /without a booking id/,
+      `a blank booking id (${JSON.stringify(missing)}) must throw, not silently degrade to the ` +
+        `bare label`,
+    );
+  }
+
+  const versionedTexts = [
+    formatVersionedRateProposedDmMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatProposedRateAcceptedDmMessage("Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_RATE_DECLINED_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+  ];
+
+  // --- identity: distinct per booking, stable per booking+action ----------
+  for (const label of [DM_BOOKING_RATE_DECLINED_MESSAGE, DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE]) {
+    assert.notEqual(
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_B),
+      `two "${label}" notices in the SAME thread must be different rows -- identical text is ` +
+        `what let one booking's decline suppress the other booking's push`,
+    );
+    // A retry of the same booking+action MUST collapse onto one row.
+    assert.equal(
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
+      formatRateProposalDeclinedDmMessage(label, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    );
+  }
+  assert.notEqual(
+    formatProposedRateAcceptedDmMessage("Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatProposedRateAcceptedDmMessage("Club 53", RATE_PROPOSAL_BOOKING_B),
+  );
+  // Same rate, same event, two bookings -- the figure is not an identity.
+  assert.notEqual(
+    formatVersionedRateProposedDmMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_A),
+    formatVersionedRateProposedDmMessage(500, "Club 53", RATE_PROPOSAL_BOOKING_B),
+  );
+
+  // --- classification, display, targeting --------------------------------
+  for (const text of versionedTexts) {
+    assert.equal(
+      isVersionedBookingIdentityDmMessage(text),
+      true,
+      `"${text}" must be recognised as carrying the internal booking identity`,
+    );
+    assert.equal(
+      isDmBookingSystemMessage(text),
+      true,
+      `"${text}" must not render as ordinary chat -- that is how a raw UUID reaches the user`,
+    );
+    assert.equal(
+      parseDmBookingTimelineBookingId(text),
+      RATE_PROPOSAL_BOOKING_A,
+      `"${text}" must yield its booking id for push targeting`,
+    );
+    assert.doesNotMatch(
+      formatDmBookingSystemMessageDisplay(text),
+      ANY_UUID,
+      `"${text}" leaks a raw booking id into the DM timeline`,
+    );
+    assert.doesNotMatch(
+      formatDmBookingSystemMessageDisplay(text),
+      /Club 53/,
+      `"${text}" leaks its internal event-name identity segment into the timeline`,
+    );
+    assert.doesNotMatch(
+      formatDmInboxMessagePreview(text) ?? "",
+      ANY_UUID,
+      `"${text}" leaks a raw booking id into the Messages inbox preview`,
+    );
+  }
+
+  // Display keeps the existing user-facing copy exactly.
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(versionedTexts[0]),
+    "Rate proposed: $500",
+    "the rate must survive display -- it is the informative half of the notice",
+  );
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(versionedTexts[1]),
+    DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
+  );
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(versionedTexts[2]),
+    DM_BOOKING_RATE_DECLINED_MESSAGE,
+  );
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(versionedTexts[3]),
+    DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+  );
+
+  // --- legacy rows are NOT migrated and must keep working -----------------
+  for (const legacy of [
+    "Rate proposed: $500",
+    "Rate proposed · $500",
+    "DJ proposed a rate of $500.",
+    DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
+    DM_BOOKING_RATE_DECLINED_MESSAGE,
+    DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+    "Planner kept the original offer.",
+    "Planner accepted the proposed rate.",
+    "Proposal declined · original offer still available",
+  ]) {
+    assert.equal(
+      isDmBookingSystemMessage(legacy),
+      true,
+      `legacy row "${legacy}" must still be recognised as a booking system message`,
+    );
+    assert.equal(
+      isVersionedBookingIdentityDmMessage(legacy),
+      false,
+      `legacy row "${legacy}" must NOT be treated as versioned -- that is what keeps it out of ` +
+        `the exact-text dedupe`,
+    );
+    assert.equal(
+      classifyDmConversationMessageKind(legacy, { bookings: [], conversationId: "conversation-1" }),
+      "timeline",
+      `legacy row "${legacy}" must keep rendering in historical threads`,
+    );
+  }
+
+  // --- ordinary conversation must not be swept up -------------------------
+  for (const chat of [
+    "Rate declined by the venue, sorry",
+    `Rate declined for that one · ${RATE_PROPOSAL_BOOKING_A}`,
+    `Original offer kept in my notes · Club 53 · not-a-uuid`,
+    "Hey are you free Friday?",
+  ]) {
+    assert.equal(
+      classifyDmConversationMessageKind(chat, { bookings: [], conversationId: "conversation-1" }),
+      "chat",
+      `"${chat}" is ordinary conversation and must not vanish from the timeline`,
+    );
+  }
+}
+
+/**
+ * NEGOTIATION HISTORY IS CONVERSATION, NOT LIFECYCLE AUDIT NOISE.
+ *
+ * "Rate proposed: $500 / Rate declined / Rate proposed: $600" is the record of
+ * how a booking reached its price. Versioning those rows for push targeting must
+ * NOT make them disappear: an earlier attempt added them to
+ * isVersionedBookingLifecycleDmMessage, which classifies as "hidden", and an
+ * accepted $600 booking then showed nothing at all -- both
+ * BookingRateProposalPanel and BookingRateProposalNotice render null once no
+ * proposal is pending, so the card did not take over, and proposed_rate_note
+ * vanished with the rows.
+ *
+ * The split: the three lifecycle STATE verbs are hidden UNCONDITIONALLY (shipped
+ * f5b4cbd9, the card is the source of truth for state); the four NEGOTIATION
+ * notices are not, and render with only their internal identity suffix stripped.
+ *
+ * "Not unconditionally hidden" is not "always rendered" -- visibility stays
+ * gated by the pre-existing card rule (shouldSuppressDmBookingTimelineNotice),
+ * which still hides a notice whose state the card is currently displaying. Both
+ * halves of that distinction are asserted below.
+ */
+async function testNegotiationHistoryStaysVisibleInTheDmTimeline() {
+  const {
+    formatVersionedRateProposedDmMessage,
+    formatProposedRateAcceptedDmMessage,
+    formatRateProposalDeclinedDmMessage,
+    formatDmBookingSystemMessageDisplay,
+    isVersionedBookingLifecycleDmMessage,
+    isVersionedRateProposalDmMessage,
+    DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+    DM_BOOKING_RATE_DECLINED_MESSAGE,
+  } = await import("../lib/dm/dmBookingSystemMessages.js");
+
+  const conversationId = "conversation-1";
+  const bookingId = RATE_PROPOSAL_BOOKING_A;
+
+  const negotiationRows = [
+    formatVersionedRateProposedDmMessage(500, "Club 53", bookingId),
+    formatRateProposalDeclinedDmMessage(DM_BOOKING_RATE_DECLINED_MESSAGE, "Club 53", bookingId),
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      bookingId,
+    ),
+    formatVersionedRateProposedDmMessage(600, "Club 53", bookingId),
+  ];
+
+  const acceptedNoticeRow = formatProposedRateAcceptedDmMessage("Club 53", bookingId);
+
+  // A negotiation notice must NEVER be classified as a hidden lifecycle verb.
+  // That is the whole distinction: lifecycle verbs are hidden unconditionally,
+  // negotiation notices are only ever gated by the card rule below.
+  for (const text of [...negotiationRows, acceptedNoticeRow]) {
+    assert.equal(
+      isVersionedBookingLifecycleDmMessage(text),
+      false,
+      `"${text}" is negotiation history, not a lifecycle state verb -- adding it to the ` +
+        `lifecycle recogniser is what hid it`,
+    );
+    assert.equal(isVersionedRateProposalDmMessage(text), true);
+  }
+
+  // The three state verbs must STILL be hidden (f5b4cbd9 must not regress).
+  for (const label of LIFECYCLE_LABELS) {
+    const text = lifecycleNoticeText(label, "Club 53");
+    assert.equal(isVersionedBookingLifecycleDmMessage(text), true, `${label} must stay hidden`);
+    assert.equal(isVersionedRateProposalDmMessage(text), false);
+    assert.equal(
+      classifyDmConversationMessageKind(text, { bookings: [], conversationId }),
+      "hidden",
+      `${label} must stay hidden -- the booking card is the source of truth for state`,
+    );
+  }
+
+  // The measured regression, reproduced as an assertion: an ACCEPTED booking at
+  // $600 must still show its negotiation history.
+  const acceptedBooking = createRegressionBookingRequest({
+    id: bookingId,
+    status: "accepted",
+    fee: "600",
+    rate_mode: "open",
+    proposed_rate: null,
+    proposed_rate_status: "accepted",
+  });
+  const messages = [
+    {
+      id: "card",
+      created_at: "2026-07-27T12:00:00.000Z",
+      text: formatBookingRequestMessage(acceptedBooking),
+    },
+    ...negotiationRows.map((text, index) => ({
+      id: `negotiation-${index}`,
+      created_at: `2026-07-27T12:0${index + 1}:00.000Z`,
+      text,
+    })),
+  ];
+
+  const visible = messages.filter(
+    (message, messageIndex) =>
+      classifyDmConversationMessageKind(message.text, {
+        bookings: [acceptedBooking],
+        conversationId,
+        messages,
+        messageIndex,
+      }) !== "hidden",
+  );
+
+  assert.equal(
+    visible.length,
+    messages.length,
+    "every negotiation row on an accepted booking must stay visible -- this is the $600 case " +
+      "QA measured showing nothing at all",
+  );
+
+  const rendered = visible
+    .filter((message) => message.id.startsWith("negotiation-"))
+    .map((message) => formatDmBookingSystemMessageDisplay(message.text));
+  assert.deepEqual(
+    rendered,
+    ["Rate proposed: $500", "Rate declined", "Original offer kept", "Rate proposed: $600"],
+    "the readable label is what renders -- no event name, no booking id",
+  );
+  for (const line of rendered) {
+    assert.doesNotMatch(line, ANY_UUID, `"${line}" must not render a raw UUID`);
+    assert.doesNotMatch(line, /Club 53/, `"${line}" must not render the identity segment`);
+  }
+
+  // Timestamp clustering must include them (a visible row needs a layout entry).
+  const layout = buildDmConversationTimestampLayout(messages, {
+    bookings: [acceptedBooking],
+    conversationId,
+  });
+  for (const message of messages) {
+    assert.equal(
+      layout.has(message.id),
+      true,
+      `visible row ${message.id} must receive a timestamp-layout entry`,
+    );
+  }
+
+  // --- visibility is GATED BY THE CARD, not unconditional -----------------
+  // Precision matters here: "not hidden as a lifecycle verb" is not the same as
+  // "always rendered". The pre-existing shouldSuppressDmBookingTimelineNotice
+  // rule still hides a notice whose state the card is currently displaying, and
+  // that rule is unchanged. Pinned so the distinction cannot quietly drift into
+  // either "always visible" or "always hidden".
+  assert.equal(
+    classifyDmConversationMessageKind(acceptedNoticeRow, {
+      bookings: [acceptedBooking],
+      conversationId,
+      messages: [
+        { text: formatBookingRequestMessage(acceptedBooking) },
+        { text: acceptedNoticeRow },
+      ],
+      messageIndex: 1,
+    }),
+    "hidden",
+    "'Proposed rate accepted' beside an accepted card is suppressed by the CARD rule -- correct, " +
+      "and not the same mechanism as hiding a lifecycle verb",
+  );
+  // The same row with no card to lean on still renders -- proof the suppression
+  // above came from the card rule and not from lifecycle hiding.
+  assert.equal(
+    classifyDmConversationMessageKind(acceptedNoticeRow, { bookings: [], conversationId }),
+    "timeline",
+    "with no card reflecting the state, the negotiation notice must render",
+  );
+  for (const declineLabel of [DM_BOOKING_RATE_DECLINED_MESSAGE, DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE]) {
+    const pendingNoProposal = createRegressionBookingRequest({
+      id: bookingId,
+      status: "pending",
+      rate_mode: "open",
+      proposed_rate: null,
+      proposed_rate_status: "declined",
+    });
+    const declineRow = formatRateProposalDeclinedDmMessage(declineLabel, "Club 53", bookingId);
+    assert.equal(
+      classifyDmConversationMessageKind(declineRow, {
+        bookings: [pendingNoProposal],
+        conversationId,
+        messages: [
+          { text: formatBookingRequestMessage(pendingNoProposal) },
+          { text: declineRow },
+        ],
+        messageIndex: 1,
+      }),
+      "hidden",
+      `"${declineLabel}" beside a pending card with no live proposal is suppressed by the card ` +
+        `rule -- unchanged pre-existing behaviour`,
+    );
+    assert.equal(
+      classifyDmConversationMessageKind(declineRow, { bookings: [], conversationId }),
+      "timeline",
+      `"${declineLabel}" must render when no card reflects that state`,
+    );
+  }
+
+  // A live pending proposal is still suppressed by the card that shows it --
+  // that is the pre-existing rule, and it is not the same as hiding history.
+  const pendingBooking = createRegressionBookingRequest({
+    id: bookingId,
+    status: "pending",
+    rate_mode: "open",
+    proposed_rate: 500,
+    proposed_rate_status: "pending",
+    proposed_rate_at: "2026-07-27T12:01:00.000Z",
+  });
+  const pendingMessages = [
+    {
+      id: "card",
+      created_at: "2026-07-27T12:00:00.000Z",
+      text: formatBookingRequestMessage(pendingBooking),
+    },
+    { id: "proposal", created_at: "2026-07-27T12:01:00.000Z", text: negotiationRows[0] },
+  ];
+  assert.equal(
+    classifyDmConversationMessageKind(negotiationRows[0], {
+      bookings: [pendingBooking],
+      conversationId,
+      messages: pendingMessages,
+      messageIndex: 1,
+    }),
+    "hidden",
+    "a proposal the card is actively displaying is still suppressed -- unchanged behaviour",
+  );
+
+  // Inbox: label only, recency/authorship untouched.
+  const { formatDmInboxConversationPreview, isDmInboxSystemPreviewMessage } = await import(
+    "../lib/dm/messagePreview.js"
+  );
+  const preview = formatDmInboxConversationPreview({
+    latestPreview: negotiationRows[3],
+    latestMessageUserId: "dj-1",
+    currentUserId: "planner-1",
+    bookings: [acceptedBooking],
+  });
+  assert.equal(preview, "Rate proposed: $600");
+  assert.doesNotMatch(preview, ANY_UUID);
+  assert.equal(isDmInboxSystemPreviewMessage(negotiationRows[3]), true);
+  assert.equal(
+    pickDmInboxPreviewMessage(
+      [
+        {
+          id: "negotiation-3",
+          conversation_id: conversationId,
+          user_id: "dj-1",
+          text: negotiationRows[3],
+          created_at: "2026-07-27T12:04:00.000Z",
+        } as never,
+      ],
+      conversationId,
+      [acceptedBooking],
+    )?.id,
+    "negotiation-3",
+    "the negotiation row must still supply latestActivityAt/latestPreview/latestMessageUserId",
+  );
+}
+
+/**
+ * THE COLLISION CASE. Two rate-proposal declines on DIFFERENT bookings in the
+ * SAME DM must produce two distinct message rows and two distinct
+ * notifications.
+ *
+ * This models the only two DB behaviours that decide whether a push happens:
+ *   1. the helper's dedupe -- `.eq("text", messageText)` scoped to the thread
+ *   2. create_notification -- idempotent per (user_id, message_id), with NO
+ *      unread filter and NO time window (see
+ *      20260817000000_notification_message_identity_dedupe.sql)
+ *
+ * The negative control is the point: fed the BARE legacy label instead of the
+ * versioned formatter, the same model loses the second push entirely. That is
+ * the production failure, reproduced.
+ */
+async function testTwoRateDeclinesInOneThreadDoNotCollide() {
+  const { formatRateProposalDeclinedDmMessage, DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE } =
+    await import("../lib/dm/dmBookingSystemMessages.js");
+
+  type Row = { id: string; text: string };
+
+  function runThread(textFor: (bookingId: string) => string) {
+    const messages: Row[] = [];
+    const notifications: { userId: string; messageId: string | null }[] = [];
+    let nextId = 0;
+
+    for (const bookingId of [RATE_PROPOSAL_BOOKING_A, RATE_PROPOSAL_BOOKING_B]) {
+      const text = textFor(bookingId);
+      // (1) helper dedupe: exact text, conversation-scoped.
+      const existing = messages.find((row) => row.text === text);
+      const messageId = existing
+        ? existing.id
+        : (messages.push({ id: `message-${(nextId += 1)}`, text }), messages.at(-1)!.id);
+
+      // (2) create_notification: (user_id, message_id) identity dedupe.
+      if (!notifications.some((n) => n.userId === "dj-1" && n.messageId === messageId)) {
+        notifications.push({ userId: "dj-1", messageId });
+      }
+    }
+
+    return { messages, notifications };
+  }
+
+  const versioned = runThread((bookingId) =>
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      bookingId,
+    ),
+  );
+
+  assert.equal(
+    versioned.messages.length,
+    2,
+    "two declines on different bookings must write two distinct message rows",
+  );
+  assert.notEqual(
+    versioned.messages[0].id,
+    versioned.messages[1].id,
+    "the two declines must carry distinct message ids",
+  );
+  assert.equal(
+    versioned.notifications.length,
+    2,
+    "two declines on different bookings must produce two notifications -- one push each",
+  );
+  assert.notEqual(
+    versioned.notifications[0].messageId,
+    versioned.notifications[1].messageId,
+  );
+
+  // Negative control: the bare label, i.e. what shipped. Same model, one push
+  // lost. Without this the test above could pass for the wrong reason.
+  const bare = runThread(() => DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE);
+  assert.equal(
+    bare.messages.length,
+    1,
+    "control: the bare label deduped the second booking onto the first booking's row",
+  );
+  assert.equal(
+    bare.notifications.length,
+    1,
+    "control: create_notification then swallowed the second booking's notification -- no push. " +
+      "If this control ever reports 2, the model no longer reproduces the bug and the assertions " +
+      "above prove nothing",
+  );
+
+  // A genuine retry of the SAME booking+action must still collapse to one push.
+  const retry = runThread(() =>
+    formatRateProposalDeclinedDmMessage(
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      "Club 53",
+      RATE_PROPOSAL_BOOKING_A,
+    ),
+  );
+  assert.equal(retry.messages.length, 1, "a retry must reuse the same row");
+  assert.equal(retry.notifications.length, 1, "a retry must produce exactly one push");
+}
+
+/**
+ * Every rate-proposal notification producer must thread its DM row's id as
+ * createNotification's SEVENTH argument, and the accepted-rate path must write
+ * the DM row BEFORE creating the notification.
+ *
+ * Driving the helpers alone would not catch either: the wiring lives at the
+ * producers, and each producer is an independent place the id can be dropped or
+ * shifted into the reactionId slot.
+ */
+async function testRateProposalPushesCarryTheirOwnMessageTarget() {
+  const source = BOOKING_REQUESTS_SOURCE;
+
+  // --- each helper, extracted at its exact boundaries ---------------------
+  const helpers = {
+    insertRateProposedDmMessageIfNeeded: extractFunctionBody(
+      source,
+      "async function insertRateProposedDmMessageIfNeeded(",
+      "async function insertBookingAcceptedDmMessageIfNeeded(",
+    ),
+    insertRateProposalDeclinedDmMessageIfNeeded: extractFunctionBody(
+      source,
+      "async function insertRateProposalDeclinedDmMessageIfNeeded(",
+      "async function insertAcceptProposedRateDmMessageIfNeeded(",
+    ),
+    insertAcceptProposedRateDmMessageIfNeeded: extractFunctionBody(
+      source,
+      "async function insertAcceptProposedRateDmMessageIfNeeded(",
+      "const BOOKING_PREVIEW_LABELS",
+    ),
+  } as const;
+
+  const expectedFormatter = {
+    insertRateProposedDmMessageIfNeeded: "formatVersionedRateProposedDmMessage",
+    insertRateProposalDeclinedDmMessageIfNeeded: "formatRateProposalDeclinedDmMessage",
+    insertAcceptProposedRateDmMessageIfNeeded: "formatProposedRateAcceptedDmMessage",
+  } as const;
+
+  for (const [helper, body] of Object.entries(helpers)) {
+    const formatter = expectedFormatter[helper as keyof typeof expectedFormatter];
+
+    // The stored text must be VERSIONED BY BOOKING. Rewriting
+    // `const messageText = <versioned formatter>(...)` back to a bare constant
+    // leaves every other assertion here satisfied while restoring the collision.
+    const messageTextAt = body.indexOf("const messageText = ");
+    assert.ok(messageTextAt > -1, `${helper} must build a messageText`);
+    const expression = body.slice(messageTextAt, body.indexOf(");", messageTextAt) + 2);
+    assert.match(
+      expression,
+      new RegExp(`const messageText = ${formatter}\\(`),
+      `${helper} must build its notice through ${formatter} -- the versioned per-booking form`,
+    );
+    assert.match(
+      expression,
+      /booking\.id/,
+      `${helper}'s stored text must embed booking.id. Without it the text is a bare constant ` +
+        `shared by every booking in the thread, the exact-text dedupe returns another booking's ` +
+        `row, and create_notification's (user_id, message_id) dedupe drops this booking's push`,
+    );
+    assert.match(
+      expression,
+      /booking\.event_name/,
+      `${helper}'s stored text must carry the event name, matching the shipped ` +
+        `"<label> · <event> · <bookingId>" convention`,
+    );
+
+    // An id on BOTH branches.
+    assert.match(
+      body,
+      /messageId: string \| null/,
+      `${helper} must report the DM row's id -- without it the notification's message_id is NULL`,
+    );
+    assert.match(
+      body,
+      /\.select\("id"\)\s*\n\s*\.single\(\)/,
+      `${helper} must read the inserted row's id back (fresh-insert branch)`,
+    );
+    assert.match(
+      body,
+      /messageId: (?:existing|insertedRow)/,
+      `${helper} must also return an id on the dedupe branch, or a retry loses its target`,
+    );
+
+    // Dedupe on the exact versioned text -- never a set, never a prefix.
+    assert.match(
+      body,
+      /\.eq\("text", messageText\)/,
+      `${helper} must dedupe on the exact versioned text`,
+    );
+    assert.doesNotMatch(
+      body,
+      /\.in\("text",/,
+      `${helper} must not dedupe against a set including the generic legacy notices -- that is ` +
+        `precisely the bug`,
+    );
+    assert.doesNotMatch(
+      body,
+      /\.like\("text", `\$\{[A-Z_]*PREFIX[^`]*%`\)/,
+      `${helper} must not dedupe by bare label prefix: one booking's notice would suppress ` +
+        `another's push`,
+    );
+  }
+
+  // --- FIX 5: the decline round boundary must be an IDENTITY lookup -------
+  const declineHelper = helpers.insertRateProposalDeclinedDmMessageIfNeeded;
+  assert.doesNotMatch(
+    declineHelper,
+    /\.limit\(20\)/,
+    "the round boundary must not come from scanning the 20 most recent DJ-authored rows. With " +
+      ">20 DJ messages between the re-proposal and the decline it resolved to nothing, the bound " +
+      "was dropped, an all-time exact-text match found round one's row, and the permanent " +
+      "(user_id, message_id) dedupe returned round one's notification: no push at all",
+  );
+  assert.doesNotMatch(
+    declineHelper,
+    /isLegacyRateProposedDmMessage|startsWith\("Rate proposed: "\)|startsWith\("DJ proposed a rate of "\)/,
+    "the round boundary must not be a text-shape heuristic over a page of recent messages",
+  );
+  assert.match(
+    declineHelper,
+    /\.like\("text", buildVersionedRateProposedDmMessageLikePattern\(booking\.id\)\)/,
+    "the round boundary must be THIS booking's own latest proposal row, selected by identity, so " +
+      "no volume of unrelated messages can hide it",
+  );
+  assert.match(
+    declineHelper,
+    /\.eq\("user_id", booking\.recipient_id\)/,
+    "the proposal lookup stays scoped to the DJ who authored it",
+  );
+  // The sort direction is load-bearing, not incidental. Proven against real
+  // Postgres: ascending resolves the boundary to round ONE's proposal, round
+  // two's decline then dedupes onto round one's decline row, and
+  // create_notification's permanent (user_id, message_id) dedupe swallows the
+  // push -- the exact lost-push failure this lookup was rewritten to eliminate.
+  assert.match(
+    declineHelper,
+    /\.like\("text", buildVersionedRateProposedDmMessageLikePattern\(booking\.id\)\)\s*\n\s*\.order\("created_at", \{ ascending: false \}\)\s*\n\s*\.limit\(1\)/,
+    "the boundary must be the LATEST proposal for this booking -- ascending picks the earliest, " +
+      "which bounds the dedupe to round one and loses round two's push entirely",
+  );
+  // And the dedupe must only run when that boundary is known: with no boundary,
+  // an unbounded exact-text match is exactly the push-losing path.
+  assert.match(
+    declineHelper,
+    /if \(latestProposedAt\) \{[\s\S]*?\.gte\("created_at", latestProposedAt\)/,
+    "the exact-text dedupe must run INSIDE the known-boundary branch -- an unbounded fallback " +
+      "reuses round one's row id and drops the push",
+  );
+  const boundaryBranchAt = declineHelper.indexOf("if (latestProposedAt) {");
+  const insertAt = declineHelper.indexOf('.from("messages")\n    .insert(');
+  assert.ok(
+    boundaryBranchAt > -1 && insertAt > boundaryBranchAt,
+    "with no known round boundary the helper must fall through to the INSERT (a redundant row " +
+      "costs a duplicate notice; a false dedupe costs the push outright)",
+  );
+
+  // The pattern itself must be anchored at both ends.
+  const { buildVersionedRateProposedDmMessageLikePattern } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const pattern = buildVersionedRateProposedDmMessageLikePattern(RATE_PROPOSAL_BOOKING_A);
+  assert.equal(pattern, `Rate proposed: %· ${RATE_PROPOSAL_BOOKING_A}`);
+  assert.ok(
+    pattern.endsWith(RATE_PROPOSAL_BOOKING_A),
+    "the pattern must END on this booking's id -- an unanchored trailing wildcard could match " +
+      "another booking's proposal",
+  );
+  assert.equal(
+    (pattern.match(/%/g) ?? []).length,
+    1,
+    "exactly one wildcard, and only where the rate lives",
+  );
+  assert.notEqual(
+    pattern,
+    buildVersionedRateProposedDmMessageLikePattern(RATE_PROPOSAL_BOOKING_B),
+  );
+
+  // --- producer 1: proposeBookingRate ------------------------------------
+  const propose = extractFunctionBody(
+    source,
+    "export async function proposeBookingRate(",
+    "export async function acceptProposedBookingRate(",
+  );
+  assert.match(
+    propose,
+    /dmResult\.messageId \?\? undefined,/,
+    "proposeBookingRate's 'message' notification must carry the rate-proposal row's id",
+  );
+  assertMessageIdIsSeventhArgument(
+    propose,
+    "dmResult.messageId ?? undefined",
+    "proposeBookingRate",
+  );
+  assert.doesNotMatch(
+    propose,
+    /formatNotificationPreview\(dmResult\.messageText\)/,
+    "the raw stored text ends in the booking id -- a push body and the notifications list are " +
+      "both user-facing, so the display form must be sent (FTC_WORKFLOW §7)",
+  );
+  assert.match(
+    propose,
+    /formatNotificationPreview\(formatDmBookingSystemMessageDisplay\(dmResult\.messageText\)\)/,
+  );
+
+  // --- producer 2: acceptProposedBookingRate -----------------------------
+  const accept = extractFunctionBody(
+    source,
+    "export async function acceptProposedBookingRate(",
+    "export type DeclineProposedBookingRateResult",
+  );
+  // FIX 4: ONE notification for one action. This path used to create two for the
+  // same DJ -- a booking_update and a redundant "message" one -- so accepting a
+  // rate double-pushed.
+  assert.equal(
+    (accept.match(/await createNotification\(/g) ?? []).length,
+    1,
+    "accepting a proposed rate must create exactly ONE notification -- two is a double push, " +
+      "and relying on create_notification to collapse them makes correctness depend on both " +
+      "calls always deriving the same message_id",
+  );
+  assert.doesNotMatch(
+    accept,
+    /"message",/,
+    "the redundant 'message'-type notification must not come back",
+  );
+  assert.match(
+    accept,
+    /"booking_update",\s*\n\s*"Proposed rate accepted",/,
+    "the notification kept must be the booking_update naming the outcome and the agreed fee",
+  );
+  assert.equal(
+    (accept.match(/dmResult\.messageId \?\? undefined,/g) ?? []).length,
+    1,
+    "the surviving accepted-rate notification must carry the DM row's id",
+  );
+  assertMessageIdIsSeventhArgument(
+    accept,
+    "dmResult.messageId ?? undefined",
+    "acceptProposedBookingRate",
+  );
+  // The DM message itself must still be written -- it is thread history AND the
+  // deep-link target.
+  assert.match(
+    accept,
+    /const dmResult = await insertAcceptProposedRateDmMessageIfNeeded\(booking\);/,
+    "the accepted-proposal DM notice must still be written",
+  );
+
+  // Ordering: the DM row must be written before the notification.
+  const acceptInsertAt = accept.indexOf("await insertAcceptProposedRateDmMessageIfNeeded(booking);");
+  const acceptNotifyAt = accept.indexOf("await createNotification(");
+  assert.ok(acceptInsertAt > -1 && acceptNotifyAt > -1);
+  assert.ok(
+    acceptInsertAt < acceptNotifyAt,
+    "insertAcceptProposedRateDmMessageIfNeeded must run BEFORE createNotification -- moving it " +
+      "back after is exactly the shipped bug",
+  );
+
+  // --- producer 3: declineProposedBookingRate ----------------------------
+  const decline = extractFunctionBody(
+    source,
+    "export async function declineProposedBookingRate(",
+    "export async function updateBookingRequestStatus(",
+  );
+  assert.match(
+    decline,
+    /const declinedDm = await insertRateProposalDeclinedDmMessageIfNeeded\(booking\);/,
+    "the decline path must capture the DM notice it writes",
+  );
+  assert.match(
+    decline,
+    /declinedDm\.messageId \?\? undefined,/,
+    "the 'Rate declined' / 'Original offer kept' notification must carry the DM notice's id",
+  );
+  assertMessageIdIsSeventhArgument(
+    decline,
+    "declinedDm.messageId ?? undefined",
+    "declineProposedBookingRate",
+  );
+  const declineInsertAt = decline.indexOf("insertRateProposalDeclinedDmMessageIfNeeded(booking)");
+  const declineNotifyAt = decline.indexOf("await createNotification(");
+  assert.ok(
+    declineInsertAt > -1 && declineNotifyAt > -1 && declineInsertAt < declineNotifyAt,
+    "the decline notice must be written before its notification",
+  );
+}
+
+/**
+ * An ordinary booking decline (not a rate decline) writes no DM system message
+ * on purpose -- the booking card already reads "Declined". Its push used to
+ * hardcode "/bookings", which cannot deep-link to anything, so it targets the
+ * booking-request message instead: that row is unique per booking by
+ * construction and is what renders the card.
+ */
+async function testDeclinedBookingPushTargetsTheBookingRequestMessage() {
+  const source = BOOKING_REQUESTS_SOURCE;
+  const { findDmMessageIdForBookingRequest, formatBookingRequestMessage } = await import(
+    "../lib/bookingRequests.js"
+  );
+
+  const fn = extractFunctionBody(
+    source,
+    "export async function updateBookingRequestStatus(",
+    "export function resolveBookingForMessage(",
+  );
+
+  assert.doesNotMatch(
+    fn,
+    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,\s*\n\s*"\/bookings",/,
+    "the declined push must not hardcode /bookings -- nothing there can be deep-linked",
+  );
+  assert.match(
+    fn,
+    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,\s*\n(?:\s*\/\/[^\n]*\n)*\s*booking\.conversation_id \? `\/dm\/\$\{booking\.conversation_id\}` : "\/bookings",\s*\n\s*null,\s*\n\s*declinedMessageId \?\? undefined,/,
+    "the declined push must open the DM and target the booking-request message, with /bookings " +
+      "kept only as the no-conversation fallback",
+  );
+  assertMessageIdIsSeventhArgument(
+    fn,
+    "declinedMessageId ?? undefined",
+    "updateBookingRequestStatus (declined)",
+  );
+  assert.match(
+    fn,
+    /const declinedMessageId = await findBookingRequestDmMessageId\(booking\);/,
+    "the lookup must happen before the notification is created",
+  );
+
+  // The accepted branch in the same function must keep its own arg-7 wiring.
+  assertMessageIdIsSeventhArgument(
+    fn,
+    "acceptedDm.messageId ?? undefined",
+    "updateBookingRequestStatus (accepted)",
+  );
+
+  // No lifecycle row may be introduced for a decline.
+  assert.doesNotMatch(
+    fn,
+    /\.from\("messages"\)\s*\n?\s*\.insert\(/,
+    "a decline must not write a DM lifecycle row -- the card is the source of truth",
+  );
+
+  // The lookup must reuse the existing parser, not a second matching scheme,
+  // and must never throw over the already-committed status change.
+  const lookup = extractFunctionBody(
+    source,
+    "async function findBookingRequestDmMessageId(",
+    "export function isBookingRateProposalSchemaError(",
+  );
+  assert.match(
+    lookup,
+    /return findDmMessageIdForBookingRequest\(/,
+    "the exact decision must come from the shared parser the DM page already uses",
+  );
+  assert.match(
+    lookup,
+    /if \(!booking\.conversation_id\) \{\s*\n\s*return null;/,
+    "a booking with no conversation must fall back, never throw",
+  );
+  assert.match(
+    lookup,
+    /if \(error\) \{[\s\S]{0,200}?return null;/,
+    "a failed lookup must degrade to an untargeted push, never fail the decline",
+  );
+
+  // Behaviour of the reused parser: the booking-request row is unique per
+  // booking, so two bookings in one thread resolve to their own cards.
+  const bookingA = createRegressionBookingRequest({ id: RATE_PROPOSAL_BOOKING_A });
+  const bookingB = createRegressionBookingRequest({
+    id: RATE_PROPOSAL_BOOKING_B,
+    event_name: "Summer Party",
+  });
+  const rows = [
+    { id: "message-a", text: formatBookingRequestMessage(bookingA) },
+    { id: "chat", text: "Hey are you free Friday?" },
+    { id: "message-b", text: formatBookingRequestMessage(bookingB) },
+  ];
+
+  assert.equal(findDmMessageIdForBookingRequest(rows, RATE_PROPOSAL_BOOKING_A), "message-a");
+  assert.equal(findDmMessageIdForBookingRequest(rows, RATE_PROPOSAL_BOOKING_B), "message-b");
+  assert.notEqual(
+    findDmMessageIdForBookingRequest(rows, RATE_PROPOSAL_BOOKING_A),
+    findDmMessageIdForBookingRequest(rows, RATE_PROPOSAL_BOOKING_B),
+    "two bookings in one thread must resolve to their own booking-request rows",
+  );
+  assert.equal(
+    findDmMessageIdForBookingRequest(rows, "6d0f2e5b-9a11-4c33-8f77-2b1c4d5e6f70"),
+    null,
+    "an unknown booking must yield no target rather than someone else's row",
+  );
+
+  // And the row it resolves to is the one that renders the card, so the
+  // existing `?message=` path lands on the card with no new mechanism.
+  assert.equal(
+    classifyDmConversationMessageKind(rows[0].text, {
+      bookings: [bookingA],
+      conversationId: "conversation-1",
+    }),
+    "booking_card",
+  );
+}
+
+async function testBookingCancellationNoticesAreUniquePerBookingAndAction() {
+  const source = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Distinct wording per action, both carrying event name + booking id.
+  assert.match(
+    source,
+    /const label = withdrawnByDj \? "Booking withdrawn" : "Booking cancelled";/,
+    "DJ withdrawal and planner cancellation must produce distinct notice text",
+  );
+  assert.match(
+    source,
+    /return `\$\{label\} · \$\{booking\.event_name\} · \$\{booking\.id\}`;/,
+    "the notice must embed the booking id, or every action in a thread collapses onto one row",
+  );
+
+  // Dedupe must be exact-text, never satisfied by a legacy generic row.
+  const helper = source.slice(
+    source.indexOf("async function insertBookingCancelledDmMessageIfNeeded("),
+    source.indexOf("export function formatRateProposedDmMessage("),
+  );
+  assert.ok(helper.length > 0);
+  assert.doesNotMatch(
+    helper,
+    /\.in\("text",/,
+    "dedupe must not match a set including the legacy generic notice -- that is the bug",
+  );
+  assert.equal(
+    (helper.match(/\.eq\("text", messageText\)/g) ?? []).length,
+    2,
+    "both dedupe queries must be scoped to this exact notice",
+  );
+  assert.doesNotMatch(
+    helper,
+    /\.like\("text", `\$\{BOOKING_CANCELLED_DM_PREFIX\}%`\)/,
+    "the window dedupe must not prefix-match every cancellation in the thread",
+  );
+
+  // Legacy rows must still render/classify.
+  assert.match(
+    source,
+    /trimmed === LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE/,
+    "legacy 'Booking request cancelled by planner.' rows must still be recognised",
+  );
+  assert.match(
+    source,
+    /export function isVersionedBookingCancelledDmMessage\(/,
+    "a new-format-only recogniser must exist so dedupe and display can differ",
+  );
+
+  // The new formats must be parseable by the hidden-notice fallback.
+  const { parseDmBookingTimelineBookingId } = await import(
+    "../lib/dm/dmBookingSystemMessages.js"
+  );
+  const bookingId = "14f0aedb-46bd-424d-b140-67f4ee614e26";
+  for (const label of ["Booking withdrawn", "Booking cancelled", "Booking confirmed"]) {
+    assert.equal(
+      parseDmBookingTimelineBookingId(`${label} · Club 53 · ${bookingId}`),
+      bookingId,
+      `${label} notices must expose their booking id for the card fallback`,
+    );
+  }
+  assert.equal(
+    parseDmBookingTimelineBookingId("Booking cancelled"),
+    null,
+    "a legacy generic notice has no booking id and must not fabricate one",
+  );
+}
+
+function testDeepLinkTargetsSurviveImagesAndHiddenNotices() {
+  const dimensions = readFileSync(
+    new URL("../lib/dm/dmImageAttachmentDimensions.ts", import.meta.url),
+    "utf8",
+  );
+
+  // A: the learned ratio must outlive the page, or a push tap never has it.
+  assert.match(
+    dimensions,
+    /window\.localStorage\.setItem\(ASPECT_RATIO_STORAGE_KEY/,
+    "decoded aspect ratios must persist, or every full page load re-guesses the box and the " +
+      "image corrects itself on decode, drifting the deep-link target",
+  );
+  assert.match(
+    dimensions,
+    /function hydrateFromStorageOnce\(\)/,
+    "persisted ratios must be read back on first lookup",
+  );
+  assert.match(
+    dimensions,
+    /MAX_PERSISTED_RATIOS/,
+    "the persisted ratio store must be bounded",
+  );
+  // Must stay best-effort: a disabled or full store degrades, never throws.
+  assert.match(dimensions, /catch \{[\s\S]{0,200}?\}/, "storage access must be wrapped");
+
+  // B: hidden timeline notice -> that booking's card.
+  const systemMessages = readFileSync(
+    new URL("../lib/dm/dmBookingSystemMessages.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    systemMessages,
+    /export function parseDmBookingTimelineBookingId\(/,
+    "the booking id encoded in a timeline notice must be parseable",
+  );
+
+  const hook = readFileSync(
+    new URL("../lib/chat/messageTargetScroll.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    hook,
+    /fallbackTargetSelector\?: string \| null;/,
+    "the shared target hook must accept a fallback selector",
+  );
+  assert.match(
+    hook,
+    /\?\? \(fallbackTargetSelector[\s\S]{0,160}?querySelector<HTMLElement>\(fallbackTargetSelector\)/,
+    "the fallback must only be tried when the message id itself is not in the DOM",
+  );
+
+  const dmPage = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmPage,
+    /parseDmBookingTimelineBookingId\(targetMessage\.text\)/,
+    "the DM page must derive the booking id from the targeted timeline notice",
+  );
+  // The decisive property now that lifecycle rows are ALWAYS hidden: the
+  // fallback selector is derived from the loaded `messages` array, not from
+  // the DOM. If it ever reads the document, a hidden row yields no selector
+  // and every lifecycle push falls back to the bottom of the chat.
+  const fallbackBlock = dmPage.slice(
+    dmPage.indexOf("const messageTargetFallbackSelector = useMemo("),
+    dmPage.indexOf("useChatMessageTargetScroll({"),
+  );
+  assert.ok(fallbackBlock.length > 0, "the fallback selector memo must exist");
+  assert.match(
+    fallbackBlock,
+    /messages\.find\(\(item\) => item\.id === messageTargetId\)/,
+    "the fallback must resolve the targeted message from the loaded messages array, so it " +
+      "survives that message never being rendered",
+  );
+  assert.doesNotMatch(
+    fallbackBlock,
+    /document\.|querySelector/,
+    "reading the DOM here would defeat the whole point -- the target row is hidden",
+  );
+  assert.match(
+    fallbackBlock,
+    /\[messageTargetId, messages\]/,
+    "the memo must recompute when messages load, or the selector is null on first paint",
+  );
+  assert.match(
+    dmPage,
+    /fallbackTargetSelector: messageTargetFallbackSelector,/,
+    "the DM page must pass the booking-card fallback to the target hook",
+  );
+  assert.match(
+    dmPage,
+    /\[\$\{CHAT_BOOKING_REQUEST_ID_ATTR\}="\$\{CSS\.escape\(bookingId\)\}"\]/,
+    "the fallback must resolve to the booking card by its existing booking-id attribute, not a " +
+      "new targeting system",
+  );
+}
+
+function testBookingLifecyclePushesCarryAMessageTarget() {
+  const source = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+
+  // --- accepted -----------------------------------------------------------
+  assert.match(
+    source,
+    /async function insertBookingAcceptedDmMessageIfNeeded\([\s\S]{0,200}?Promise<\{ inserted: boolean; messageText: string; messageId: string \| null \}>/,
+    "the accepted DM helper must return the message id",
+  );
+  assert.match(
+    source,
+    /const acceptedDm = await insertBookingAcceptedDmMessageIfNeeded\(booking\);/,
+    "the acceptance path must capture the inserted DM message",
+  );
+  assert.match(
+    source,
+    /`\$\{djName\} · Booking accepted`,[\s\S]{0,400}?acceptedDm\.messageId \?\? undefined,/,
+    "the 'Booking accepted' notification must carry the confirmation message id",
+  );
+
+  // --- withdrawn / cancelled ---------------------------------------------
+  assert.match(
+    source,
+    /async function insertBookingCancelledDmMessageIfNeeded\([\s\S]{0,200}?Promise<\{ inserted: boolean; messageText: string; messageId: string \| null \}>/,
+    "the cancelled DM helper must return the message id",
+  );
+  assert.match(
+    source,
+    /cancelledDm = await insertBookingCancelledDmMessageIfNeeded\(booking\);/,
+    "the cancel/withdraw path must capture the inserted DM notice",
+  );
+  assert.match(
+    source,
+    /notificationTitle,[\s\S]{0,500}?cancelledDm\?\.messageId \?\? undefined,/,
+    "the withdrawal/cancellation notification must carry the DM notice's message id",
+  );
+  // ...in argument SEVEN. This is the withdrawal/cancellation push -- the exact
+  // bug this whole line of work exists to fix -- and it was the one messageId
+  // call site with no argument-position guard, so an arg-6 slide here escaped.
+  assertMessageIdIsSeventhArgument(
+    extractFunctionBody(
+      source,
+      "export async function cancelBookingRequest(",
+      "export type CancelAcceptedBookingRequestResult",
+    ),
+    "cancelledDm?.messageId ?? undefined",
+    "cancelBookingRequest",
+  );
+
+  // Ordering is load-bearing: the notice must be written before the
+  // notification, or there is no id to thread.
+  const insertAt = source.indexOf("cancelledDm = await insertBookingCancelledDmMessageIfNeeded(booking);");
+  const notifyAt = source.indexOf("cancelledDm?.messageId ?? undefined,");
+  assert.ok(insertAt > -1 && notifyAt > -1);
+  assert.ok(
+    insertAt < notifyAt,
+    "the cancelled DM insert must run BEFORE createNotification -- reversing them silently " +
+      "restores the NULL message_id bug",
+  );
+
+  // --- dedupe paths must still yield a target ------------------------------
+  // A repeat call reuses the existing row's id, so create_notification's
+  // (user_id, message_id) dedupe collapses it -- one action, one push.
+  assert.match(
+    source,
+    /return \{ inserted: false, messageText, messageId: existingRows\[0\]\.id as string \};/,
+    "the accepted/cancelled dedupe paths must return the existing row's id, not null, or a " +
+      "repeat action would create an untargeted second notification",
+  );
+
+  // --- declined is deliberately different ---------------------------------
+  // It STILL writes no lifecycle row (the card already reads "Declined", and a
+  // second hidden row would be a second source of truth), but it no longer
+  // dead-ends at /bookings: it targets the booking-request message that renders
+  // the card. See testDeclinedBookingPushTargetsTheBookingRequestMessage.
+  assert.doesNotMatch(
+    source,
+    /`\$\{declinedDjName\} · Booking declined`,\s*\n\s*booking\.event_name,\s*\n\s*"\/bookings",/,
+    "the declined push must not hardcode /bookings -- there is nothing there to deep-link to",
+  );
+}
+
+function testBookingRequestPushDeepLinksToTheBookingCard() {
+  const source = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+
+  // The booking-card message insert must read its id back.
+  assert.match(
+    source,
+    /const \{ data: messageRow, error: messageError \} = await supabase[\s\S]{0,300}?\.select\("id"\)[\s\S]{0,40}?\.single\(\);/,
+    "sendBookingRequest must read back the booking-card message id -- without it the " +
+      "notification cannot carry a deep-link target",
+  );
+
+  // ...and that id must reach createNotification as its messageId argument.
+  const bookingRequestNotification = source.slice(
+    source.indexOf('"booking_request",'),
+    source.indexOf('"booking_request",') + 800,
+  );
+  assert.match(
+    bookingRequestNotification,
+    /messageRow\?\.id as string \| undefined,/,
+    "the booking_request notification must pass the booking-card message id, or the push " +
+      "deep link falls back to a bare /dm/<id> and the DJ lands at the bottom",
+  );
+
+  // Guard the arity: messageId is the 7th argument, so reactionId must be an
+  // explicit null in the 6th. A future edit must not slide the id into it.
+  assert.match(
+    bookingRequestNotification,
+    /`\/dm\/\$\{conversationId\}`,[\s\S]{0,80}?null,[\s\S]{0,400}?messageRow\?\.id as string \| undefined,/,
+    "messageId must be the 7th argument, with reactionId explicitly null in the 6th",
+  );
+}
+
+function testPushSendForwardsMessageIdIntoLink() {
+  const pushSendSource = readFileSync(
+    new URL("../supabase/functions/push-send/index.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    pushSendSource,
+    /interface Notification \{[\s\S]*?message_id\?: string;[\s\S]*?\}/,
+    "the edge function's Notification interface must declare message_id",
+  );
+  assert.match(
+    pushSendSource,
+    /const link = notification\.message_id\s*\n\s*\? `\$\{baseLink\}\$\{baseLink\.includes\("\?"\)\s*\?\s*"&"\s*:\s*"\?"\}message=\$\{encodeURIComponent\(notification\.message_id\)\}`\s*\n\s*: baseLink;/,
+    "the outbound push payload's link must append '?message=<id>' (or '&message=' if the base link already has a query string) whenever message_id is present",
+  );
+  assert.match(
+    pushSendSource,
+    /const pushPayload = \{\s*\n\s*title: notification\.title,\s*\n\s*body: notification\.body \|\| "",\s*\n\s*link,\s*\n\s*notificationId: notification\.id,\s*\n\s*\};/,
+    "the payload's link field must use the derived link (with message id appended), not notification.link directly",
+  );
+
+  // Guard the explicit "do not touch push infrastructure" boundary: the
+  // delivery mechanism itself (VAPID signing, webhook secret check, the
+  // per-subscription send loop) must still be present, unmodified in shape.
+  assert.match(pushSendSource, /const VAPID_PRIVATE_KEY = Deno\.env\.get\("VAPID_PRIVATE_KEY"\) \|\| "";/);
+  assert.match(pushSendSource, /const PUSH_WEBHOOK_SECRET = Deno\.env\.get\("PUSH_WEBHOOK_SECRET"\) \|\| "";/);
+  assert.match(pushSendSource, /await sendWebPush\(/);
+}
+
+/**
+ * DM page wiring: a `message` query param must resolve to a target id that
+ * is (a) mutually exclusive with the pre-existing booking-target and
+ * precise-scroll-restore flows (same precedence pattern those two already
+ * use against each other), (b) folded into the initial suppressAutoScrollRef
+ * value so the very first render doesn't race the normal scroll-to-bottom
+ * effect, and (c) wired to the shared hook using the DM page's own
+ * already-instantiated highlight/scroll-to-bottom callbacks -- not new ones.
+ */
+function testDmPageWiresMessageTargetScroll() {
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    dmPageSource,
+    /import \{\s*\n\s*CHAT_MESSAGE_TARGET_PARAM,\s*\n\s*parseChatMessageTargetIdParam,\s*\n\s*useChatMessageTargetScroll,\s*\n\s*\} from "@\/lib\/chat\/messageTargetScroll";/,
+    "the DM page must import the shared message-target-scroll hook",
+  );
+
+  assert.match(
+    dmPageSource,
+    /const messageTargetId =\s*\n\s*hasPendingPreciseScrollRestore \|\| scrollTargetBookingRequestId\s*\n\s*\? null\s*\n\s*: parseChatMessageTargetIdParam\(searchParams\.get\(CHAT_MESSAGE_TARGET_PARAM\)\);/,
+    "messageTargetId must be nulled out whenever a precise-scroll-restore or booking target is already active this navigation",
+  );
+
+  assert.match(
+    dmPageSource,
+    /const suppressAutoScrollRef = useRef\(\s*\n\s*Boolean\(scrollTargetBookingRequestId\) \|\|\s*\n\s*hasPendingPreciseScrollRestore \|\|\s*\n\s*Boolean\(messageTargetId\),\s*\n\s*\);/,
+    "the initial suppressAutoScrollRef value must account for a pending message target too, or the first paint's scroll-to-bottom effect races it",
+  );
+
+  assert.match(
+    dmPageSource,
+    // fallbackTargetSelector was added for hidden booking timeline notices; the
+    // property under test (reuse the page's own callbacks) is unchanged.
+    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*pinnedToBottomRef,\s*\n\s*fallbackTargetSelector: messageTargetFallbackSelector,\s*\n\s*\}\);/,
+    "the DM page must wire the hook to its own already-instantiated addHighlightedMessageId/scrollToBottomSmooth, not new bespoke callbacks",
+  );
+
+  // Must be declared after useChatBookingTargetScroll so that on a genuine
+  // booking-target navigation (messageTargetId null), the booking hook's own
+  // reset effect -- which still runs unconditionally -- can't be clobbered by
+  // ours running first and being overwritten second.
+  const bookingHookCallIndex = dmPageSource.indexOf("useChatBookingTargetScroll({");
+  const messageHookCallIndex = dmPageSource.indexOf("useChatMessageTargetScroll({");
+  assert.ok(bookingHookCallIndex > -1 && messageHookCallIndex > -1);
+  assert.ok(
+    messageHookCallIndex > bookingHookCallIndex,
+    "useChatMessageTargetScroll must be called after useChatBookingTargetScroll (see comment above)",
+  );
+}
+
+function testCrewChatPageWiresMessageTargetScroll() {
+  const crewChatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /import \{\s*\n\s*CHAT_MESSAGE_TARGET_PARAM,\s*\n\s*parseChatMessageTargetIdParam,\s*\n\s*useChatMessageTargetScroll,\s*\n\s*\} from "@\/lib\/chat\/messageTargetScroll";/,
+    "the crew chat page must import the shared message-target-scroll hook",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /const messageTargetId = parseChatMessageTargetIdParam\(\s*\n\s*searchParams\.get\(CHAT_MESSAGE_TARGET_PARAM\),\s*\n\s*\);/,
+    "the crew chat page must parse the message target id (it has no competing scroll-target flow, unlike DM)",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /const suppressAutoScrollRef = useRef\(Boolean\(messageTargetId\)\);/,
+    "suppressAutoScrollRef must be seeded from messageTargetId on first render",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /suppressAutoScrollRef,\s*\n\s*\}\);/,
+    "useChatScroll must now receive suppressAutoScrollRef (previously omitted) so the target-scroll flow can suppress the initial auto-scroll-to-bottom",
+  );
+
+  assert.match(
+    crewChatPageSource,
+    /useChatMessageTargetScroll\(\{\s*\n\s*targetMessageId: messageTargetId,\s*\n\s*loading,\s*\n\s*scrollRef,\s*\n\s*onTargetFound: addHighlightedMessageId,\s*\n\s*onTargetMissing: scrollToBottomSmooth,\s*\n\s*suppressAutoScrollRef,\s*\n\s*pinnedToBottomRef,\s*\n\s*\}\);/,
+    "the crew chat page must wire the hook to its own already-instantiated addHighlightedMessageId/scrollToBottomSmooth",
+  );
+}
+
+/**
+ * The shared hook's suppression handshake must be asymmetric: claim
+ * suppression when this flow has a real target, but never unconditionally
+ * write `false` just because it doesn't -- the DM page shares this ref with
+ * the pre-existing booking-target flow, and an unconditional write would
+ * race whichever hook's reset effect happens to run last. Also: releasing
+ * suppression must happen *before* the onTargetMissing fallback runs, or the
+ * fallback's own scroll-to-bottom call would see suppression still active
+ * and silently no-op.
+ */
+function testChatMessageTargetScrollSuppressionIsAsymmetric() {
+  const hookSource = readFileSync(
+    new URL("../lib/chat/messageTargetScroll.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    hookSource,
+    /if \(targetMessageId\) \{\s*\n\s*suppressAutoScrollRef\.current = true;\s*\n\s*\}/,
+    "the reset effect must only ever write `true`, guarded behind a truthy target check",
+  );
+  assert.doesNotMatch(
+    hookSource,
+    /suppressAutoScrollRef\.current = Boolean\(targetMessageId\);/,
+    "an unconditional write (including false) would race and clobber a sibling scroll-target hook's suppression",
+  );
+
+  const releaseIndex = hookSource.indexOf("releaseAutoScrollSuppression();\n        onTargetMissing?.();");
+  assert.ok(
+    releaseIndex > -1,
+    "releaseAutoScrollSuppression() must run before onTargetMissing() so the fallback's own scroll isn't self-suppressed",
+  );
+}
+
+/**
+ * lib/useChatScroll.ts now exposes pinnedToBottomRef, and both
+ * scroll-to-specific-message flows (message target, booking target) sync it
+ * in the same tick as their direct container.scrollTop write, before
+ * releasing suppression -- see testMessageTargetScrollPriority (the real
+ * happy-dom proof) for why this matters. This test locks down that both call
+ * sites actually wire it, source-level, as a cheap early signal if either
+ * one regresses.
+ */
+function testPinnedToBottomRefWiredIntoBothScrollTargetFlows() {
+  const useChatScrollSource = readFileSync(
+    new URL("../lib/useChatScroll.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    useChatScrollSource,
+    /export function syncPinnedToBottomRefAfterDirectScroll\(/,
+    "useChatScroll.ts must export the shared sync helper",
+  );
+  assert.match(
+    useChatScrollSource,
+    /return \{[\s\S]*?pinnedToBottomRef,\s*\n\s*\};/,
+    "useChatScroll's returned object must expose pinnedToBottomRef for external scroll-target flows to correct",
+  );
+
+  const messageTargetSource = readFileSync(
+    new URL("../lib/chat/messageTargetScroll.ts", import.meta.url),
+    "utf8",
+  );
+  // Suppression is no longer released in the same tick as the scroll -- the
+  // target now holds a settle lease and releaseAutoScrollSuppression() is
+  // called from endSettle(). The invariant this guards is unchanged and still
+  // holds in BOTH places: pinnedToBottomRef is synced from the real scroll
+  // position immediately before suppression is ever dropped.
+  assert.match(
+    messageTargetSource,
+    /syncPinnedToBottomRefAfterDirectScroll\(container, pinnedToBottomRef\);\s*\n\s*onTargetFound\(targetMessageId\);/,
+    "useChatMessageTargetScroll must sync pinnedToBottomRef in the same tick as the direct scroll",
+  );
+  assert.match(
+    messageTargetSource,
+    /syncPinnedToBottomRefAfterDirectScroll\(container, pinnedToBottomRef\);\s*\n\s*releaseAutoScrollSuppression\(\);/,
+    "endSettle must re-sync pinnedToBottomRef before releasing suppression, not after",
+  );
+
+  const bookingTargetSource = readFileSync(
+    new URL("../lib/dm/chatBookingTarget.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingTargetSource,
+    /scrollChatBookingTargetIntoView\(container, messageElement\);\s*\n\s*syncPinnedToBottomRefAfterDirectScroll\(container, pinnedToBottomRef\);/,
+    "useChatBookingTargetScroll (the pre-existing flow this bug class was copied from) must get the identical fix",
+  );
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmPageSource, /pinnedToBottomRef,\s*\n\s*\} = useChatScroll\(\{/);
+  assert.match(
+    dmPageSource,
+    /useChatBookingTargetScroll\(\{[\s\S]{0,300}?pinnedToBottomRef,\s*\n\s*\}\);/,
+  );
+  // pinnedToBottomRef need only be threaded in -- it is no longer the last
+  // argument, since fallbackTargetSelector follows it on the DM page.
+  assert.match(
+    dmPageSource,
+    /useChatMessageTargetScroll\(\{[\s\S]{0,400}?pinnedToBottomRef,/,
+  );
+
+  const crewChatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(crewChatPageSource, /pinnedToBottomRef,\s*\n\s*\} = useChatScroll\(\{/);
+  assert.match(
+    crewChatPageSource,
+    /useChatMessageTargetScroll\(\{[\s\S]{0,300}?pinnedToBottomRef,\s*\n\s*\}\);/,
+  );
+}
+
+/**
+ * Issue 2: don't push a chat message to a recipient already looking at that
+ * exact thread. Locks down the client-side half -- a lightweight per-user
+ * presence row (lib/chat/useActiveChatPresence.ts), not a general presence
+ * system: heartbeat while visible, cleared on hide/unmount/close, no read
+ * access for anyone but the owning row (server-side TTL enforcement is
+ * covered by testPushSendSuppressesActivePushForExactThread below).
+ */
+function testActiveChatPresenceHookHeartbeatAndCleanup() {
+  const hookSource = readFileSync(
+    new URL("../lib/chat/useActiveChatPresence.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    hookSource,
+    /if \(!userId \|\| !threadLink\) \{\s*\n\s*return;\s*\n\s*\}/,
+    "must no-op entirely without a real user id and thread link -- never write a bogus presence row",
+  );
+
+  // Upsert must happen immediately on mount, not only on the first heartbeat.
+  assert.match(hookSource, /upsertPresence\(\);\s*\n\s*const intervalId = window\.setInterval\(upsertPresence,/);
+
+  // The payload is unchanged, but the call is now wrapped in dispatch() -- the
+  // old `void supabase.…` form never sent the request at all, because a
+  // PostgrestBuilder is a thenable that only fires when .then() is invoked.
+  assert.match(
+    hookSource,
+    /supabase\s*\n?\s*\.from\("active_chat_presence"\)\s*\n?\s*\.upsert\(\s*\n\s*\{\s*\n\s*user_id: userId,\s*\n\s*thread_link: threadLink,\s*\n\s*updated_at: new Date\(\)\.toISOString\(\),\s*\n\s*\},\s*\n\s*\{ onConflict: "user_id" \},\s*\n\s*\)/,
+    "the upsert payload must carry a fresh client timestamp and upsert on user_id (one row per user)",
+  );
+
+  assert.match(
+    hookSource,
+    /if \(document\.visibilityState !== "visible"\) \{\s*\n\s*return;\s*\n\s*\}/,
+    "a heartbeat firing while backgrounded must not resurrect a stale-but-still-fresh presence row",
+  );
+
+  assert.match(
+    hookSource,
+    // Also now routed through dispatch(); the old `void supabase.…` form built
+    // the query but never issued it.
+    /supabase\.from\("active_chat_presence"\)\.delete\(\)\.eq\("user_id", userId\)/,
+    "clearing presence must delete the row outright, not merely null a field",
+  );
+
+  // Every "the user might be leaving" signal must clear presence: tab hidden,
+  // the page closing, and unmount (navigating to a different thread/page).
+  assert.match(
+    hookSource,
+    /function handleVisibilityChange\(\) \{\s*\n\s*if \(document\.visibilityState === "visible"\) \{\s*\n\s*upsertPresence\(\);\s*\n\s*\} else \{\s*\n\s*clearPresence\(\);\s*\n\s*\}\s*\n\s*\}/,
+  );
+  assert.match(hookSource, /window\.addEventListener\("pagehide", clearPresence\);/);
+  assert.match(
+    hookSource,
+    /return \(\) => \{\s*\n\s*window\.clearInterval\(intervalId\);\s*\n\s*window\.removeEventListener\("visibilitychange", handleVisibilityChange\);\s*\n\s*window\.removeEventListener\("pagehide", clearPresence\);\s*\n\s*clearPresence\(\);\s*\n\s*\};/,
+    "unmount must stop the heartbeat, remove both listeners, and clear presence -- leaving any one out risks a stale row surviving a real navigation away",
+  );
+}
+
+function testDmAndCrewChatPagesWireActiveChatPresence() {
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    dmPageSource,
+    /useActiveChatPresence\(currentUserId, `\/dm\/\$\{conversationId\}`\);/,
+    "the DM page must report presence using the exact same bare link createNotification() is called with",
+  );
+
+  const crewChatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    crewChatPageSource,
+    /useActiveChatPresence\(currentUserId, getEventCrewChatLink\(eventId\)\);/,
+    "the crew chat page must report presence using the same getEventCrewChatLink(eventId) call createNotification() uses -- not a hand-rolled duplicate string that could drift",
+  );
+}
+
+/**
+ * Server-side half of Issue 2: push-send must skip delivery only when (a)
+ * it's a real chat message notification (never booking/reaction/system,
+ * even if one happens to share a link), (b) the recipient's presence row's
+ * thread_link exactly matches this notification's link, and (c) that row is
+ * still fresh under PRESENCE_TTL_MS. Any failure in the check itself must
+ * fall through to a normal send -- this must never be a way to accidentally
+ * black-hole real pushes.
+ */
+function testPushSendSuppressesActivePushForExactThread() {
+  const pushSendSource = readFileSync(
+    new URL("../supabase/functions/push-send/index.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pushSendSource, /const PRESENCE_TTL_MS = 45_000;/);
+
+  assert.match(
+    pushSendSource,
+    /if \(notification\.type === "message" && notification\.link\) \{/,
+    "the suppression check must be scoped to real chat-message notifications only",
+  );
+
+  assert.match(
+    pushSendSource,
+    /\.from\("active_chat_presence"\)\s*\n\s*\.select\("thread_link, updated_at"\)\s*\n\s*\.eq\("user_id", recipientUserId\)\s*\n\s*\.maybeSingle\(\);/,
+    "must look up presence by the recipient's own user id -- maybeSingle so a missing row is not an error",
+  );
+
+  assert.match(
+    pushSendSource,
+    /if \(presence && presence\.thread_link === notification\.link\) \{/,
+    "must compare the presence row's thread_link against notification.link by exact string equality -- not merely truthiness of any presence row",
+  );
+
+  assert.match(
+    pushSendSource,
+    /const ageMs = Date\.now\(\) - new Date\(presence\.updated_at\)\.getTime\(\);\s*\n\s*if \(ageMs <= PRESENCE_TTL_MS\) \{/,
+    "must enforce the TTL -- a stale presence row (backgrounded/closed app) must not suppress",
+  );
+
+  // Fail-open: any error in the presence check itself must not block the
+  // actual push send below it.
+  const tryStart = pushSendSource.indexOf("if (notification.type === \"message\" && notification.link) {");
+  assert.ok(tryStart > -1);
+  const tryBlock = pushSendSource.slice(tryStart, tryStart + 1200);
+  assert.match(tryBlock, /try \{/);
+  assert.match(
+    tryBlock,
+    /catch \(presenceError\) \{\s*\n\s*console\.error\("\[push-send\] Presence check failed, sending push anyway:", presenceError\);\s*\n\s*\}/,
+    "a presence-check failure must be caught and logged, falling through to a normal send -- never throw and drop the push",
+  );
+
+  // The suppression check must run before subscriptions are fetched (so a
+  // suppressed push also skips that work), and the response must still be a
+  // 200 (a suppressed push is not an error condition for the webhook caller).
+  const suppressIndex = pushSendSource.indexOf('"[push-send] Suppressing push:');
+  const subscriptionsIndex = pushSendSource.indexOf('.from("push_subscriptions")');
+  assert.ok(suppressIndex > -1 && subscriptionsIndex > -1);
+  assert.ok(
+    suppressIndex < subscriptionsIndex,
+    "the presence check must run before fetching push subscriptions, so a suppressed push also skips that work",
+  );
+
+  // Guard the explicit "do not touch push infrastructure" boundary again --
+  // VAPID/webhook/delivery code must still be present, unmodified in shape.
+  assert.match(pushSendSource, /const VAPID_PRIVATE_KEY = Deno\.env\.get\("VAPID_PRIVATE_KEY"\) \|\| "";/);
+  assert.match(pushSendSource, /const PUSH_WEBHOOK_SECRET = Deno\.env\.get\("PUSH_WEBHOOK_SECRET"\) \|\| "";/);
+  assert.match(pushSendSource, /await sendWebPush\(/);
+}
+
+/**
+ * Privacy scoping for the new table: nothing in the client ever needs to
+ * read another user's presence row (only push-send does, via the service
+ * role, which bypasses RLS) -- select must be scoped to own-row only, unlike
+ * public.users' blanket authenticated-read-all policy.
+ */
+function testActiveChatPresenceMigrationScopesAccessToOwnRow() {
+  const migrationSource = readFileSync(
+    new URL("../supabase/migrations/20260818000000_active_chat_presence.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    migrationSource,
+    /create table if not exists public\.active_chat_presence \(\s*\n\s*user_id uuid primary key references auth\.users\(id\) on delete cascade,/,
+  );
+  assert.match(migrationSource, /alter table public\.active_chat_presence enable row level security;/);
+
+  for (const action of ["select", "insert", "update", "delete"]) {
+    const policyPattern = new RegExp(
+      `create policy "active_chat_presence_${action}_own"\\s*\\n\\s*on public\\.active_chat_presence for ${action}\\s*\\n\\s*(using|with check) \\(user_id = auth\\.uid\\(\\)\\)`,
+    );
+    assert.match(
+      migrationSource,
+      policyPattern,
+      `the ${action} policy must scope to the row's own user_id -- no blanket read/write access`,
+    );
+  }
+
+  assert.match(migrationSource, /grant all on table public\.active_chat_presence to service_role;/);
+}
+
+/**
+ * A device with a stale/mismatched push subscription (browser silently
+ * rotated its endpoint, or the DB row went missing) previously required the
+ * user to notice and manually re-toggle notifications in Settings --
+ * detectNotificationState()'s "reconnect" state was only ever checked there.
+ * ServiceWorkerProvider now checks it on every app launch and silently
+ * re-subscribes (no user gesture needed once permission is already
+ * "granted"), so this self-heals without requiring a manual re-toggle.
+ */
+function testServiceWorkerProviderSilentlyReconcilesStaleSubscription() {
+  const providerSource = readFileSync(
+    new URL("../app/components/ServiceWorkerProvider.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    providerSource,
+    /import \{ detectNotificationState, enableNotifications, setupNotificationClickListener \} from "@\/lib\/push\/client";/,
+  );
+  assert.match(
+    providerSource,
+    /import \{ getCurrentUserId \} from "@\/lib\/user\/currentUser";/,
+  );
+
+  assert.match(
+    providerSource,
+    /const state = await detectNotificationState\(\);\s*\n\s*\n\s*if \(state !== "reconnect"\) \{\s*\n\s*return;\s*\n\s*\}/,
+    "must only act on the reconnect state -- never attempt this for prompt/denied/unsupported",
+  );
+
+  // Must confirm real auth before attempting to subscribe, or a
+  // not-yet-authenticated "reconnect" reading wastes an enableNotifications()
+  // call that's doomed to fail (savePushSubscription needs a real user id).
+  const reconcileStart = providerSource.indexOf("async function reconcileStalePushSubscription()");
+  assert.ok(reconcileStart > -1);
+  const reconcileBody = providerSource.slice(reconcileStart, reconcileStart + 900);
+  assert.match(reconcileBody, /await getCurrentUserId\(\);\s*\n\s*await enableNotifications\(\);/);
+
+  // Best-effort: must never let a reconcile failure propagate/crash the app.
+  assert.match(
+    reconcileBody,
+    /catch \(error\) \{\s*\n\s*console\.error\("\[push\] Silent subscription reconcile did not complete:", error\);\s*\n\s*\}/,
+  );
+
+  assert.match(
+    providerSource,
+    /registerServiceWorker\(\);\s*\n\s*reconcileStalePushSubscription\(\);/,
+    "must actually run on mount, not just be defined",
+  );
 }
 
 main().catch((error) => {

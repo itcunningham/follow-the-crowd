@@ -105,7 +105,7 @@ function GroupChatsEmptyState() {
   );
 }
 
-const GROUP_CHATS_LOAD_TIMEOUT_MS = 15_000;
+const GROUP_CHATS_LOAD_TIMEOUT_MS = 30_000;
 const GROUP_CHATS_REFRESH_INTERVAL_MS = 30_000;
 
 async function withGroupChatsLoadTimeout<T>(promise: Promise<T>): Promise<T> {

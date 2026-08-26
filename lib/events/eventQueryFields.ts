@@ -215,10 +215,24 @@ function markMissingOptionalEventColumn(error: PostgrestError): boolean {
 export async function withEventFieldsFallback<T>(
   query: (fields: string) => PromiseLike<PostgrestResult<T>>,
 ): Promise<T> {
-  let result = await query(selectEventFields());
+  let fields = selectEventFields();
+  let result = await query(fields);
 
   while (result.error && markMissingOptionalEventColumn(result.error)) {
-    result = await query(selectEventFields());
+    const nextFields = selectEventFields();
+
+    // markMissingOptionalEventColumn() matches on the error's shape, not on
+    // whether it actually changed any flag -- if the matched column was
+    // already marked missing (e.g. from an earlier call in this process),
+    // the projection comes back identical and retrying would repeat the
+    // exact same query forever. Stop and let the real error surface instead
+    // of hanging indefinitely.
+    if (nextFields === fields) {
+      break;
+    }
+
+    fields = nextFields;
+    result = await query(fields);
   }
 
   if (result.error) {

@@ -29,6 +29,7 @@ import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/app/components/skele
 import {
   getEventCrewChatAccess,
   getEventCrewChatBackHref,
+  getEventCrewChatLink,
   getEventCrewChatLoadErrorMessage,
   getEventCrewParticipantIds,
   listEventCrewChatMessages,
@@ -104,6 +105,12 @@ import {
 } from "@/lib/chatNewMessageHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import {
+  CHAT_MESSAGE_TARGET_PARAM,
+  parseChatMessageTargetIdParam,
+  useChatMessageTargetScroll,
+} from "@/lib/chat/messageTargetScroll";
+import { useActiveChatPresence } from "@/lib/chat/useActiveChatPresence";
+import {
   getCurrentUserId,
   getUserAvatarProfilesByIds,
   type UserAvatarProfile,
@@ -145,7 +152,7 @@ function wrapWithTrailingTimeSeparator(
   );
 }
 
-const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 15_000;
+const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 30_000;
 
 /**
  * How long to keep compensating the scroller for the event card's height
@@ -238,6 +245,11 @@ export default function EventCrewChatPage() {
   }, [pathname, searchParams]);
   const openedFromMessages = searchParams.get("from") === "dm";
   const dmConversationId = searchParams.get("dmConversation");
+  // A push notification's message deep link (?message=<messages.id>).
+  const messageTargetId = parseChatMessageTargetIdParam(
+    searchParams.get(CHAT_MESSAGE_TARGET_PARAM),
+  );
+  const suppressAutoScrollRef = useRef(Boolean(messageTargetId));
   const eventDetailReturn = searchParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM);
   const dmThreadContext = {
     from: searchParams.get("dmThreadFrom"),
@@ -494,12 +506,14 @@ export default function EventCrewChatPage() {
     scrollToBottomSmooth,
     markUserSentMessage,
     captureScrollBeforeIncomingInsert,
+    pinnedToBottomRef,
   } = useChatScroll({
     loading,
     messageIds,
     lastMessageSenderId: lastMessage?.user_id ?? null,
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,
+    suppressAutoScrollRef,
   });
   /**
    * The other half of the keyboard fix, and the same call DM makes.
@@ -520,6 +534,20 @@ export default function EventCrewChatPage() {
   // while busy clears the refocus intent (see handleComposerInputBlurWhileBusy).
   useDismissComposerKeyboardOnIntentionalScroll(scrollRef, composerInputRef, composerRootRef);
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
+
+  useChatMessageTargetScroll({
+    targetMessageId: messageTargetId,
+    loading,
+    scrollRef,
+    onTargetFound: addHighlightedMessageId,
+    onTargetMissing: scrollToBottomSmooth,
+    suppressAutoScrollRef,
+    pinnedToBottomRef,
+  });
+
+  // Same bare link createNotification() uses for this event's crew chat --
+  // lets push-send skip an external push while this exact thread is visible.
+  useActiveChatPresence(currentUserId, getEventCrewChatLink(eventId));
 
   const captureComposerFocusIntentForSend = useCallback(() => {
     keepComposerFocusedAfterSendRef.current = shouldKeepComposerFocusedAfterSend(

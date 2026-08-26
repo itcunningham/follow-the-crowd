@@ -35,6 +35,7 @@ Read docs/handoff/CLAUDE-FULL-HANDOVER.md fully, then docs/handoff/CURRENT-STATE
 | `PROJECT.md` | Stack, folders, conventions |
 | `docs/design/FTC_DESIGN_SYSTEM.md` | Spacing, typography, shared UI rules |
 | `CURRENT-STATE.md` | What is already built (update after every completed ship) |
+| `ENGINEERING-HANDOVER.md` | **Concise, current entry point for a new engineer** — release state, build/test results, DB/RLS audit, push architecture, env vars, security findings, repo hygiene, known traps, architecture map. Points into the other docs rather than duplicating them; says which sections of the older docs are stale. |
 | `HANDOFF-UPDATE.md` | **Checklist — update handoff when a job completes** |
 | `SUPABASE.md` | SQL scripts and run order |
 | `SECRETS.md` | Where credentials live (Vercel, Supabase, password manager) — no secret values |

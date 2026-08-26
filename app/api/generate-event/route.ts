@@ -5,6 +5,10 @@ import { isAiEventGenerationEnabledServer } from "@/lib/featureFlags";
 import { createOpenAIEventPlanGenerator } from "@/lib/infrastructure/openai/generate-event-plan";
 
 export async function POST(request: Request) {
+  // Hard-disable for beta: feature flag check runs at entry point, before any expensive operations.
+  // This ensures: (1) no OpenAI API calls, (2) no authentication processing, (3) no database operations.
+  // To verify: with isAiEventGenerationEnabledServer() = false, endpoint returns 404 and
+  // createOpenAIEventPlanGenerator (line 38) is never instantiated or called.
   if (!isAiEventGenerationEnabledServer()) {
     return NextResponse.json({ error: "Not available." }, { status: 404 });
   }

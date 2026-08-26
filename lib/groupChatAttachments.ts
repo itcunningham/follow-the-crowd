@@ -6,7 +6,7 @@
 // `sendEventCrewChatMessage`) are new.
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId, getCurrentUserProfile } from "@/lib/user/currentUser";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, formatNotificationPreview } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
 import { getEventById, isEventCancelled } from "@/lib/events";
 import { getCrewChatUnlockStateForEvent } from "@/lib/events/crewChatUnlock";
@@ -239,9 +239,13 @@ export async function sendEventCrewChatMessageWithAttachments(input: {
       const participants = await getEventCrewParticipantIds(input.eventId);
       const senderProfile = await getCurrentUserProfile();
       const senderName = senderProfile?.display_name?.trim() || "Group member";
-      const preview =
+      const genericPhotoPreview =
         uploaded.length > 1 ? `Sent ${uploaded.length} photos` : "Sent a photo";
+      // A caption alongside the photo(s) is more useful than generic "Sent a
+      // photo" copy — prefer it, same as the DM attachment push already does.
+      const preview = formatNotificationPreview(text || genericPhotoPreview);
       const link = getEventCrewChatLink(input.eventId);
+      const title = `${senderName} · ${input.eventName}`;
 
       await Promise.all(
         participants
@@ -251,9 +255,11 @@ export async function sendEventCrewChatMessageWithAttachments(input: {
               await createNotification(
                 participantId,
                 "message",
-                input.eventName,
-                `${senderName}: ${preview}`,
+                title,
+                preview,
                 link,
+                null,
+                messageRow.id as string,
               );
             } catch (notificationError) {
               console.error(
