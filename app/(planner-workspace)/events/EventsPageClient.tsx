@@ -450,23 +450,6 @@ function EventsPageClientView({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      console.log(`[FTC-NAV-DEBUG] EventsPageClient mount (${workspaceHost}) at ${pathname}`);
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        console.log(`[FTC-NAV-DEBUG] EventsPageClient unmount (${workspaceHost})`);
-      }
-    };
-  }, [workspaceHost]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      console.log(`[FTC-NAV-DEBUG] pathname changed: ${pathname}`);
-    }
-  }, [pathname]);
   const isCalendarWorkspaceHost = workspaceHost === "calendar";
   const guardProfile = useGuardProfile();
   const handledCreateParamsRef = useRef<string | null>(null);
@@ -1145,14 +1128,7 @@ function EventsPageClientView({
     }
   }
 
-  const blockWorkspaceTabsWhileCalendarCreateSaving = useCallback(() => {
-    if (typeof window !== "undefined") {
-      console.log(
-        `[FTC-NAV-DEBUG] Events interceptor: host=${isCalendarWorkspaceHost ? 'calendar' : 'events'} creating=${isCalendarOriginCreateParam(createParam)} saving=${saving}`
-      );
-    }
-    return true;
-  }, [isCalendarWorkspaceHost, createParam, saving]);
+  const blockWorkspaceTabsWhileCalendarCreateSaving = useCallback(() => true, []);
 
   function handleSelectPlan(plan: BookingPlan) {
     const input = eventInputFromBookingPlan(plan);
