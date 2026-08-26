@@ -1,5 +1,21 @@
 # Current state (last updated: 2026-08-26)
 
+## Events bottom-nav stacking fix (2026-08-26)
+
+**Bug:** After `Events → Messages|Profile → Events → Messages|Profile`, the second Messages/Profile open could fail (bottom nav taps dead).
+
+**Root cause:** Planner/Messages sticky page header used `z-50` (same as mobile bottom nav) and rendered **after** `AppNavigation` in the DOM. Equal z-index + later paint order let the header stacking context win hit-testing over bottom chrome when returning to Events.
+
+**Fix (minimal):**
+- `PLANNER_WORKSPACE_HEADER_CLASS` / `APP_PAGE_HEADER_CLASS`: `z-50` → `z-40` (still above content `z-0`, below mobile nav `z-50`).
+- Render `AppNavigation` **after** header + content in planner workspace shell, Messages inbox, and `AppPageShell` (Profile).
+
+**Not changed:** MobileNavTab gesture-ref logic (prior fix did not solve this).
+
+**Code:** `lib/design/plannerWorkspaceTokens.ts`, `PlannerWorkspaceLayout.tsx`, `MessagesInboxLayout.tsx`, `AppPageLayout.tsx`; regression assert updated in `scripts/test-regressions.mts`.
+
+---
+
 ## Navigation gesture ref blocking fix (2026-08-26)
 
 **Bug:** Bottom navigation tabs (Messages, Profile, Events) would become unresponsive after certain navigation patterns. Specifically, after navigating Events → Messages → Events, attempting to navigate back to Messages would fail.
@@ -10,7 +26,7 @@
 
 **Code:** `app/components/AppNavigation.tsx` line 374-385. Commit on `claude/nav-events-regression`.
 
-**Test:** Manual regression test: Events → Messages → Events → Messages should all navigate successfully with no blocking.
+**Test:** Manual regression test: Events → Messages → Events → Messages should all navigate successfully with no blocking. Note: stacking fix above is the follow-up when gesture-ref alone was insufficient.
 
 ---
 
