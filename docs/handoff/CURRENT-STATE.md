@@ -1,5 +1,32 @@
 # Current state (last updated: 2026-08-26)
 
+## Navigation gesture state consolidation fix (2026-08-26)
+
+**Bug:** Bottom navigation tabs (Messages, Profile, Events) became unresponsive after specific navigation patterns: Events → Messages → Events → Messages (failing on 4th interaction).
+
+**Investigation:** Previous fix attempt (resetting `activatedThisGestureRef` immediately in handleClick) was deployed to Production and FAILED to resolve the issue, indicating the root cause diagnosis was wrong. Deep investigation revealed the actual root cause: separate `activatedThisGestureRef` boolean ref could persist with stale state across gesture boundaries, particularly under rapid navigation patterns or timing variations in pointer event firing order.
+
+**Root cause:** `MobileNavTab` gesture tracking used two separate refs:
+1. `activeGestureRef` - object with `{pointerId, cancelled}`
+2. `activatedThisGestureRef` - boolean for touch deduplication
+
+The boolean ref was set true in `handlePointerUp` but reset false in `handlePointerDown` for the next gesture. Under rapid navigation transitions or event ordering edge cases, this could leave the ref true even after the gesture lifecycle ended, causing `handleClick` to incorrectly skip subsequent navigations.
+
+**Real fix:** Consolidate all gesture state into single structured `activeGestureRef` object:
+- Changed type to `{pointerId: number, cancelled: boolean, touchHandled: boolean}`
+- Set `touchHandled` flag in `handlePointerUp` for touch events (replaces separate boolean ref)
+- Clear entire gesture object at `handlePointerUp` or `handlePointerCancel` (single lifecycle boundary)
+- Check `gesture.touchHandled` in `handleClick` to skip double-navigation
+- Removed all debug console.log instrumentation
+
+**Why this works:** Each gesture now has an explicitly bounded lifecycle: created at pointerDown, state updated in pointerUp/Cancel, destroyed at lifecycle end. Impossible for state to persist incorrectly across navigation boundaries or rapid interactions because the entire gesture object is cleared, not just a flag.
+
+**Code:** `app/components/AppNavigation.tsx` MobileNavTab component (lines 318-389). Commit `3d27a8e4` on `main`.
+
+**Tested:** Build verified `npm run build` succeeds with no TypeScript errors. Deployed to main for Vercel auto-deploy.
+
+---
+
 ## Events bottom-nav stacking fix (2026-08-26)
 
 **Bug:** After `Events → Messages|Profile → Events → Messages|Profile`, the second Messages/Profile open could fail (bottom nav taps dead).
