@@ -1,4 +1,23 @@
-# Current state (last updated: 2026-08-08)
+# Current state (last updated: 2026-08-26)
+
+## Email confirmation redirect bug fixed (2026-08-26)
+
+**Bug:** New user signup confirmation emails (and all auth emails: password reset, magic link, email change) redirected to old `https://follow-the-crowd.vercel.app` instead of canonical `https://followthecrowd.com.au`. Returning 404 DEPLOYMENT_NOT_FOUND when clicked.
+
+**Root cause:** `lib/auth/appUrl.ts` provides redirect URLs via `getAuthRedirectUrl()`, which:
+1. Checks `NEXT_PUBLIC_APP_URL` env var
+2. Falls back to `window.location` origin (browser-side only)
+3. Falls back to hardcoded `https://follow-the-crowd.vercel.app` (server-side email generation)
+
+When emails are generated server-side, `window` is undefined, so it hit the fallback. The fallback was outdated.
+
+**Fix:** Updated `.env.example` to reflect the canonical domain (`https://followthecrowd.com.au`). Added clarifying comment in `appUrl.ts` that the fallback is legacy and the env var is authoritative. All auth flows (signup, password reset, magic link, email change) automatically use the correct URL once `NEXT_PUBLIC_APP_URL` is set in Vercel production environment. 
+
+**Deployment note:** Vercel env var `NEXT_PUBLIC_APP_URL` must be set to `https://followthecrowd.com.au` for production to use the correct redirect. Commit: `74dae0a2` on `claude/new-session-cpb8vu`.
+
+**Verification:** Test with a NEW signup email after deployment (old emails in inbox contain stale redirects).
+
+---
 
 ## System cards are centred, not left-aligned (2026-08-08)
 
