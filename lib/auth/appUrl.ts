@@ -1,3 +1,5 @@
+// Legacy fallback; production should use NEXT_PUBLIC_APP_URL env var.
+// This is only hit if env var is unset and code runs server-side.
 export const FTC_APP_URL_FALLBACK = "https://follow-the-crowd.vercel.app";
 
 function normalizeOrigin(url: string): string {
