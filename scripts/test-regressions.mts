@@ -12783,11 +12783,25 @@ function testRoleAwareWorkspaceNavigation() {
   );
   assert.match(
     appNavigationSource,
-    /if \(isWorkspaceSelector && isActive && pathname === href\) \{\s*return;\s*\}/,
+    /window\.location\.pathname/,
   );
   assert.match(
     appNavigationSource,
-    /if \(item\.isWorkspaceSelector && isActive && pathname === item\.href\) \{\s*event\.preventDefault\(\);\s*\}/,
+    /window\.location\.assign\(href\)/,
+  );
+  assert.match(
+    appNavigationSource,
+    /window\.location\.assign\(item\.href\)/,
+  );
+  assert.match(
+    appNavigationSource,
+    /activatedThisGestureRef\.current = navigate\(\)/,
+  );
+  assert.doesNotMatch(appNavigationSource, /FTC-NAV-DEBUG/);
+  assert.doesNotMatch(appNavigationSource, /isWorkspaceSelector && isActive && pathname === href/);
+  assert.doesNotMatch(
+    appNavigationSource,
+    /item\.isWorkspaceSelector && isActive && pathname === item\.href/,
   );
   assert.doesNotMatch(appNavigationSource, /isGigsAreaPath/);
 

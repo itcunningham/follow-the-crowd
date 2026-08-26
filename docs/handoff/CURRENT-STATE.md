@@ -1,6 +1,23 @@
 # Current state (last updated: 2026-08-26)
 
-## Events bottom-nav stacking fix (2026-08-26)
+## Bottom-nav leave-Events fix (hard nav + document URL gate) — 2026-08-26
+
+**Bug:** After Events → Messages|Profile → Events → Messages|Profile, the second leave from Events could fail (Chrome included). Gesture-ref and z-index fixes on Production did not stop it.
+
+**Proven mechanism (code + failed soft-nav precedent):**
+1. Pop-to-root used `usePathname()` + `isActive`. After remount, React pathname can lag the document URL so Messages/Profile early-return while Events is visible (**B**).
+2. Touch `pointerUp` always set `activatedThisGestureRef` then `preventDefault`, so a no-op or failed soft `router.push` also blocked the fallback click (**B/C trap**).
+3. Soft `router.push` between primary tabs is already treated as unreliable in Events calendar-create exits (`window.location.assign`).
+
+**Fix:**
+- Pop-to-root only when `window.location.pathname === href` (ignore stale `isActive`/`usePathname` for the gate).
+- Primary tab switches use `window.location.assign(href)` (mobile + desktop workspace selectors).
+- Only suppress synthetic click when `navigate()` actually left the page.
+- Removed temporary `[FTC-NAV-DEBUG]` instrumentation.
+
+**Prior failed fixes:** stacking `z-40` + AppNavigation-after-chrome kept (correct layering). Gesture-ref reset kept as click hygiene; not treated as root cause.
+
+---
 
 **Bug:** After `Events → Messages|Profile → Events → Messages|Profile`, the second Messages/Profile open could fail (bottom nav taps dead).
 

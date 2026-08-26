@@ -576,17 +576,6 @@ function EventsPageClientView({
     (createOpen || pathname === "/events" || isCalendarWorkspaceHost);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      console.log(`[FTC-NAV-DEBUG] EventsPageClient: mount. pathname=${pathname}, window.location.pathname=${window.location.pathname}`);
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        console.log(`[FTC-NAV-DEBUG] EventsPageClient: unmount. pathname=${pathname}, window.location.pathname=${window.location.pathname}`);
-      }
-    };
-  }, [pathname]);
-
-  useEffect(() => {
     if (!isCalendarWorkspaceHost || !isCalendarOriginCreateParam(createParam)) {
       return;
     }

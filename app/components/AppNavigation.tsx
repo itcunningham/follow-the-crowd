@@ -3,7 +3,7 @@
 import "@/lib/navigationBadgePrefetch";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import type { NavBadgeCounts } from "@/lib/notifications";
 import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
@@ -313,7 +313,6 @@ function MobileNavTab({
   showBadgeSlot: boolean;
   gigsPendingCount: number | null;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const activatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{
@@ -321,21 +320,24 @@ function MobileNavTab({
     cancelled: boolean;
   } | null>(null);
 
-  const navigate = useCallback(() => {
-    // Pop-to-root only when already on the landing href; nested workspace
-    // paths (e.g. /events/[id] after View Event from crew chat) must navigate.
-    if (isWorkspaceSelector && isActive && pathname === href) {
-      if (typeof window !== "undefined") {
-        console.log(`[FTC-NAV-DEBUG] ${label}: pop-to-root no-op. href=${href}, pathname=${pathname}, isActive=${isActive}, window.location.pathname=${window.location.pathname}`);
-      }
-      return;
+  const navigate = useCallback((): boolean => {
+    // Use the document URL, not usePathname()/isActive. After Events remounts,
+    // React pathname can still report /dm or /profile/... while the visible
+    // page is already /events — the old gate then no-op'd Messages/Profile and
+    // touch handling suppressed the follow-up click, so the tab felt dead.
+    const currentPath =
+      typeof window !== "undefined" ? window.location.pathname : pathname;
+
+    if (isWorkspaceSelector && currentPath === href) {
+      return false;
     }
 
-    if (typeof window !== "undefined") {
-      console.log(`[FTC-NAV-DEBUG] ${label}: calling router.push(${href}). pathname=${pathname}, window.location.pathname=${window.location.pathname}, isActive=${isActive}`);
-    }
-    router.push(href, { scroll: false });
-  }, [href, isActive, isWorkspaceSelector, pathname, router, label]);
+    // Hard navigation between primary tabs. Soft router.push is unreliable
+    // after some Events history.pushState / remount sequences (same reason
+    // calendar-create exits use window.location.assign).
+    window.location.assign(href);
+    return true;
+  }, [href, isWorkspaceSelector, pathname]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
     if (!event.isPrimary) {
@@ -360,15 +362,12 @@ function MobileNavTab({
       activeGestureRef.current = null;
 
       if (event.pointerType === "touch") {
-        if (typeof window !== "undefined") {
-          console.log(`[FTC-NAV-DEBUG] ${label}: pointerUp(touch) → preventDefault + navigate`);
-        }
-        activatedThisGestureRef.current = true;
         event.preventDefault();
-        navigate();
+        // Only suppress the synthetic click when we actually left the page.
+        activatedThisGestureRef.current = navigate();
       }
     },
-    [navigate, label],
+    [navigate],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -386,20 +385,14 @@ function MobileNavTab({
       activatedThisGestureRef.current = false;
 
       if (wasActivatedThisGesture) {
-        if (typeof window !== "undefined") {
-          console.log(`[FTC-NAV-DEBUG] ${label}: click → blocked (activatedThisGesture=true)`);
-        }
         event.preventDefault();
         return;
       }
 
-      if (typeof window !== "undefined") {
-        console.log(`[FTC-NAV-DEBUG] ${label}: click → navigate`);
-      }
       event.preventDefault();
       navigate();
     },
-    [navigate, label],
+    [navigate],
   );
 
   return (
@@ -559,8 +552,16 @@ export default function AppNavigation() {
                   href={item.href}
                   className={navLinkClassName(isActive, "desktop")}
                   onClick={(event) => {
-                    if (item.isWorkspaceSelector && isActive && pathname === item.href) {
+                    // Document URL — not usePathname() — so pop-to-root cannot
+                    // no-op while the visible page has already changed.
+                    const currentPath = window.location.pathname;
+                    if (item.isWorkspaceSelector && currentPath === item.href) {
                       event.preventDefault();
+                      return;
+                    }
+                    if (item.isWorkspaceSelector) {
+                      event.preventDefault();
+                      window.location.assign(item.href);
                     }
                   }}
                 >
