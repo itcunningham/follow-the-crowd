@@ -1,4 +1,15 @@
-# Current state (last updated: 2026-08-17)
+# Current state (last updated: 2026-08-26)
+
+## Acquisition research: Facebook / Reddit beta communities (2026-08-26)
+
+Research-only pass for free FTC beta outreach (Melbourne/Naarm first). Full write-up: `docs/research/FTC-BETA-COMMUNITY-RESEARCH.md`.
+
+- ~25 Facebook **Groups** verified by public mobile OG title + group ID (no login; member counts mostly UNVERIFIED).
+- Ranked Top 10 / Next 20 / long list + first-5 post playbook.
+- Reddit: live API blocked from research VM; rules from secondary sources — re-check sidebars before posting.
+- Collectives (Technoir, Machine, Bunker, Warg, MTC, etc.) are mostly Pages/events — warm DM targets, not Groups.
+- Mornington: no dedicated DJ/promoter FB Group verified; use MP Music Network / Peninsula LIVE instead.
+- Nothing posted or contacted.
 
 ## Push hardening: silently self-heal a stale subscription on app launch (`main`, 2026-08-17) — root cause NOT confirmed, needs a session with live access
 
