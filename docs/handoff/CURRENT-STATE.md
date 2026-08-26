@@ -2014,7 +2014,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
-- `(pending)` — fix: overnight finish times (wheel open-only seed + 11:39→12:39 regressions)
+- `95536382` — fix: overnight finish times stick (wheel open-only seed)
 - `77d19d72` — docs: record Events nav stacking fix in handoff
 - `06f009fa` — fix: keep mobile nav above Events sticky header (header z-40; AppNavigation after chrome)
 - `95d1367a` — docs: record navigation gesture ref fix in handoff
