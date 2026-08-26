@@ -325,11 +325,17 @@ function MobileNavTab({
     // Pop-to-root only when already on the landing href; nested workspace
     // paths (e.g. /events/[id] after View Event from crew chat) must navigate.
     if (isWorkspaceSelector && isActive && pathname === href) {
+      if (typeof window !== "undefined") {
+        console.log(`[FTC-NAV-DEBUG] ${label}: no-op (pop-to-root already here)`);
+      }
       return;
     }
 
+    if (typeof window !== "undefined") {
+      console.log(`[FTC-NAV-DEBUG] ${label}: navigate ${pathname}→${href}`);
+    }
     router.push(href, { scroll: false });
-  }, [href, isActive, isWorkspaceSelector, pathname, router]);
+  }, [href, isActive, isWorkspaceSelector, pathname, router, label]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
     if (!event.isPrimary) {
@@ -354,12 +360,15 @@ function MobileNavTab({
       activeGestureRef.current = null;
 
       if (event.pointerType === "touch") {
+        if (typeof window !== "undefined") {
+          console.log(`[FTC-NAV-DEBUG] ${label}: pointerUp(touch) → set activatedThisGestureRef=true`);
+        }
         activatedThisGestureRef.current = true;
         event.preventDefault();
         navigate();
       }
     },
-    [navigate],
+    [navigate, label],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -377,14 +386,28 @@ function MobileNavTab({
       activatedThisGestureRef.current = false;
 
       if (wasActivatedThisGesture) {
+        if (typeof window !== "undefined") {
+          console.log(`[FTC-NAV-DEBUG] ${label}: click blocked (activatedThisGestureRef was true)`);
+        }
         event.preventDefault();
         return;
       }
 
+      if (typeof window !== "undefined") {
+        console.log(`[FTC-NAV-DEBUG] ${label}: click → navigate()`);
+        // Hit-test to detect if another element is blocking the tap
+        const elemAtPoint = document.elementFromPoint(event.clientX, event.clientY);
+        if (elemAtPoint && elemAtPoint !== event.currentTarget && !event.currentTarget.contains(elemAtPoint)) {
+          const tag = elemAtPoint.tagName.toLowerCase();
+          const classes = elemAtPoint.className ? elemAtPoint.className.split(" ").slice(0, 3).join(" ") : "";
+          const role = elemAtPoint.getAttribute("role") || "";
+          console.log(`[FTC-NAV-DEBUG] ${label}: element at tap point: <${tag}${classes ? ` class="${classes}"` : ""}${role ? ` role="${role}"` : ""}>`);
+        }
+      }
       event.preventDefault();
       navigate();
     },
-    [navigate],
+    [navigate, label],
   );
 
   return (
