@@ -54,6 +54,8 @@ import {
   applyEventSetTimeStartChange,
   getMinWheelTimeForEventDate,
   getMinWheelTimeFromNow,
+  resolveEventEndDateTime,
+  resolveEventStartDateTime,
   resolveEventTimePickerOpenValue,
   SET_TIME_RANGE_JOINER,
 } from "../lib/bookingDateTime";
@@ -406,6 +408,11 @@ function testEventSetTimeRangeValidation() {
   const zeroDuration = `9:00 PM${SET_TIME_RANGE_JOINER}9:00 PM`;
   const overnightA = `9:00 PM${SET_TIME_RANGE_JOINER}2:00 AM`;
   const overnightB = `10:00 PM${SET_TIME_RANGE_JOINER}5:00 AM`;
+  // Video repro: same-clock “later” finish that is actually next-day AM.
+  const overnightVideo = `11:39 PM${SET_TIME_RANGE_JOINER}12:39 AM`;
+  const overnightLate = `10:00 PM${SET_TIME_RANGE_JOINER}6:00 AM`;
+  // 12:39 PM is earlier than 11:39 PM same day — not overnight (both PM).
+  const noonAfterEveningInvalid = `11:39 PM${SET_TIME_RANGE_JOINER}12:39 PM`;
 
   assert.equal(getEventSetTimeValidationError(eventDate, normal), null);
   assert.equal(
@@ -418,8 +425,21 @@ function testEventSetTimeRangeValidation() {
   );
   assert.equal(getEventSetTimeValidationError(eventDate, overnightA), null);
   assert.equal(getEventSetTimeValidationError(eventDate, overnightB), null);
+  assert.equal(getEventSetTimeValidationError(eventDate, overnightVideo), null);
+  assert.equal(getEventSetTimeValidationError(eventDate, overnightLate), null);
+  assert.equal(
+    getEventSetTimeValidationError(eventDate, noonAfterEveningInvalid),
+    "Finish time must be later than the start time",
+  );
   assert.equal(isEventStartSaveBlocked(eventDate, normal), false);
   assert.equal(isEventStartSaveBlocked(eventDate, sameEveningInvalid), true);
+  assert.equal(isEventStartSaveBlocked(eventDate, overnightVideo), false);
+
+  const overnightEnd = resolveEventEndDateTime(eventDate, overnightVideo);
+  const overnightStart = resolveEventStartDateTime(eventDate, overnightVideo);
+  assert.ok(overnightStart && overnightEnd);
+  assert.equal(overnightEnd.getTime() - overnightStart.getTime(), 60 * 60 * 1000);
+  assert.equal(overnightEnd.getDate(), overnightStart.getDate() + 1);
 
   const formErrors = getEventFormFieldErrors({
     name: "Test",
@@ -428,6 +448,47 @@ function testEventSetTimeRangeValidation() {
     setTime: sameEveningInvalid,
   });
   assert.equal(formErrors.finishTime, "Finish time must be later than the start time");
+
+  const overnightFormErrors = getEventFormFieldErrors({
+    name: "Test",
+    venue: "Venue",
+    eventDate,
+    setTime: overnightVideo,
+  });
+  assert.equal(overnightFormErrors.finishTime, undefined);
+  assert.equal(overnightFormErrors.startTime, undefined);
+
+  // Today + future evening start with next-day AM finish must stay valid.
+  const today = getTodayDateKey();
+  const todayOvernight = getEventFormFieldErrors({
+    name: "Tonight",
+    venue: "Venue",
+    eventDate: today,
+    setTime: overnightVideo,
+  });
+  assert.equal(todayOvernight.finishTime, undefined);
+
+  // Overnight finish must survive a start re-pick at the same start clock.
+  assert.equal(
+    applyEventSetTimeStartChange(eventDate, "11:39 PM", "12:39 AM"),
+    overnightVideo,
+  );
+}
+
+function testTimeWheelPickerSeedsDraftOnlyOnOpen() {
+  const source = readFileSync(
+    new URL("../app/components/BookingTimeWheelPicker.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /open-only seed/);
+  assert.doesNotMatch(
+    source,
+    /\}, \[open, value, minWheelTime\]\);/,
+  );
+  assert.doesNotMatch(
+    source,
+    /\}, \[open, startValue, finishValue\]\);/,
+  );
 }
 
 function testApplyEventSetTimeStartChangeClearsInvalidFinish() {
@@ -18475,6 +18536,7 @@ async function main() {
   testFutureEventDatesAreAllowed();
   testIncompleteSetTimeIsBlocked();
   testEventSetTimeRangeValidation();
+  testTimeWheelPickerSeedsDraftOnlyOnOpen();
   testApplyEventSetTimeStartChangeClearsInvalidFinish();
   testBookingFieldTriggerPlaceholderStylingIsShared();
   testBookingFieldTriggerPlaceholderDetection();

@@ -592,6 +592,11 @@ export function getEventSetTimeInlineErrors(setTime: string): EventSetTimeInline
   };
 }
 
+/**
+ * Overnight = finish clock is not later than start clock on the same dial,
+ * and the range crosses midnight (evening start → morning finish).
+ * End is then resolved as the next calendar day — not a 12 AM-only special case.
+ */
 export function isOvernightFinishAllowed(
   start: ParsedTimePart,
   finish: ParsedTimePart,

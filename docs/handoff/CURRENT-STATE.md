@@ -1,5 +1,17 @@
 # Current state (last updated: 2026-08-26)
 
+## Overnight event time (AM finish) fix — 2026-08-26
+
+**Bug:** Create/edit rejected real overnight ranges like **11:39 PM → 12:39 AM** with “Finish time must be later than the start time.” Nearly every nightlife set crosses midnight.
+
+**Cause (two layers):**
+1. **Wheel picker draft reset:** `BookingTimeWheelPicker` / `BookingDualTimeWheelPicker` re-seeded draft whenever parent `value` / `minWheelTime` object identity changed. Parents rebuild those objects every render (`getMinWheelTimeFromNow()`, `clockPartsToWheelTime`). While the sheet was open, AM scrolled back to PM — so **12:39 AM** often became **12:39 PM**, which is *before* **11:39 PM** same day and correctly fails range validation.
+2. Overnight range resolution itself (PM→AM → next calendar day) was already correct in `resolveEventEndDateTime` / `isOvernightFinishAllowed`; regressions now lock **11:39 PM → 12:39 AM**, **9 PM → 2 AM**, **10 PM → 6 AM**, and reject **11:39 PM → 12:39 PM**.
+
+**Fix:** Seed wheel drafts only when the picker opens; functional draft patches; expanded set-time regressions.
+
+---
+
 ## Event Plans / History workspace tab fix (2026-08-26)
 
 **Bug:** From Events Active, Event Plans often did nothing; History could leave the UI stuck on Event Plans.
@@ -1742,7 +1754,7 @@ Verified in-browser via a throwaway route mounting the real `RunSheetEntry` (tem
 - **Design system (2026-07-14):** `docs/design/FTC_DESIGN_SYSTEM.md` + `lib/design/ftcDesignSystem.ts` — shared tokens; standardised status badges, empty states, section titles, button min-heights
 - **History hide:** bulk remove from History view sets `history_hidden_at` on owned `events` rows via authenticated RLS update (does not delete records). Optional RPC hardening: `20250720120000_event_history_hide_past.sql` (not yet applied on production as of 2026-07-20 — legacy RPC only hid `cancelled`). Hidden events are excluded from Events Calendar (`isPlannerEventVisibleOnCalendar`) and removed from planner calendar item cache immediately via `syncPlannerEventsHiddenFromHistoryClientCaches` on History delete success
 - **Create/edit validation:** inline field errors after Save / Continue; date and time triggers share red invalid border via `aria-invalid` on `.ftc-field-trigger`; finish time shows "Finish time must be later than the start time." under Finish Time; errors clear live when fixed; start + finish time both required; notes length/line limits disable save
-- **Event create/edit time pickers (2026-07-22):** empty start/finish wheels open at current local time via `defaultEventStartWheelTime` / `resolveEventTimePickerOpenValue`; past-time floor only when event date is today; shared `getEventSetTimeValidationErrors` enforces finish-after-start (overnight PM→AM only), zero duration, 24h max, and today start-in-past across Events create/edit, Use Plan booking create, and booking request modal via `BookingSetTimeRangeField` + `eventFormFieldValidation` + `lib/events.ts` server asserts
+- **Event create/edit time pickers (2026-07-22; overnight wheel fix 2026-08-26):** empty start/finish wheels open at current local time via `defaultEventStartWheelTime` / `resolveEventTimePickerOpenValue`; past-time floor only when event date is today; shared `getEventSetTimeValidationErrors` enforces finish-after-start (**overnight PM→AM rolls end to next calendar day**), zero duration, 24h max, and today start-in-past across Events create/edit, Use Plan booking create, and booking request modal via `BookingSetTimeRangeField` + `eventFormFieldValidation` + `lib/events.ts` server asserts. Time wheels seed draft **only on open** so parent re-renders cannot snap AM→PM mid-pick.
 - **Booking date/time field placeholders (2026-07-25):** shared `isBookingFieldTriggerPlaceholder` / `hasBookingFieldTriggerLabelValue` + `.ftc-field-trigger-label.is-placeholder` CSS so empty Event Date, Start Time, and Finish Time labels share one placeholder detection path (`FtcDatePicker`, `BookingDateTimeFields`, run sheet compact time); selected values unchanged
 - **Event detail booking cancel feedback (2026-07-25):** successful pending booking-request cancellation shows `Booking request cancelled` via global `PlannerTitleFeedbackProvider` + `useInlineTabFeedbackDismiss` — same typography, timing (2700ms visible + 300ms fade), and fixed overlay as Events/Gigs History removal; heavy in-content card removed for this case only
 - **Event detail active lineup (2026-07-26):** planner-cancelled booking requests disappear from the active Event Details Bookings list immediately after cancel (All filter uses active lineup, not visible lineup); record preserved in DB; Gigs History still shows cancelled sent bookings with existing status labels; History event detail still shows cancelled bookings for archival read-only view

@@ -235,14 +235,21 @@ export function BookingTimeWheelPicker({
     setMounted(true);
   }, []);
 
+  // Seed draft only when the picker opens. Parent re-renders often pass new
+  // `value` / `minWheelTime` object identities (e.g. getMinWheelTimeFromNow()),
+  // and re-seeding on those would snap the wheels back — notably AM→PM — while
+  // the user is still choosing an overnight finish.
   useEffect(() => {
-    if (open) {
-      setDraft(resolveWheelTimeForPicker(value, minWheelTime));
+    if (!open) {
+      return;
     }
-  }, [open, value, minWheelTime]);
 
-  function updateDraft(next: WheelTimeValue) {
-    setDraft(clampWheelTimeToMin(next, minWheelTime));
+    setDraft(resolveWheelTimeForPicker(value, minWheelTime));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open-only seed
+  }, [open]);
+
+  function updateDraft(patch: Partial<WheelTimeValue>) {
+    setDraft((prev) => clampWheelTimeToMin({ ...prev, ...patch }, minWheelTime));
   }
 
   useEffect(() => {
@@ -297,7 +304,7 @@ export function BookingTimeWheelPicker({
               label="Hour"
               items={WHEEL_HOURS}
               value={draft.hour}
-              onChange={(hour) => updateDraft({ ...draft, hour })}
+              onChange={(hour) => updateDraft({ hour })}
               formatItem={(hour) => String(hour)}
               isItemDisabled={
                 minWheelTime
@@ -309,7 +316,7 @@ export function BookingTimeWheelPicker({
               label="Minute"
               items={WHEEL_MINUTES}
               value={draft.minute}
-              onChange={(minute) => updateDraft({ ...draft, minute })}
+              onChange={(minute) => updateDraft({ minute })}
               formatItem={(minute) => minute.toString().padStart(2, "0")}
               isItemDisabled={
                 minWheelTime
@@ -321,7 +328,7 @@ export function BookingTimeWheelPicker({
               label="AM or PM"
               items={WHEEL_MERIDIEMS}
               value={draft.meridiem}
-              onChange={(meridiem) => updateDraft({ ...draft, meridiem })}
+              onChange={(meridiem) => updateDraft({ meridiem })}
               formatItem={(meridiem) => meridiem}
               isItemDisabled={
                 minWheelTime
@@ -360,13 +367,17 @@ export function BookingDualTimeWheelPicker({
     setMounted(true);
   }, []);
 
+  // Seed only on open — same object-identity trap as BookingTimeWheelPicker.
   useEffect(() => {
-    if (open) {
-      setActiveTab("start");
-      setStartDraft(startValue);
-      setFinishDraft(finishValue);
+    if (!open) {
+      return;
     }
-  }, [open, startValue, finishValue]);
+
+    setActiveTab("start");
+    setStartDraft(startValue);
+    setFinishDraft(finishValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open-only seed
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -396,13 +407,13 @@ export function BookingDualTimeWheelPicker({
 
   const draft = activeTab === "start" ? startDraft : finishDraft;
 
-  function setDraft(next: WheelTimeValue) {
+  function setDraft(patch: Partial<WheelTimeValue>) {
     if (activeTab === "start") {
-      setStartDraft(next);
+      setStartDraft((prev) => ({ ...prev, ...patch }));
       return;
     }
 
-    setFinishDraft(next);
+    setFinishDraft((prev) => ({ ...prev, ...patch }));
   }
 
   return createPortal(
@@ -457,21 +468,21 @@ export function BookingDualTimeWheelPicker({
               label="Hour"
               items={WHEEL_HOURS}
               value={draft.hour}
-              onChange={(hour) => setDraft({ ...draft, hour })}
+              onChange={(hour) => setDraft({ hour })}
               formatItem={(hour) => String(hour)}
             />
             <WheelColumn
               label="Minute"
               items={WHEEL_MINUTES}
               value={draft.minute}
-              onChange={(minute) => setDraft({ ...draft, minute })}
+              onChange={(minute) => setDraft({ minute })}
               formatItem={(minute) => minute.toString().padStart(2, "0")}
             />
             <WheelColumn
               label="AM or PM"
               items={WHEEL_MERIDIEMS}
               value={draft.meridiem}
-              onChange={(meridiem) => setDraft({ ...draft, meridiem })}
+              onChange={(meridiem) => setDraft({ meridiem })}
               formatItem={(meridiem) => meridiem}
             />
         </TimePickerWheelArea>
