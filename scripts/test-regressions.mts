@@ -20067,7 +20067,7 @@ function testPushReconnectStateAndVapidKeyUrlSafeDecoding() {
   // unconditional -- not reachable only after the DB check fails.
   const browserCheckIndex = grantedBranch.indexOf("getBrowserPushSubscription()");
   const earlyReconnectIndex = grantedBranch.indexOf('if (!browserSubscription) {\n      return "reconnect";');
-  const dbCheckIndex = grantedBranch.indexOf("hasActivePushSubscriptionForCurrentUser()");
+  const dbCheckIndex = grantedBranch.indexOf("hasActivePushSubscriptionForEndpoint(");
   assert.ok(browserCheckIndex > -1 && earlyReconnectIndex > -1 && dbCheckIndex > -1);
   assert.ok(
     browserCheckIndex < earlyReconnectIndex && earlyReconnectIndex < dbCheckIndex,
@@ -20078,7 +20078,7 @@ function testPushReconnectStateAndVapidKeyUrlSafeDecoding() {
   // reconnect, not granted -- both conditions are required.
   assert.match(
     grantedBranch,
-    /return \(await hasActivePushSubscriptionForCurrentUser\(\)\)\s*\?\s*"granted"\s*:\s*"reconnect";/,
+    /return \(await hasActivePushSubscriptionForEndpoint\(browserSubscription\.endpoint\)\)\s*\?\s*"granted"\s*:\s*"reconnect";/,
   );
 
   // The old state name must be gone -- this task replaces it, not adds
@@ -20199,13 +20199,8 @@ function testPushMultiDeviceOwnershipAndAndroidVisibility() {
     "utf8",
   );
 
-  // --- One account, several devices --------------------------------------
-  // Saving one device must never deactivate the account's other devices.
-  assert.doesNotMatch(
-    clientSource,
-    /\.update\(\{ is_active: false \}\)\s*\n\s*\.eq\("user_id", userId\)/,
-    "saving a subscription must not deactivate this user's other devices",
-  );
+  // (One account keeping several device subscriptions is asserted in
+  // testPushReconnectStateAndVapidKeyUrlSafeDecoding — not repeated here.)
 
   // --- "Is push on HERE?" is an endpoint question, not an account one -----
   // The account-scoped form answers "granted" off some *other* device's row,
@@ -20221,6 +20216,14 @@ function testPushMultiDeviceOwnershipAndAndroidVisibility() {
     /\.eq\("endpoint", endpoint\)/,
     "device subscription check must filter on this browser's own endpoint",
   );
+  // Ownership is half the question — an endpoint-only filter would match a
+  // row belonging to a different account. RLS blocks that in practice, so
+  // this is defence in depth against the filter being dropped.
+  assert.match(
+    endpointCheck,
+    /\.eq\("user_id", userId\)/,
+    "device subscription check must also confirm the current account owns it",
+  );
   assert.doesNotMatch(
     clientSource,
     /hasActivePushSubscriptionForCurrentUser/,
@@ -20230,6 +20233,13 @@ function testPushMultiDeviceOwnershipAndAndroidVisibility() {
     clientSource,
     /hasActivePushSubscriptionForEndpoint\(browserSubscription\.endpoint\)/,
     "\"granted\" must be gated on the endpoint this browser actually holds",
+  );
+  // The split-brain guard: a browser that silently lost its PushSubscription
+  // must report "reconnect", never "granted", however healthy the DB looks.
+  assert.match(
+    clientSource,
+    /if \(!browserSubscription\) \{\s*\n\s*return "reconnect";/,
+    "a missing browser subscription must force reconnect, not granted",
   );
 
   // --- Account switch on a shared device ---------------------------------
@@ -20263,19 +20273,37 @@ function testPushMultiDeviceOwnershipAndAndroidVisibility() {
   );
 
   // --- Delivery fans out; only dead endpoints are retired ----------------
+  // The trailing `;` anchors the end of the query chain: without it the
+  // regex matches a prefix and a `.limit(1)` appended underneath — the exact
+  // first-row-only regression this guards — slips straight through.
   assert.match(
     pushSendSource,
-    /\.from\("push_subscriptions"\)\s*\n\s*\.select\("\*"\)\s*\n\s*\.eq\("user_id", recipientUserId\)\s*\n\s*\.eq\("is_active", true\)/,
-    "push-send must load every active subscription for the recipient",
+    /\.from\("push_subscriptions"\)\s*\n\s*\.select\("\*"\)\s*\n\s*\.eq\("user_id", recipientUserId\)\s*\n\s*\.eq\("is_active", true\);/,
+    "push-send must load every active subscription, uncapped",
   );
   assert.match(
     pushSendSource,
     /for \(const sub of subscriptions\)/,
     "push-send must attempt delivery to every device, not stop at the first",
   );
+
+  // web-push REJECTS on any non-2xx, and WebPushError.message is always the
+  // fixed literal "Received unexpected response code" — the status is only on
+  // .statusCode. Substring-matching the message (the original form) meant no
+  // dead endpoint was ever retired, so `is_active` was write-once-true.
   assert.match(
     pushSendSource,
-    /statusCode === 404 \|\| result\.statusCode === 410/,
+    /\(error as \{ statusCode\?: unknown \}\)\?\.statusCode/,
+    "dead-endpoint detection must read statusCode off the rejected WebPushError",
+  );
+  assert.doesNotMatch(
+    pushSendSource,
+    /errorMessage\.includes\("404"\)/,
+    "status must never be recovered by substring-matching the error message",
+  );
+  assert.match(
+    pushSendSource,
+    /statusCode === 404 \|\| statusCode === 410/,
     "only authoritative dead-endpoint codes may deactivate a subscription",
   );
   assert.match(
@@ -20287,6 +20315,15 @@ function testPushMultiDeviceOwnershipAndAndroidVisibility() {
     pushSendSource,
     /const recipientUserId = notification\.user_id/,
     "recipient must be read from the stored notification row, not the webhook",
+  );
+
+  // active_chat_presence is keyed per ACCOUNT, not per device, so suppressing
+  // on it for a multi-device user cancels the push to devices that are not
+  // showing the thread at all.
+  assert.match(
+    pushSendSource,
+    /subscriptions\.length === 1 &&\s*\n\s*notification\.type === "message"/,
+    "presence suppression must only apply when the recipient has one device",
   );
 
   // --- Android heads-up visibility ---------------------------------------

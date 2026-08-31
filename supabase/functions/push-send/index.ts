@@ -141,37 +141,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Redundant to push a chat message the recipient is already looking at.
-    // Scoped to type "message" only (real DM/crew chat messages) -- never to
-    // booking/reaction/system notifications, even when one happens to share
-    // a message notification's link. Best-effort: any failure here must fall
-    // through to a normal send, never block delivery.
-    if (notification.type === "message" && notification.link) {
-      try {
-        const { data: presence } = await supabase
-          .from("active_chat_presence")
-          .select("thread_link, updated_at")
-          .eq("user_id", recipientUserId)
-          .maybeSingle();
-
-        if (presence && presence.thread_link === notification.link) {
-          const ageMs = Date.now() - new Date(presence.updated_at).getTime();
-          if (ageMs <= PRESENCE_TTL_MS) {
-            console.log(
-              "[push-send] Suppressing push: recipient actively viewing",
-              notification.link
-            );
-            return new Response(
-              JSON.stringify({ message: "Suppressed: recipient active in thread" }),
-              { status: 200 }
-            );
-          }
-        }
-      } catch (presenceError) {
-        console.error("[push-send] Presence check failed, sending push anyway:", presenceError);
-      }
-    }
-
     // Fetch active subscriptions for this user
     const { data: subscriptions, error: subsError } = await supabase
       .from("push_subscriptions")
@@ -196,6 +165,53 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ message: "No subscriptions to deliver to" }), {
         status: 200,
       });
+    }
+
+    // Redundant to push a chat message the recipient is already looking at.
+    // Scoped to type "message" only (real DM/crew chat messages) -- never to
+    // booking/reaction/system notifications, even when one happens to share
+    // a message notification's link. Best-effort: any failure here must fall
+    // through to a normal send, never block delivery.
+    //
+    // Only applied when the recipient has exactly ONE active device.
+    // active_chat_presence is keyed `user_id primary key` -- one row per
+    // ACCOUNT, with no record of which device is doing the viewing. On a
+    // multi-device account that made the suppression account-wide: reading a
+    // thread on the phone silently cancelled the push to the laptop and the
+    // tablet too, which is indistinguishable from "push is broken on my other
+    // device". With one device, "you are looking at it" is certain and the
+    // suppression is correct; with several it is a guess, and the safe guess
+    // is to deliver. Making this properly per-device needs an endpoint column
+    // on active_chat_presence (a migration), so it is deliberately left as
+    // the conservative version rather than silently dropping pushes.
+    if (
+      subscriptions.length === 1 &&
+      notification.type === "message" &&
+      notification.link
+    ) {
+      try {
+        const { data: presence } = await supabase
+          .from("active_chat_presence")
+          .select("thread_link, updated_at")
+          .eq("user_id", recipientUserId)
+          .maybeSingle();
+
+        if (presence && presence.thread_link === notification.link) {
+          const ageMs = Date.now() - new Date(presence.updated_at).getTime();
+          if (ageMs <= PRESENCE_TTL_MS) {
+            console.log(
+              "[push-send] Suppressing push: recipient actively viewing",
+              notification.link
+            );
+            return new Response(
+              JSON.stringify({ message: "Suppressed: recipient active in thread" }),
+              { status: 200 }
+            );
+          }
+        }
+      } catch (presenceError) {
+        console.error("[push-send] Presence check failed, sending push anyway:", presenceError);
+      }
     }
 
     // Deep-link straight to the triggering chat message when one exists.
@@ -308,37 +324,11 @@ async function sendWebPush(
       }
     );
 
-    // Handle endpoint errors
-    if (result.statusCode === 404 || result.statusCode === 410) {
-      console.log(
-        "[push-send] Subscription expired, deactivating:",
-        subscription.endpoint.substring(0, 50)
-      );
-      const { error: deactivateError } = await supabase
-        .from("push_subscriptions")
-        .update({ is_active: false })
-        .eq("id", subscription.id);
-
-      if (deactivateError) {
-        console.error("[push-send] Failed to deactivate expired subscription:", deactivateError);
-      }
-
-      return {
-        endpoint: subscription.endpoint,
-        success: false,
-        status: result.statusCode,
-        error: "Endpoint expired",
-      };
-    }
-
-    if (result.statusCode >= 400) {
-      return {
-        endpoint: subscription.endpoint,
-        success: false,
-        status: result.statusCode,
-        error: `Push service error ${result.statusCode}`,
-      };
-    }
+    // Reaching here means success: web-push only RESOLVES for 200-299 and
+    // rejects everything else (web-push-lib.js, `pushResponse.on("end")`).
+    // Two dead branches used to sit here testing result.statusCode for
+    // 404/410 and >= 400; neither could ever run. Dead-endpoint retirement
+    // lives in the catch below, which is the only place it can.
 
     // Update last_used_at
     const { error: updateError } = await supabase
@@ -358,10 +348,25 @@ async function sendWebPush(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    // Log detailed error for debugging
-    if (errorMessage.includes("404") || errorMessage.includes("410")) {
+    // web-push rejects on any non-2xx with a WebPushError whose `message` is
+    // always the fixed literal "Received unexpected response code" -- the HTTP
+    // status is on `.statusCode` and appears nowhere in the text. This branch
+    // used to substring-match the message for "404"/"410", so it never once
+    // fired: no dead endpoint was ever retired and `is_active` was in practice
+    // write-once-true. Every stale row stayed in the delivery loop forever and
+    // the "delivered X/N devices" log silently under-reported against a
+    // growing pile of corpses.
+    const statusCode =
+      typeof (error as { statusCode?: unknown })?.statusCode === "number"
+        ? (error as { statusCode: number }).statusCode
+        : undefined;
+
+    // 404 Not Found / 410 Gone are the push service declaring the endpoint
+    // permanently dead. Anything else (network blip, 429, 5xx) is transient
+    // and must NOT cost the user their subscription.
+    if (statusCode === 404 || statusCode === 410) {
       console.log(
-        "[push-send] Subscription expired (from error), deactivating:",
+        `[push-send] Subscription ${statusCode}, deactivating:`,
         subscription.endpoint.substring(0, 50)
       );
       const { error: deactivateError } = await supabase
@@ -377,7 +382,8 @@ async function sendWebPush(
     return {
       endpoint: subscription.endpoint,
       success: false,
-      error: errorMessage,
+      status: statusCode,
+      error: statusCode ? `${errorMessage} (${statusCode})` : errorMessage,
     };
   }
 }
