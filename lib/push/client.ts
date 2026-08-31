@@ -30,20 +30,7 @@ export type NotificationState =
   | "unsupported_ios_version"
   | "ios_not_installed";
 
-/**
- * Get platform identifier for logging
- */
-function getPlatformLog(): string {
-  if (typeof navigator === "undefined") return "unknown";
-  const ua = navigator.userAgent.toLowerCase();
-  if (ua.includes("android")) return "[ANDROID]";
-  if (ua.includes("iphone") || ua.includes("ipad")) return "[iOS]";
-  return "[OTHER]";
-}
-
 export async function detectNotificationState(): Promise<NotificationState> {
-  const platform = getPlatformLog();
-
   // Capability detection FIRST, before any install-flow guidance — no
   // amount of "Add to Home Screen" can fix a genuinely unsupported
   // browser/OS. iOS Web Push (the Notification/ServiceWorker/PushManager
@@ -52,38 +39,28 @@ export async function detectNotificationState(): Promise<NotificationState> {
   // APIs are absent from the global scope entirely, in Safari tabs and
   // standalone alike, so this alone reliably identifies the case with no
   // user-agent version parsing needed.
-  const hasNotification = typeof Notification !== "undefined";
-  const hasServiceWorker = "serviceWorker" in navigator;
-  const hasPushManager = "PushManager" in window;
-
-  console.log(`${platform} [push-detect] Capability check:`, {
-    hasNotification,
-    hasServiceWorker,
-    hasPushManager,
-  });
-
-  if (!hasNotification || !hasServiceWorker || !hasPushManager) {
-    const result = isIOS() ? "unsupported_ios_version" : "unsupported";
-    console.log(`${platform} [push-detect] Result: ${result}`);
-    return result;
+  if (
+    typeof Notification === "undefined" ||
+    !("serviceWorker" in navigator) ||
+    !("PushManager" in window)
+  ) {
+    // isIOS() only picks the more specific copy ("update iOS") over the
+    // generic unsupported-browser copy — it doesn't change the detection
+    // itself, which is capability-based above.
+    return isIOS() ? "unsupported_ios_version" : "unsupported";
   }
 
   // Check iOS without Home Screen install
   if (isIOS() && !isInstalledPWA()) {
-    console.log(`${platform} [push-detect] Result: ios_not_installed`);
     return "ios_not_installed";
   }
 
   // Check permission
-  const permission = Notification.permission;
-  console.log(`${platform} [push-detect] Notification.permission:`, permission);
-
-  if (permission === "denied") {
-    console.log(`${platform} [push-detect] Result: denied`);
+  if (Notification.permission === "denied") {
     return "denied";
   }
 
-  if (permission === "granted") {
+  if (Notification.permission === "granted") {
     // Notification.permission is per-origin, not per FTC account, and is
     // NOT proof a working subscription exists. Two things must both be
     // true before claiming this device is enabled:
@@ -97,23 +74,17 @@ export async function detectNotificationState(): Promise<NotificationState> {
     //     or a subscribe that never made it into push_subscriptions,
     //     otherwise still reads "granted" here)
     const browserSubscription = await getBrowserPushSubscription();
-    console.log(`${platform} [push-detect] Browser subscription:`, browserSubscription ? "EXISTS" : "MISSING");
 
     if (!browserSubscription) {
-      console.log(`${platform} [push-detect] Result: reconnect (no browser subscription)`);
       return "reconnect";
     }
 
-    const hasDbRow = await hasActivePushSubscriptionForCurrentUser();
-    console.log(`${platform} [push-detect] DB active row:`, hasDbRow ? "EXISTS" : "MISSING");
-
-    const result = hasDbRow ? "granted" : "reconnect";
-    console.log(`${platform} [push-detect] Result: ${result}`);
-    return result;
+    return (await hasActivePushSubscriptionForCurrentUser())
+      ? "granted"
+      : "reconnect";
   }
 
   // "default" = not yet requested
-  console.log(`${platform} [push-detect] Result: prompt`);
   return "prompt";
 }
 
@@ -162,11 +133,7 @@ async function hasActivePushSubscriptionForCurrentUser(): Promise<boolean> {
  * Request notification permission and subscribe to push
  */
 export async function enableNotifications(): Promise<boolean> {
-  const platform = getPlatformLog();
-  console.log(`${platform} [push-enable] Starting notification enable flow`);
-
   const state = await detectNotificationState();
-  console.log(`${platform} [push-enable] State: ${state}`);
 
   if (state === "unsupported") {
     throw new Error("Push notifications not supported on this device");
@@ -187,26 +154,22 @@ export async function enableNotifications(): Promise<boolean> {
   // Register service worker
   let registration: ServiceWorkerRegistration;
   try {
-    console.log(`${platform} [push-enable] Registering service worker at /sw.js`);
     registration = await navigator.serviceWorker.register("/sw.js", {
       scope: "/",
     });
-    console.log(`${platform} [push-enable] Service worker registered successfully`);
   } catch (swError) {
     const msg = swError instanceof Error ? swError.message : String(swError);
-    console.error(`${platform} [push-enable] Service worker registration failed:`, msg);
+    console.error("[push] Service worker registration failed:", msg);
     throw new Error(`Service worker registration failed: ${msg}`);
   }
 
   // Request permission
   let permission: NotificationPermission;
   try {
-    console.log(`${platform} [push-enable] Requesting notification permission`);
     permission = await Notification.requestPermission();
-    console.log(`${platform} [push-enable] Permission result: ${permission}`);
   } catch (permissionError) {
     const msg = permissionError instanceof Error ? permissionError.message : String(permissionError);
-    console.error(`${platform} [push-enable] Permission request failed:`, msg);
+    console.error("[push] Permission request failed:", msg);
     throw new Error(`Permission request failed: ${msg}`);
   }
 
@@ -220,8 +183,6 @@ export async function enableNotifications(): Promise<boolean> {
     if (!vapidKey) {
       throw new Error("VAPID public key not configured in environment");
     }
-
-    console.log(`${platform} [push-enable] VAPID key length: ${vapidKey.length}`);
 
     // VAPID public keys are distributed as URL-safe base64 (RFC 8292) --
     // '-'/'_' instead of '+'/'/', usually unpadded. The browser's native
@@ -239,11 +200,9 @@ export async function enableNotifications(): Promise<boolean> {
 
     let binaryString: string;
     try {
-      const converted = urlSafeBase64ToStandardBase64(base64);
-      console.log(`${platform} [push-enable] Base64 conversion: ${base64.length} -> ${converted.length}`);
-      binaryString = atob(converted);
+      binaryString = atob(urlSafeBase64ToStandardBase64(base64));
     } catch (decodeError) {
-      console.error(`${platform} [push-enable] Failed to decode VAPID public key:`, decodeError);
+      console.error("[push] Failed to decode VAPID public key:", decodeError);
       throw new Error("VAPID public key could not be decoded");
     }
 
@@ -252,34 +211,22 @@ export async function enableNotifications(): Promise<boolean> {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    console.log(`${platform} [push-enable] VAPID bytes length: ${bytes.length}`);
-
     if (!registration.pushManager) {
       throw new Error("pushManager not available on service worker");
     }
 
-    console.log(`${platform} [push-enable] Calling pushManager.subscribe()`);
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: bytes,
     });
 
-    console.log(`${platform} [push-enable] Subscription created, endpoint type:`, {
-      endpointPrefix: subscription.endpoint.split("//")[1]?.split("/")[0] || "unknown",
-      endpointLength: subscription.endpoint.length,
-    });
-
     // Save to Supabase
     try {
-      console.log(`${platform} [push-enable] Saving subscription to database`);
       await savePushSubscription(subscription);
-      console.log(`${platform} [push-enable] Subscription saved successfully`);
     } catch (saveError) {
       if (!(saveError instanceof PushEndpointCollisionError)) {
         throw saveError;
       }
-
-      console.warn(`${platform} [push-enable] Endpoint collision detected, resubscribing`);
 
       // The browser handed back a PushSubscription another account's row
       // already owns (same device, prior account never signed out). Drop
@@ -293,23 +240,20 @@ export async function enableNotifications(): Promise<boolean> {
         applicationServerKey: bytes,
       });
 
-      console.log(`${platform} [push-enable] Fresh subscription created`);
       await savePushSubscription(freshSubscription);
-      console.log(`${platform} [push-enable] Fresh subscription saved`);
     }
 
-    console.log(`${platform} [push-enable] Notification enable completed successfully`);
     return true;
   } catch (subscribeError) {
     if (subscribeError instanceof PushEndpointCollisionError) {
-      console.error(`${platform} [push-enable] Endpoint collision persisted after resubscribe`);
+      console.error("[push] Endpoint collision persisted after resubscribe");
       throw new Error(
         "Couldn't enable notifications on this device — it may still be linked to another account. Try turning off notification permission for Follow The Crowd in your device Settings, then reopen the app and enable notifications again.",
       );
     }
 
     const errorMessage = subscribeError instanceof Error ? subscribeError.message : String(subscribeError);
-    console.error(`${platform} [push-enable] Failed during subscription flow:`, {
+    console.error("[push] Failed during subscription flow:", {
       error: errorMessage,
       stack: subscribeError instanceof Error ? subscribeError.stack : undefined,
     });
@@ -381,19 +325,12 @@ export async function disableNotifications(): Promise<void> {
  * SECURITY: Never transfer endpoints between users. Ownership must be explicit.
  */
 async function savePushSubscription(subscription: PushSubscription): Promise<void> {
-  const platform = getPlatformLog();
-
   const key = subscription.getKey("p256dh");
   const auth = subscription.getKey("auth");
 
   if (!key || !auth) {
     throw new Error("Failed to extract push keys");
   }
-
-  console.log(`${platform} [push-save] Key extraction:`, {
-    p256dhLength: key.byteLength,
-    authLength: auth.byteLength,
-  });
 
   const userId = await getCurrentUserId();
 
@@ -402,7 +339,6 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
   }
 
   const deviceName = detectDeviceName();
-  console.log(`${platform} [push-save] Device: ${deviceName}, User: ${userId}`);
 
   // Safely convert Uint8Array to base64
   const encodeBytes = (bytes: Uint8Array): string => {
@@ -416,15 +352,9 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
   const p256dhEncoded = encodeBytes(new Uint8Array(key));
   const authEncoded = encodeBytes(new Uint8Array(auth));
 
-  console.log(`${platform} [push-save] Encoded keys:`, {
-    p256dhEncodedLength: p256dhEncoded.length,
-    authEncodedLength: authEncoded.length,
-  });
-
   // SECURITY: Query for existing endpoint (RLS will only show this user's rows).
   // If found, update it. If not found, insert. If insert fails with unique constraint,
   // the endpoint belongs to another session/account (RLS hides other users' rows).
-  console.log(`${platform} [push-save] Checking for existing endpoint`);
   const { data: existing, error: checkError } = await supabase
     .from("push_subscriptions")
     .select("id")
@@ -433,18 +363,15 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
 
   if (checkError && checkError.code !== "PGRST116") {
     // PGRST116 is "no rows returned" — that's fine
-    console.error(`${platform} [push-save] Endpoint check failed:`, {
+    console.error("[push] savePushSubscription: endpoint check failed", {
       code: checkError.code,
       message: checkError.message,
     });
     throw new Error(`Failed to check endpoint: ${checkError.message}`);
   }
 
-  console.log(`${platform} [push-save] Existing endpoint:`, existing ? "FOUND" : "NOT_FOUND");
-
   // If endpoint exists for this user, update it
   if (existing) {
-    console.log(`${platform} [push-save] Updating existing subscription`);
     const { error: updateError } = await supabase
       .from("push_subscriptions")
       .update({
@@ -458,16 +385,14 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
       .eq("user_id", userId);
 
     if (updateError) {
-      console.error(`${platform} [push-save] Update failed:`, {
+      console.error("[push] savePushSubscription: update failed", {
         code: updateError.code,
         message: updateError.message,
       });
       throw new Error(`Failed to update subscription: ${updateError.message}`);
     }
-    console.log(`${platform} [push-save] Update succeeded`);
   } else {
     // Endpoint doesn't exist for this user, attempt insert
-    console.log(`${platform} [push-save] Inserting new subscription`);
     const { error: insertError } = await supabase.from("push_subscriptions").insert({
       endpoint: subscription.endpoint,
       user_id: userId,
@@ -479,7 +404,7 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     });
 
     if (insertError) {
-      console.error(`${platform} [push-save] Insert failed:`, {
+      console.error("[push] savePushSubscription: insert failed", {
         code: insertError.code,
         message: insertError.message,
       });
@@ -489,7 +414,6 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
       }
       throw new Error(`Failed to save subscription: ${insertError.message}`);
     }
-    console.log(`${platform} [push-save] Insert succeeded`);
   }
 
   // Both paths above just confirmed THIS endpoint is saved and active for
@@ -500,7 +424,6 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
   // exactly the split-brain that let "enabled" show with no real
   // subscription. Scoped strictly to our own user_id; RLS backs this even
   // if the filter above were ever removed by mistake.
-  console.log(`${platform} [push-save] Cleaning up stale subscriptions`);
   const { error: staleCleanupError } = await supabase
     .from("push_subscriptions")
     .update({ is_active: false })
@@ -510,11 +433,9 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
 
   if (staleCleanupError) {
     console.error(
-      `${platform} [push-save] Failed to deactivate stale rows (non-fatal):`,
+      "[push] savePushSubscription: failed to deactivate stale rows for user (non-fatal):",
       staleCleanupError.message,
     );
-  } else {
-    console.log(`${platform} [push-save] Stale rows cleaned up`);
   }
 }
 
