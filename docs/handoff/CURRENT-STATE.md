@@ -1,5 +1,40 @@
 # Current state (last updated: 2026-08-31)
 
+## PUSH NOTIFICATIONS — WORKING ON BOTH PLATFORMS, CLOSED (2026-08-31)
+
+**Physically proven on real hardware:** iPhone → Android and Android → iPhone DM push both deliver. FCM returns `OK 201`; stale endpoints returning `410` are deactivated automatically. Heads-up banners work on Pixel once the Android notification category is set to **Alerting / Pop on screen**.
+
+**Pixel / Android presentation caveat (not an FTC bug):** a push can be delivered successfully, make a sound and appear in the notification shade while showing **no heads-up banner**, if the Android notification category is not set to Alerting / Pop on screen. This is OS-level presentation policy. FTC cannot override it from web code, and no attempt is made to. FTC's own options are correct for a normal visible notification: a `tag` with `renotify: true`, and `silent` never set.
+
+### The four real bugs, in the order they were peeled back
+
+1. **Account-wide subscription sweep** (`6d8d755e`) — `savePushSubscription()` deactivated every *other* active row for the same `user_id`. A row is per **device**; the sweep was per **account**, so two devices were mutually exclusive and whichever opened the app last silently killed the other.
+2. **Account-scoped device state** (`723325f0`) — `detectNotificationState()` asked "does this *account* have any active row?", which cannot answer "is push on for the device in my hand", and after an account switch was actively wrong: the browser's one endpoint stayed owned by the previous account, so notifications for one user landed on hardware signed into another. Now scoped to the browser's actual endpoint.
+3. **`is_active` was write-once-true** (`9ecfeb16`) — `web-push` only *resolves* for 2xx and rejects otherwise, so the resolve-side 404/410 branches were unreachable and the catch substring-matched `WebPushError.message`, which is always the fixed literal `"Received unexpected response code"`. **Nothing ever deactivated a dead endpoint.** Now reads `.statusCode`; only 404/410 retire a row, so transient 429/5xx never cost a valid device.
+4. **Silent per-device delivery failure** (`388112f3`) — `sendWebPush` catches its own failures and *returns* them, so the loop's catch never fired: the status was computed, put in the response body, and discarded (a webhook throws the response away). `Delivered X/N devices` was the only signal, naming neither which device nor why. Each device now logs its own outcome and the push service's stated reason.
+
+Also fixed: presence suppression was account-wide; the service worker swallowed a rejected `showNotification()`; account switching without a page load never re-checked endpoint ownership.
+
+### Known limitation — presence suppression
+
+`active_chat_presence` is keyed `user_id primary key` — **one row per account, with no record of which device is viewing**. Suppression is therefore applied only when the recipient has exactly one active subscription, where "you are looking at it" is certain. With several devices FTC delivers to all of them rather than guessing, so reading a thread on your phone will still push to your laptop. Making this genuinely per-device requires an `endpoint` column on `active_chat_presence` — **a migration, deliberately not done.**
+
+### Known defect — "Disable notifications" does not survive a relaunch
+
+`disableNotifications()` unsubscribes the browser but leaves `Notification.permission === "granted"`. On the next launch `detectNotificationState()` sees permission granted with no browser subscription, returns `"reconnect"`, and `ServiceWorkerProvider` **silently re-enables**. Turning notifications off on a device does not stick. Not fixed: the honest fix is to persist an explicit per-device opt-out and have reconcile respect it, which is new state and a product decision. **Recommended as the next push task.**
+
+### Lower-severity, logged not fixed
+
+- A dead endpoint can flip-flop: reaped on a 410, then reactivated by reconcile if the browser still returns the same endpoint. Bounded, self-limiting, one wasted send per launch.
+- The endpoint-collision error names a real user action ("this device may still be linked to another account") but the reconnect path replaces it with generic "try again" copy, and `ServiceWorkerProvider` only `console.error`s it.
+
+### Operational rules
+
+- **`supabase/functions/push-send/index.ts` must be deployed by hand.** Vercel does not deploy Edge Functions: `supabase functions deploy push-send --project-ref gidplxriruttihfirvii --no-verify-jwt`
+- **Never log a full Web Push endpoint** — its path is the bearer credential. Host only (`fcm.googleapis.com` / `web.push.apple.com`); subscription id, `device_name`, status code and the push service's reason are all safe, and are what make a failure diagnosable.
+- **A test the suite cannot reach is not coverage.** The suite still halts at `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` (line 5103), so all push tests sit unreachable behind it and must be run by extraction. Three separate push tests were silently broken by refactors during this work and only caught that way. **Fixing that halt is the highest-value follow-up.**
+
+
 ## Push: endpoint ownership, dead-endpoint reaping, Android banners (`723325f0` + `9ecfeb16`, 2026-08-31)
 
 **⚠️ REQUIRES AN EDGE FUNCTION DEPLOY.** `supabase/functions/push-send/index.ts` changed. Vercel does not deploy it — see `docs/handoff/SUPABASE.md`. Until `supabase functions deploy push-send --project-ref gidplxriruttihfirvii --no-verify-jwt` is run, fixes 2 and 3 below are not live.

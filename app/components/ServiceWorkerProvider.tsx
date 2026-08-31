@@ -18,7 +18,6 @@ export default function ServiceWorkerProvider({ children }: { children: React.Re
 
       try {
         await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-        console.log("[sw] Service worker registered");
       } catch (error) {
         console.error("[sw] Failed to register service worker:", error);
       }

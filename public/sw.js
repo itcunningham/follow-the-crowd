@@ -45,7 +45,10 @@ self.addEventListener('push', (event) => {
   } else if (payloadError) {
     console.warn('[sw] Failed to parse push payload:', payloadError);
   } else if (!payload || typeof payload.title !== 'string' || !payload.title.trim()) {
-    console.warn('[sw] Push payload missing a usable title:', payload);
+    // Keys only -- the payload body carries the message preview text, and a
+    // malformed-payload warning is no reason to write someone's DM into a
+    // console log. The field names are what actually diagnose this.
+    console.warn('[sw] Push payload missing a usable title. Fields:', Object.keys(payload || {}));
   }
 
   const title =

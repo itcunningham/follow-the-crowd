@@ -20202,6 +20202,22 @@ function testPushMultiDeviceOwnershipAndAndroidVisibility() {
   // (One account keeping several device subscriptions is asserted in
   // testPushReconnectStateAndVapidKeyUrlSafeDecoding — not repeated here.)
 
+  // navigator.serviceWorker.ready NEVER RESOLVES when no worker is
+  // registered. signOut() awaits disableNotifications(), and a surrounding
+  // try/catch cannot rescue a promise that hangs rather than rejects — so on
+  // any browser where registration failed, the logout button hung forever
+  // with no error anywhere. getRegistration() resolves with undefined
+  // instead.
+  // Comments stripped first: this must assert on what the code DOES, not on
+  // prose that happens to name the banned API while explaining why it is
+  // banned.
+  const clientCode = clientSource.replace(/^\s*\/\/.*$/gm, "");
+  assert.doesNotMatch(
+    clientCode,
+    /navigator\.serviceWorker\.ready/,
+    "push client must use getRegistration(), which resolves when no worker exists",
+  );
+
   // --- "Is push on HERE?" is an endpoint question, not an account one -----
   // The account-scoped form answers "granted" off some *other* device's row,
   // which skips the reconnect that would reassign this browser's endpoint
@@ -24252,10 +24268,15 @@ function testPushSendSuppressesActivePushForExactThread() {
 
   assert.match(pushSendSource, /const PRESENCE_TTL_MS = 45_000;/);
 
+  // Scoped to real chat messages, AND to a recipient with exactly one active
+  // device. active_chat_presence is keyed `user_id primary key` — one row per
+  // ACCOUNT, with no record of which device is viewing — so suppressing on it
+  // for a multi-device account cancelled the push to devices that were not
+  // showing the thread at all.
   assert.match(
     pushSendSource,
-    /if \(notification\.type === "message" && notification\.link\) \{/,
-    "the suppression check must be scoped to real chat-message notifications only",
+    /if \(\s*\n\s*subscriptions\.length === 1 &&\s*\n\s*notification\.type === "message" &&\s*\n\s*notification\.link\s*\n\s*\) \{/,
+    "suppression must be scoped to chat messages AND to a single-device recipient",
   );
 
   assert.match(
@@ -24278,7 +24299,7 @@ function testPushSendSuppressesActivePushForExactThread() {
 
   // Fail-open: any error in the presence check itself must not block the
   // actual push send below it.
-  const tryStart = pushSendSource.indexOf("if (notification.type === \"message\" && notification.link) {");
+  const tryStart = pushSendSource.indexOf("subscriptions.length === 1 &&");
   assert.ok(tryStart > -1);
   const tryBlock = pushSendSource.slice(tryStart, tryStart + 1200);
   assert.match(tryBlock, /try \{/);
@@ -24288,15 +24309,19 @@ function testPushSendSuppressesActivePushForExactThread() {
     "a presence-check failure must be caught and logged, falling through to a normal send -- never throw and drop the push",
   );
 
-  // The suppression check must run before subscriptions are fetched (so a
-  // suppressed push also skips that work), and the response must still be a
-  // 200 (a suppressed push is not an error condition for the webhook caller).
+  // Ordering is deliberately the reverse of what it once was. The presence
+  // check used to run first, to skip the subscription fetch on a suppressed
+  // push — a micro-optimisation that cost correctness, because the gate
+  // cannot know whether suppression is safe without knowing how many devices
+  // the recipient has. Subscriptions are now loaded first and the count feeds
+  // the gate. The response is still a 200 either way (a suppressed push is
+  // not an error for the webhook caller).
   const suppressIndex = pushSendSource.indexOf('"[push-send] Suppressing push:');
   const subscriptionsIndex = pushSendSource.indexOf('.from("push_subscriptions")');
   assert.ok(suppressIndex > -1 && subscriptionsIndex > -1);
   assert.ok(
-    suppressIndex < subscriptionsIndex,
-    "the presence check must run before fetching push subscriptions, so a suppressed push also skips that work",
+    subscriptionsIndex < suppressIndex,
+    "subscriptions must be loaded before the presence gate, which depends on the device count",
   );
 
   // Guard the explicit "do not touch push infrastructure" boundary again --

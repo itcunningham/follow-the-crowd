@@ -295,8 +295,15 @@ export async function enableNotifications(): Promise<boolean> {
  *   so push service will reject attempts to this endpoint for this user_id
  */
 export async function disableNotifications(): Promise<void> {
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription();
+  // getRegistration() resolves with undefined when there is no worker;
+  // navigator.serviceWorker.ready NEVER RESOLVES in that case. signOut()
+  // awaits this function, and its surrounding try/catch cannot rescue a
+  // promise that simply hangs rather than rejecting -- so on any browser
+  // where registration failed (unsupported, private mode, a blocked script)
+  // the logout button would hang forever with no error. getBrowserPushSubscription()
+  // above already uses the safe form; this was the outlier.
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  const subscription = registration ? await registration.pushManager.getSubscription() : null;
 
   if (!subscription) {
     return;
@@ -460,17 +467,11 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
   // checks for a real PushSubscription before it looks at the DB at all.
 }
 
-/**
- * Get current subscription if it exists
- */
-export async function getCurrentSubscription(): Promise<PushSubscription | null> {
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    return await registration.pushManager.getSubscription();
-  } catch (error) {
-    return null;
-  }
-}
+// getCurrentSubscription() was removed here: exported but called from
+// nowhere in the app, and it held the last remaining
+// navigator.serviceWorker.ready (which never resolves when no worker is
+// registered). getBrowserPushSubscription() above is the live equivalent and
+// already uses the safe getRegistration("/") form.
 
 /**
  * RFC 8292 VAPID keys are URL-safe base64 ('-'/'_', usually unpadded).
