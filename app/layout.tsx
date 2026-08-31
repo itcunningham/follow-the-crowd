@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   title: "Follow The Crowd",
   description:
     "Event planning and crowd intelligence for promoters, DJs, venues, artists, festivals and organisers.",
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
