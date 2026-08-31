@@ -51,6 +51,20 @@ interface PushSubscription {
   endpoint: string;
   p256dh: string;
   auth: string;
+  device_name?: string | null;
+}
+
+/**
+ * Host only -- never the path. A Web Push endpoint's path IS its bearer
+ * credential, so it must not reach logs; the host ("fcm.googleapis.com" vs
+ * "web.push.apple.com") is what identifies the platform and is safe.
+ */
+function endpointHost(endpoint: string): string {
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return "unparseable";
+  }
 }
 
 Deno.serve(async (req) => {
@@ -234,21 +248,35 @@ Deno.serve(async (req) => {
     // Deliver to all subscriptions
     const results = [];
     for (const sub of subscriptions) {
+      const target = sub as PushSubscription;
+      const host = endpointHost(target.endpoint);
+      const label = `${target.device_name ?? "unknown"} (${host}) sub=${target.id}`;
+
       try {
-        const result = await sendWebPush(
-          sub as PushSubscription,
-          pushPayload,
-          supabase
-        );
+        const result = await sendWebPush(target, pushPayload, supabase);
         results.push(result);
+
+        // Per-device outcome, permanently. sendWebPush catches its own
+        // delivery failures and RETURNS them rather than throwing, so the
+        // catch below never fires for one: the status code was computed,
+        // placed in the response body, and then discarded, because a
+        // database webhook throws the response away. That left the
+        // "delivered X/N devices" summary as the only signal a device had
+        // failed, with no way to tell WHICH device or WHY -- which is the
+        // single biggest reason this bug survived four rounds of
+        // investigation. Safe fields only: never the endpoint path (it is
+        // the bearer credential), never the keys.
+        if (result.success) {
+          console.log(`[push-send] OK ${result.status ?? ""} ${label}`);
+        } else {
+          console.error(
+            `[push-send] FAIL ${result.status ?? "no-status"} ${label}: ${String(result.error ?? "").slice(0, 300)}`
+          );
+        }
       } catch (sendError) {
-        console.error(
-          "[push-send] Failed to send to endpoint:",
-          (sub as PushSubscription).endpoint.substring(0, 50),
-          sendError
-        );
+        console.error(`[push-send] THREW ${label}:`, sendError);
         results.push({
-          endpoint: (sub as PushSubscription).endpoint,
+          endpoint: target.endpoint,
           success: false,
           error: sendError instanceof Error ? sendError.message : String(sendError),
         });
@@ -366,8 +394,7 @@ async function sendWebPush(
     // and must NOT cost the user their subscription.
     if (statusCode === 404 || statusCode === 410) {
       console.log(
-        `[push-send] Subscription ${statusCode}, deactivating:`,
-        subscription.endpoint.substring(0, 50)
+        `[push-send] Subscription ${statusCode}, deactivating: sub=${subscription.id} (${endpointHost(subscription.endpoint)})`
       );
       const { error: deactivateError } = await supabase
         .from("push_subscriptions")
@@ -379,11 +406,24 @@ async function sendWebPush(
       }
     }
 
+    // The push service states the actual reason in the response body
+    // ("UnauthorizedRegistration", "InvalidTokenFormat", a VAPID complaint,
+    // ...). web-push hangs it on WebPushError.body and nothing read it, so
+    // every failure collapsed to an indistinguishable "it didn't work".
+    // Bodies are error descriptions from Google/Apple -- no credentials --
+    // but truncated regardless.
+    const responseBody =
+      typeof (error as { body?: unknown })?.body === "string"
+        ? (error as { body: string }).body.trim().slice(0, 200)
+        : "";
+
     return {
       endpoint: subscription.endpoint,
       success: false,
       status: statusCode,
-      error: statusCode ? `${errorMessage} (${statusCode})` : errorMessage,
+      error: [errorMessage, statusCode ? `status=${statusCode}` : "", responseBody]
+        .filter(Boolean)
+        .join(" | "),
     };
   }
 }

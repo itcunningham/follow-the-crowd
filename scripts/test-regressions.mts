@@ -20317,6 +20317,36 @@ function testPushMultiDeviceOwnershipAndAndroidVisibility() {
     "recipient must be read from the stored notification row, not the webhook",
   );
 
+  // --- A failed device must say which one, and why -----------------------
+  // sendWebPush catches its own delivery failures and RETURNS them rather
+  // than throwing, so the loop's catch never fires for one. The status code
+  // was computed, placed in the response body, and discarded — a database
+  // webhook throws the response away. That left "delivered X/N devices" as
+  // the only evidence a device had failed, naming neither which nor why,
+  // which is why a 1/2 in production could not be diagnosed at all.
+  assert.match(
+    pushSendSource,
+    /console\.error\(\s*\n?\s*`\[push-send\] FAIL \$\{result\.status/,
+    "a per-device delivery failure must log its status code",
+  );
+  assert.match(
+    pushSendSource,
+    /\(error as \{ body\?: unknown \}\)\?\.body/,
+    "the push service's stated reason must be read off WebPushError.body",
+  );
+  // A Web Push endpoint's PATH is its bearer credential. Only the host may
+  // ever reach a log line.
+  assert.match(
+    pushSendSource,
+    /function endpointHost\(endpoint: string\): string/,
+    "endpoint logging must go through the host-only helper",
+  );
+  assert.doesNotMatch(
+    pushSendSource,
+    /endpoint\.substring\(/,
+    "endpoint prefixes must never be logged — the path is a credential",
+  );
+
   // active_chat_presence is keyed per ACCOUNT, not per device, so suppressing
   // on it for a multi-device user cancels the push to devices that are not
   // showing the thread at all.
