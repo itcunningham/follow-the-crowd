@@ -1,5 +1,33 @@
 # Current state (last updated: 2026-08-31)
 
+## Push: endpoint ownership, dead-endpoint reaping, Android banners (`723325f0` + `9ecfeb16`, 2026-08-31)
+
+**⚠️ REQUIRES AN EDGE FUNCTION DEPLOY.** `supabase/functions/push-send/index.ts` changed. Vercel does not deploy it — see `docs/handoff/SUPABASE.md`. Until `supabase functions deploy push-send --project-ref gidplxriruttihfirvii --no-verify-jwt` is run, fixes 2 and 3 below are not live.
+
+**Reported:** after `6d8d755e`, iPhone→Android and Android→iPhone DMs both produced no push, yet a notification from a *different* account ("Number1dj / Yo") did appear on the Android. Android notifications also reached the tray without a heads-up banner.
+
+**Cause 1 — endpoint ownership (client).** `detectNotificationState()` asked *"does this **account** have any active row?"*. A row is per **device**, so that cannot answer "is push on for this device", and after an account switch it is actively wrong: a browser keeps one `PushSubscription` per origin, so when User B signs in on a device that was User A's, the endpoint the browser holds is still owned by User A's row. The account-scoped check saw some *other* active row for User B, returned `"granted"`, and skipped the reconnect that would have reassigned the endpoint. B's pushes reached B's other devices only; A's kept landing on this hardware — which is exactly the cross-account notification that appeared on the Android. Fixed by scoping to the browser's actual endpoint (`hasActivePushSubscriptionForEndpoint`); a device whose endpoint it does not own now reports `"reconnect"` and the existing collision path re-mints it for the right user.
+
+**Cause 2 — `is_active` was write-once-true (`push-send`).** Found by independent QA, and it falsified `6d8d755e`'s own justification. `web-push` only *resolves* for 2xx and rejects everything else, so both resolve-side branches testing `result.statusCode` for 404/410 and `>= 400` were unreachable; the catch fell back to substring-matching the error message, but `WebPushError.message` is always the fixed literal `"Received unexpected response code"` with the status only on `.statusCode`. **Nothing anywhere ever deactivated a subscription.** Dead endpoints accumulated in the delivery loop forever and `delivered X/N` under-reported against a growing pile of corpses — misleading table state that had already misdirected this investigation twice. Now reads `.statusCode` off the rejected error; only 404/410 retire a row, so transient 429/5xx no longer cost a user their subscription.
+
+**Cause 3 — presence suppression was account-wide (`push-send`).** `active_chat_presence` is keyed `user_id primary key` — one row per account, no record of which device is viewing. Reading a thread on one device cancelled the push to *every* other device on that account, which is indistinguishable from "push is broken on my other phone" and reproduces the reported symptom on its own. Now applied only when the recipient has exactly one active subscription. **Proper per-device suppression needs an `endpoint` column on `active_chat_presence` (a migration) — deliberately not done, flagged as follow-up.**
+
+**Cause 4 — Android heads-up banners (`public/sw.js`).** A per-thread `tag` was set without `renotify`, so every notification after the first in a thread replaced its predecessor **silently** — no sound, no vibration, no banner, tray only. Added `renotify: true` (spec-valid only alongside `tag`, which is always set). Note: if Android's notification channel for Chrome/FTC is set to Silent, banners stay suppressed regardless — no web code can override that.
+
+**Cause 5 — in-session account switch.** `ServiceWorkerProvider` mounts once from the root layout and the login page navigates with `router.replace()`, so reconcile ran once per page load. Now also re-runs on a `SIGNED_IN` auth event.
+
+**Not changed:** `push-send`'s fan-out was already correct (loads every active row, loops all, deactivates by id only). Logout cleanup was already endpoint-scoped. VAPID keys, webhook secret, RLS, migrations — all untouched. No account-wide sweep reintroduced.
+
+**Tests:** `723325f0`'s rename silently broke `testPushReconnectStateAndVapidKeyUrlSafeDecoding` (it hardcoded the old function name) — invisible because the suite halts earlier; fixed. Closed the three assertion escapes QA demonstrated, including a `.limit(1)` that slipped past the very assertion claiming to guard fan-out. Eight-mutation matrix all verified failing; baseline passes.
+
+**Known limitation:** the suite still halts at `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` (assertion line 5103, called from 18620), so the push tests are unreachable in a full run and were verified by extraction instead. Pre-existing — proven identical on baseline `main`. **Follow-up task: fix that test so push coverage actually executes.** Its subject is unrelated (workspace gigs pending count) and guessing at its intended semantics risked weakening a legitimate assertion.
+
+**Outstanding QA recommendations, not done:** surface the real endpoint-collision message on the reconnect path (currently replaced with generic "try again" copy the user cannot act on); guard against a dead-endpoint reactivation flip-flop once reaping is live; `disableNotifications()` awaits `navigator.serviceWorker.ready`, which never resolves without a registration and can hang logout.
+
+**Physical QA still required** — see the ship summary. Not yet confirmed on real hardware.
+
+---
+
 ## Android push fix — one device was deactivating the other (`6d8d755e` on `main`, 2026-08-31)
 
 **Bug:** Push notifications never arrived on Android. iOS worked throughout. Permission was granted, the service worker registered and controlled the PWA, `pushManager.subscribe()` succeeded, and a `push_subscriptions` row existed for the Android device — every individual check passed, which is why three prior rounds found nothing.
