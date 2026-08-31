@@ -1,4 +1,28 @@
-# Current state (last updated: 2026-08-26)
+# Current state (last updated: 2026-08-31)
+
+## Android push fix — one device was deactivating the other (`6d8d755e` on `main`, 2026-08-31)
+
+**Bug:** Push notifications never arrived on Android. iOS worked throughout. Permission was granted, the service worker registered and controlled the PWA, `pushManager.subscribe()` succeeded, and a `push_subscriptions` row existed for the Android device — every individual check passed, which is why three prior rounds found nothing.
+
+**Cause:** `savePushSubscription()` (`lib/push/client.ts`) swept every *other* active row for the same `user_id` after a successful save, added 2026-08-15 in `1afd622b` as a stale-row self-heal. Its stated reasoning — "a browser only ever has one live `PushSubscription` per origin, so any other active row is provably stale" — has a true premise and a false conclusion: the sweep is scoped per **account**, but a row is per **device**. One account on a phone and a laptop legitimately holds two live subscriptions with different endpoints, exactly as `20260812000000_push_subscriptions.sql` documents ("Users can have multiple active subscriptions (desktop, mobile, etc.)").
+
+That made two devices mutually exclusive. Enabling on Android set `is_active = false` on the iPhone's row; the iPhone's next launch detected `"reconnect"`, self-healed via `ServiceWorkerProvider.reconcileStalePushSubscription()`, re-saved itself and deactivated Android's row. Only the most recently opened device could receive a push. With an iPhone as the daily driver it won that race essentially every time, so iOS looked permanently healthy and Android looked permanently broken.
+
+`push-send` filters on `is_active = true`, so it never saw the Android row and reported an honest `delivered: 1/1`. **Nothing in the delivery path was wrong** — which is why VAPID signing, key encoding, payload encryption, the webhook, the service worker and the manifest link all reviewed clean in earlier rounds. The 2026-08-30 manifest-link fix (`3067ea3a`) addressed a real gap in PWA metadata but was never this bug, and did not help.
+
+**Diagnosis was deductive, not from device logs:** given push works on iOS for the same account, stages 5–7 (notification row, webhook, `push-send`, VAPID, encryption) are shared and provably fine. The failure therefore had to be device-scoped, and the only device-scoped write in the system is that sweep. It guarantees at most one active row per account, so two devices on one account cannot both receive push — a property of the code, not a hypothesis.
+
+**Fix:** removed the sweep. Neither thing it covered needs it — a dead endpoint is deactivated by `push-send` on the 404/410 the push service returns (authoritative, not guessed), and a browser that silently lost its subscription can no longer show a false "enabled" because `detectNotificationState()` checks for a real `PushSubscription` before it consults the DB (root cause 1 of `1afd622b`, which stands and does the real work). Worst case a stale row survives one send cycle and is reaped on its 410 — strictly better than silently killing a live device.
+
+**Regression:** the test that pinned the sweep's exact source shape has been inverted to `assert.doesNotMatch`, so it cannot return. Mutation-tested: passes on the fixed source, fails when the sweep is reinstated. The suite still halts early at `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` (line 5103) — confirmed identical with and without this change, pre-existing and unrelated.
+
+**Not touched:** VAPID keys, webhook secret, `pg_net`, `push-send`, `public/sw.js`, RLS, the manifest link, `detectNotificationState()`, the reconnect UI. Client-only, ships with Vercel — **no Edge Function deploy needed this round.**
+
+**Also reverted this round:** `538b10fe`, a set of `console.log` probes added to `lib/push/client.ts` and `push-send` during investigation and pushed to Production. Reverted in `e3dab524` once the root cause was established from source; no diagnostic logging remains.
+
+**Outstanding:** Isaac to confirm on a real Android device with both phones signed into the same account (see verification query in the ship summary). Unverified hardening candidate noticed but deliberately not fixed: `enableNotifications()` subscribes against the raw `register()` result rather than `navigator.serviceWorker.ready`, unlike every other call site — a known Chrome `InvalidStateError` risk on a cold first subscribe. Not touched, because stacking a speculative second fix would make the retest uninterpretable.
+
+---
 
 ## Overnight event time (AM finish) fix — 2026-08-26
 
