@@ -20099,11 +20099,19 @@ function testPushReconnectStateAndVapidKeyUrlSafeDecoding() {
   // layer unmapped.
   assert.match(clientSource, /catch \(decodeError\) \{[\s\S]{0,150}VAPID public key could not be decoded/);
 
-  // --- Self-heal: stale rows for the CURRENT user only --------------------
-  assert.match(
+  // --- Multi-device: saving one device must NOT deactivate the others -----
+  // A push_subscriptions row is per device/browser and one account
+  // legitimately has several (see the table comment in
+  // supabase/migrations/20260812000000_push_subscriptions.sql). A
+  // user-scoped `is_active: false` sweep on save made two devices mutually
+  // exclusive -- whichever opened the app last silently killed the other,
+  // which is how Android push stayed dead while iOS kept working. Dead
+  // endpoints are reaped by push-send on a 404/410 from the push service;
+  // the client must never guess at them.
+  assert.doesNotMatch(
     clientSource,
-    /\.update\(\{ is_active: false \}\)\s*\n\s*\.eq\("user_id", userId\)\s*\n\s*\.eq\("is_active", true\)\s*\n\s*\.neq\("endpoint", subscription\.endpoint\)/,
-    "stale-row cleanup must be scoped to the current user's own rows only",
+    /\.update\(\{ is_active: false \}\)\s*\n\s*\.eq\("user_id", userId\)/,
+    "saving a subscription must not deactivate this user's other devices",
   );
 
   // --- UI: reconnect state, no trailing full stops, no raw error text ----

@@ -416,27 +416,28 @@ async function savePushSubscription(subscription: PushSubscription): Promise<voi
     }
   }
 
-  // Both paths above just confirmed THIS endpoint is saved and active for
-  // this user. The browser only ever has one live PushSubscription per
-  // origin, so any OTHER active row still on file for this same user_id
-  // is provably stale (e.g. left behind when the browser silently lost an
-  // earlier subscription without ever calling disableNotifications()) --
-  // exactly the split-brain that let "enabled" show with no real
-  // subscription. Scoped strictly to our own user_id; RLS backs this even
-  // if the filter above were ever removed by mistake.
-  const { error: staleCleanupError } = await supabase
-    .from("push_subscriptions")
-    .update({ is_active: false })
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .neq("endpoint", subscription.endpoint);
-
-  if (staleCleanupError) {
-    console.error(
-      "[push] savePushSubscription: failed to deactivate stale rows for user (non-fatal):",
-      staleCleanupError.message,
-    );
-  }
+  // Deliberately does NOT deactivate this user's other rows.
+  //
+  // An earlier version swept every other active row for the same user_id
+  // here, reasoning that "a browser only ever has one live PushSubscription
+  // per origin, so any other active row is provably stale". The premise is
+  // true; the conclusion is not. That sweep is scoped per ACCOUNT, but a
+  // row is per DEVICE -- one account signed in on a phone and a laptop has
+  // two live subscriptions with different endpoints, exactly as this table
+  // is designed for ("Users can have multiple active subscriptions").
+  //
+  // The effect was that two devices became mutually exclusive: enabling on
+  // Android deactivated the iPhone's row, then the iPhone's next launch
+  // self-healed via reconcileStalePushSubscription() and deactivated
+  // Android's -- so only the most recently opened device could ever receive
+  // a push, and the other went silently dead with a row still sitting in
+  // the table looking fine apart from is_active.
+  //
+  // A genuinely dead endpoint does not need guessing at from here: push-send
+  // deactivates it on the 404/410 the push service returns, which is the
+  // authoritative signal. And a browser that silently lost its subscription
+  // can no longer show a false "enabled", because detectNotificationState()
+  // checks for a real PushSubscription before it looks at the DB at all.
 }
 
 /**
