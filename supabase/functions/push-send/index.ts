@@ -54,6 +54,8 @@ interface PushSubscription {
 }
 
 Deno.serve(async (req) => {
+  console.log("[push-send] Webhook received, method:", req.method);
+
   // SECURITY: Webhook authentication must happen BEFORE any privileged operations
 
   // Only accept POST
@@ -73,6 +75,8 @@ Deno.serve(async (req) => {
     console.error("[push-send] Webhook authentication failed: invalid secret");
     return new Response("Unauthorized", { status: 401 });
   }
+
+  console.log("[push-send] Webhook authenticated successfully");
 
   try {
     const payload: WebhookPayload = await req.json();
@@ -173,6 +177,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch active subscriptions for this user
+    console.log("[push-send] Fetching subscriptions for user:", recipientUserId);
     const { data: subscriptions, error: subsError } = await supabase
       .from("push_subscriptions")
       .select("*")
@@ -197,6 +202,16 @@ Deno.serve(async (req) => {
         status: 200,
       });
     }
+
+    console.log(
+      `[push-send] Found ${subscriptions.length} active subscriptions for user ${recipientUserId}:`,
+      subscriptions.map((s) => ({
+        id: s.id,
+        device: s.device_name,
+        endpointPrefix: s.endpoint.split("//")[1]?.split("/")[0] || "unknown",
+        isActive: s.is_active,
+      }))
+    );
 
     // Deep-link straight to the triggering chat message when one exists.
     // The stored notification.link stays a bare path (an exact-match lookup
@@ -277,11 +292,32 @@ async function sendWebPush(
     throw new Error("VAPID keys not configured");
   }
 
+  const endpointHost = subscription.endpoint.split("//")[1]?.split("/")[0] || "unknown";
+  console.log(`[push-send] Sending to endpoint (${endpointHost}):`, {
+    id: subscription.id,
+    device: subscription.device_name,
+  });
+
   // Decode subscription keys from base64
-  const p256dhBytes = new Uint8Array(atob(subscription.p256dh).split("").map((c) => c.charCodeAt(0)));
-  const authBytes = new Uint8Array(atob(subscription.auth).split("").map((c) => c.charCodeAt(0)));
+  try {
+    const p256dhBytes = new Uint8Array(atob(subscription.p256dh).split("").map((c) => c.charCodeAt(0)));
+    const authBytes = new Uint8Array(atob(subscription.auth).split("").map((c) => c.charCodeAt(0)));
+
+    console.log(`[push-send] Key decoding successful:`, {
+      p256dhLength: p256dhBytes.length,
+      authLength: authBytes.length,
+    });
+  } catch (decodeError) {
+    console.error(`[push-send] Key decoding failed:`, decodeError);
+    return {
+      endpoint: subscription.endpoint,
+      success: false,
+      error: `Key decoding failed: ${decodeError instanceof Error ? decodeError.message : String(decodeError)}`,
+    };
+  }
 
   const payloadString = JSON.stringify(payload);
+  console.log(`[push-send] Payload size: ${payloadString.length} bytes`);
 
   // Use web-push library for RFC 8188 encryption and VAPID signing
   try {
@@ -290,6 +326,7 @@ async function sendWebPush(
     // - RFC 8188 payload encryption (AES-128-GCM)
     // - Correct Authorization header format
     // - Dynamic aud based on endpoint origin
+    console.log(`[push-send] Calling webpush.sendNotification...`);
     const result = await webpush.sendNotification(
       {
         endpoint: subscription.endpoint,
@@ -308,10 +345,15 @@ async function sendWebPush(
       }
     );
 
+    console.log(`[push-send] Push service responded:`, {
+      statusCode: result.statusCode,
+      endpoint: endpointHost,
+    });
+
     // Handle endpoint errors
     if (result.statusCode === 404 || result.statusCode === 410) {
       console.log(
-        "[push-send] Subscription expired, deactivating:",
+        `[push-send] Subscription expired (${result.statusCode}), deactivating:`,
         subscription.endpoint.substring(0, 50)
       );
       const { error: deactivateError } = await supabase
@@ -332,6 +374,7 @@ async function sendWebPush(
     }
 
     if (result.statusCode >= 400) {
+      console.error(`[push-send] Push service error (${result.statusCode})`, result);
       return {
         endpoint: subscription.endpoint,
         success: false,
@@ -341,6 +384,7 @@ async function sendWebPush(
     }
 
     // Update last_used_at
+    console.log(`[push-send] Push successful, updating last_used_at`);
     const { error: updateError } = await supabase
       .from("push_subscriptions")
       .update({ last_used_at: new Date().toISOString() })
@@ -350,6 +394,7 @@ async function sendWebPush(
       console.error("[push-send] Failed to update last_used_at:", updateError);
     }
 
+    console.log(`[push-send] Push delivery complete (${result.statusCode})`);
     return {
       endpoint: subscription.endpoint,
       success: true,
@@ -357,11 +402,16 @@ async function sendWebPush(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[push-send] Exception during push send:`, {
+      error: errorMessage,
+      endpoint: endpointHost,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+    });
 
     // Log detailed error for debugging
     if (errorMessage.includes("404") || errorMessage.includes("410")) {
       console.log(
-        "[push-send] Subscription expired (from error), deactivating:",
+        `[push-send] Subscription expired (from error), deactivating:`,
         subscription.endpoint.substring(0, 50)
       );
       const { error: deactivateError } = await supabase
