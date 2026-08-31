@@ -69,17 +69,17 @@ export async function detectNotificationState(): Promise<NotificationState> {
     //     permission — the split-brain that let "enabled" show while the
     //     device diagnostics panel already read pushSubscriptionExists:
     //     false)
-    //  2. the current authenticated FTC user has a matching active row
-    //     (a device that granted permission for a different FTC account,
-    //     or a subscribe that never made it into push_subscriptions,
-    //     otherwise still reads "granted" here)
+    //  2. the current authenticated FTC user owns an active row for THAT
+    //     EXACT endpoint (a device whose endpoint is still owned by a
+    //     previously signed-in account, or a subscribe that never made it
+    //     into push_subscriptions, otherwise still reads "granted" here)
     const browserSubscription = await getBrowserPushSubscription();
 
     if (!browserSubscription) {
       return "reconnect";
     }
 
-    return (await hasActivePushSubscriptionForCurrentUser())
+    return (await hasActivePushSubscriptionForEndpoint(browserSubscription.endpoint))
       ? "granted"
       : "reconnect";
   }
@@ -101,7 +101,26 @@ async function getBrowserPushSubscription(): Promise<PushSubscription | null> {
   }
 }
 
-async function hasActivePushSubscriptionForCurrentUser(): Promise<boolean> {
+/**
+ * Is THIS browser's endpoint active and owned by the CURRENT account?
+ *
+ * Deliberately scoped to one endpoint. The weaker question — "does this
+ * account have any active row anywhere?" — says nothing about whether the
+ * device in your hand is subscribed, because a row is per device and an
+ * account legitimately has several.
+ *
+ * After an account switch on a shared device it is not merely uninformative
+ * but actively wrong. A browser keeps exactly one PushSubscription per
+ * origin, so when User B signs in on a device that was User A's, the
+ * endpoint this browser holds is still owned by User A's row. The
+ * account-scoped check saw some *other* active row for User B (their phone,
+ * say), reported "granted", and skipped the reconnect that would have
+ * reassigned the endpoint. Pushes for User B then reached their other
+ * devices only, while pushes for User A kept landing on this hardware —
+ * which is exactly how a notification addressed to a different account
+ * turned up on the Android device.
+ */
+async function hasActivePushSubscriptionForEndpoint(endpoint: string): Promise<boolean> {
   let userId: string;
 
   try {
@@ -115,6 +134,7 @@ async function hasActivePushSubscriptionForCurrentUser(): Promise<boolean> {
     .from("push_subscriptions")
     .select("id")
     .eq("user_id", userId)
+    .eq("endpoint", endpoint)
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();

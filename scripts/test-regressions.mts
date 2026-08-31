@@ -18843,6 +18843,7 @@ async function main() {
   testServiceWorkerPushHandlerAlwaysShowsANotification();
   testUnsupportedIosPushStateDoesNotSuggestInstalling();
   testPushReconnectStateAndVapidKeyUrlSafeDecoding();
+  testPushMultiDeviceOwnershipAndAndroidVisibility();
   testNotificationCopyPolishPass();
   testPushBadgeRunSheetWithdrawalRealDeviceFollowups();
   testWithdrawalNotificationSoftFails();
@@ -20184,6 +20185,130 @@ function testPushReconnectStateAndVapidKeyUrlSafeDecoding() {
  * reaction body, and a real-device-observed OS badge count that never came
  * back down. Source-inspection only -- no DOM/browser environment here.
  */
+function testPushMultiDeviceOwnershipAndAndroidVisibility() {
+  const clientSource = readFileSync(
+    new URL("../lib/push/client.ts", import.meta.url),
+    "utf8",
+  );
+  const swSource = readFileSync(
+    new URL("../public/sw.js", import.meta.url),
+    "utf8",
+  );
+  const pushSendSource = readFileSync(
+    new URL("../supabase/functions/push-send/index.ts", import.meta.url),
+    "utf8",
+  );
+
+  // --- One account, several devices --------------------------------------
+  // Saving one device must never deactivate the account's other devices.
+  assert.doesNotMatch(
+    clientSource,
+    /\.update\(\{ is_active: false \}\)\s*\n\s*\.eq\("user_id", userId\)/,
+    "saving a subscription must not deactivate this user's other devices",
+  );
+
+  // --- "Is push on HERE?" is an endpoint question, not an account one -----
+  // The account-scoped form answers "granted" off some *other* device's row,
+  // which skips the reconnect that would reassign this browser's endpoint
+  // after an account switch.
+  const endpointCheck = clientSource.slice(
+    clientSource.indexOf("async function hasActivePushSubscriptionForEndpoint"),
+    clientSource.indexOf("export async function enableNotifications"),
+  );
+  assert.ok(endpointCheck.length > 0, "endpoint-scoped subscription check must exist");
+  assert.match(
+    endpointCheck,
+    /\.eq\("endpoint", endpoint\)/,
+    "device subscription check must filter on this browser's own endpoint",
+  );
+  assert.doesNotMatch(
+    clientSource,
+    /hasActivePushSubscriptionForCurrentUser/,
+    "the account-scoped 'any active row' check must not come back",
+  );
+  assert.match(
+    clientSource,
+    /hasActivePushSubscriptionForEndpoint\(browserSubscription\.endpoint\)/,
+    "\"granted\" must be gated on the endpoint this browser actually holds",
+  );
+
+  // --- Account switch on a shared device ---------------------------------
+  // An endpoint owned by a previous account is re-minted for the current
+  // user rather than left in conflicting ownership.
+  assert.match(
+    clientSource,
+    /PushEndpointCollisionError/,
+    "an endpoint owned by another account must be detected",
+  );
+  assert.match(
+    clientSource,
+    /await subscription\.unsubscribe\(\)[\s\S]{0,400}pushManager\.subscribe/,
+    "a collided endpoint must be dropped and re-minted for the current user",
+  );
+
+  // --- Logout clears this device only ------------------------------------
+  const disableBlock = clientSource.slice(
+    clientSource.indexOf("export async function disableNotifications"),
+    clientSource.indexOf("async function savePushSubscription"),
+  );
+  assert.match(
+    disableBlock,
+    /\.delete\(\)\s*\n\s*\.eq\("endpoint", subscription\.endpoint\)/,
+    "logout cleanup must delete this device's row by endpoint",
+  );
+  assert.doesNotMatch(
+    disableBlock,
+    /\.neq\(/,
+    "logout cleanup must never sweep the account's other devices",
+  );
+
+  // --- Delivery fans out; only dead endpoints are retired ----------------
+  assert.match(
+    pushSendSource,
+    /\.from\("push_subscriptions"\)\s*\n\s*\.select\("\*"\)\s*\n\s*\.eq\("user_id", recipientUserId\)\s*\n\s*\.eq\("is_active", true\)/,
+    "push-send must load every active subscription for the recipient",
+  );
+  assert.match(
+    pushSendSource,
+    /for \(const sub of subscriptions\)/,
+    "push-send must attempt delivery to every device, not stop at the first",
+  );
+  assert.match(
+    pushSendSource,
+    /statusCode === 404 \|\| result\.statusCode === 410/,
+    "only authoritative dead-endpoint codes may deactivate a subscription",
+  );
+  assert.match(
+    pushSendSource,
+    /\.update\(\{ is_active: false \}\)\s*\n\s*\.eq\("id", subscription\.id\)/,
+    "deactivation must target the one dead subscription by id",
+  );
+  assert.match(
+    pushSendSource,
+    /const recipientUserId = notification\.user_id/,
+    "recipient must be read from the stored notification row, not the webhook",
+  );
+
+  // --- Android heads-up visibility ---------------------------------------
+  // A tagged notification replaces its predecessor SILENTLY unless renotify
+  // is set: tray only, no banner. And `silent` must never be turned on.
+  assert.match(
+    swSource,
+    /renotify: true/,
+    "tagged notifications must re-alert on replace or Android shows no banner",
+  );
+  assert.match(
+    swSource,
+    /tag: link \|\| 'notification'/,
+    "renotify requires a tag to be set or Chrome throws",
+  );
+  assert.doesNotMatch(
+    swSource,
+    /silent:\s*true/,
+    "notifications must never be explicitly silent",
+  );
+}
+
 function testNotificationCopyPolishPass() {
   const bookingRequestsSource = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),
