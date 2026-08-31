@@ -85,7 +85,22 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, options)
       .catch((notificationError) => {
-        console.error('[sw] Failed to show notification:', notificationError);
+        // This handler's whole contract is that every path surfaces
+        // something -- but it was only honoured for a bad PAYLOAD, not for a
+        // bad DISPLAY. Chrome rejects showNotification's promise for an
+        // option it dislikes rather than throwing synchronously, so a single
+        // unsupported or malformed field in `options` silently costs the
+        // entire notification, and the swallowed rejection looks exactly
+        // like the push never arriving. Retry with the barest thing the API
+        // accepts -- title and body, no tag, renotify, icon, badge or data.
+        // A notification that appears without an icon is the visible signal
+        // that an option is at fault, and the user still gets told.
+        console.error('[sw] showNotification failed, retrying minimal:', notificationError);
+        return self.registration
+          .showNotification(title, { body })
+          .catch((fallbackError) => {
+            console.error('[sw] Minimal showNotification also failed:', fallbackError);
+          });
       })
   );
 });

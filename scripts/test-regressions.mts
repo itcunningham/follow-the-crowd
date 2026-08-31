@@ -20374,6 +20374,18 @@ function testPushMultiDeviceOwnershipAndAndroidVisibility() {
     /silent:\s*true/,
     "notifications must never be explicitly silent",
   );
+
+  // Chrome REJECTS showNotification's promise for an option it dislikes
+  // rather than throwing synchronously. A lone .catch() that only logs
+  // therefore turns one bad option into a silently dropped notification,
+  // on-device indistinguishable from the push never arriving — which is
+  // exactly the state that made an FCM 201 with a blank phone undiagnosable.
+  // The retry must strip the options, not merely log.
+  assert.match(
+    swSource,
+    /\.showNotification\(title, \{ body \}\)/,
+    "a rejected showNotification must retry with bare options, not just log",
+  );
 }
 
 function testNotificationCopyPolishPass() {
