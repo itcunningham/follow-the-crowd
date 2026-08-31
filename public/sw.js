@@ -62,13 +62,24 @@ self.addEventListener('push', (event) => {
     body,
     badge: '/icon-192.png',
     icon: '/icon-192.png',
-    tag: link || 'notification', // Tag prevents duplicates
+    tag: link || 'notification', // Collapses repeats from the same thread
+    // `tag` on its own makes every notification after the first in a thread
+    // REPLACE the previous one silently — no sound, no vibration, and on
+    // Android no heads-up banner, so the second message onwards only ever
+    // materialises in the tray. `renotify` re-alerts on replace, which is
+    // what makes a follow-up message surface the way the first one did.
+    // Requires `tag` to be set or Chrome throws a TypeError; it always is,
+    // via the `|| 'notification'` fallback above.
+    renotify: true,
     data: {
       link, // Internal app link
       notificationId,
     },
     // Require user interaction (security: don't auto-open external URLs)
     requireInteraction: false,
+    // Deliberately never marked silent — that suppresses sound and
+    // vibration and drops the notification into a low-importance channel on
+    // Android, which looks identical to the tag/renotify bug described above.
   };
 
   event.waitUntil(

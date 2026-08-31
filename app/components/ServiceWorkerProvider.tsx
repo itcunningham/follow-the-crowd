@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { detectNotificationState, enableNotifications, setupNotificationClickListener } from "@/lib/push/client";
+import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export default function ServiceWorkerProvider({ children }: { children: React.ReactNode }) {
@@ -60,12 +61,33 @@ export default function ServiceWorkerProvider({ children }: { children: React.Re
     registerServiceWorker();
     reconcileStalePushSubscription();
 
+    // Signing in does not remount this provider: it is mounted from the root
+    // layout, and the login page navigates with router.replace(), so the
+    // effect above runs once per page load and never again. On a shared
+    // device that leaves a real hole -- the browser keeps one
+    // PushSubscription per origin, so the endpoint it holds can still be
+    // owned by the account that just signed out. Without a re-check the
+    // newly signed-in user receives nothing while the previous owner's
+    // pushes keep landing on this device, until the next cold launch.
+    // reconcile is a no-op unless the state is genuinely "reconnect", so
+    // firing it again here is cheap.
+    const {
+      data: { subscription: authSubscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        reconcileStalePushSubscription();
+      }
+    });
+
     // Listen for navigation messages from service worker
     const unlistener = setupNotificationClickListener((link) => {
       router.push(link);
     });
 
-    return unlistener;
+    return () => {
+      authSubscription.unsubscribe();
+      unlistener();
+    };
   }, [router]);
 
   return <>{children}</>;
