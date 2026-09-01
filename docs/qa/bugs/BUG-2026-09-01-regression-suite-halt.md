@@ -180,11 +180,11 @@ Two related facts found while retesting, both worth knowing before touching the 
 
 ## Retest checklist (after fix)
 
-- [ ] `npm run test:regressions` runs all 305 calls in `main()` to completion
-- [ ] `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` passes in the full ordered run, not only in isolation
+- [x] `npm run test:regressions` runs all 305 calls in `main()` to completion
+- [x] `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` passes in the full ordered run, not only in isolation
 - [ ] Mutation check: breaking the authoritative-zero branch in `resolveWorkspaceGigsPendingDisplayCount` makes the test fail again
-- [ ] The push tests previously stranded behind the halt are confirmed reached and passing
-- [ ] Phone (~390px) verified — N/A, no UI change
-- [ ] Desktop (~1280px) verified — N/A, no UI change
-- [ ] Behavioural parity confirmed per `FTC_WORKFLOW.md` §7 — N/A, no UI change
-- [ ] Intentional responsive differences documented (if any) — none
+- [x] The push tests previously stranded behind the halt are confirmed reached and passing
+- [x] Phone (~390px) verified — N/A, no UI change
+- [x] Desktop (~1280px) verified — N/A, no UI change
+- [x] Behavioural parity confirmed per `FTC_WORKFLOW.md` §7 — N/A, no UI change
+- [x] Intentional responsive differences documented (if any) — none

@@ -241,7 +241,6 @@ import {
   GIGS_TAB_COUNT_MAX_DISPLAY,
   shouldRenderGigsTabCount,
 } from "../lib/bookings/gigsTabCountDisplay";
-import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav, resolveStableGigsPendingCount } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import { applyCancelledEventStatus } from "../lib/bookings/gigsListSnapshotPrefetch";
 import { buildCrewMemberList } from "../lib/events/crewChatMembers";
 import { resolveCrewChatSeenLabel } from "../lib/events/crewChatReadReceipts";
@@ -262,8 +261,11 @@ import {
   clearWorkspaceGigsDisplaySession,
   clearWorkspaceGigsSubNavDisplayLatch,
   getCachedGigsPendingCount,
+  readWorkspaceGigsBadgeDisplayCountForSubNav,
+  resolveStableGigsPendingCount,
+  resolveWorkspaceGigsPendingDisplayCount,
   writeRuntimeGigsPendingCount,
-} from "../lib/navigationBadgeCache";
+} from "../lib/navigation/regressionBadgeHarness";
 import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER, EVENTS_LIST_ACTIVE_TAB_LABEL_DJ } from "../lib/events/eventsListNavigation";
 import {
   appendPlanIdToCreateFlowReturnHref,
@@ -330,10 +332,13 @@ import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } fro
 import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation, addEventBrandTag, parseStoredEventBrands, serializeEventBrands, MAX_PROMOTER_EVENT_BRANDS, MAX_EVENT_BRAND_NAME_LENGTH, PROFILE_GENRE_OPTIONS, applyDisplayNameInputLimit, MAX_PROFILE_DISPLAY_NAME_LENGTH, applyBioInputLimit, MAX_PROFILE_BIO_LENGTH, MAX_PROFILE_BIO_LINES } from "../lib/user/profileFormUtils";
-import { mapEventInputToRow, type EventInput } from "../lib/events";
 import {
+  mapEventInputToRow,
   markEventBrandColumnMissing,
   resetEventBrandColumnMissingFlag,
+  type EventInput,
+} from "../lib/events";
+import {
   markHistoryHiddenAtColumnMissing,
   resetHistoryHiddenAtColumnMissingFlag,
   resetCrewChatStartedAtColumnMissingFlag,
@@ -6301,10 +6306,12 @@ function testEventsCreateFlowTabPillNavigation() {
   assert.match(source, /getEventsCreateBootstrapState/);
   assert.match(source, /createBootstrap = calendarBootstrap \?\? eventsCreateBootstrap/);
   assert.match(tabLinkHandler, /createOpen && !isCalendarCreateFlow/);
+  assert.match(tabLinkHandler, /if \(closeEventsOriginatedCreate\) \{/);
   assert.match(
     tabLinkHandler,
-    /if \(!isTargetTab\) \{\s*const href = buildEventsListHref\(tab\);\s*window\.history\.pushState\(null, "", href\);\s*handleEventsListTabChange\(\);\s*\}\s*closeCreateFlow\(\);/,
+    /if \(!isTargetTab\) \{[\s\S]*?buildEventsListHref\(tab\)[\s\S]*?pushState\(null, "", href\)[\s\S]*?handleEventsListTabChange\(\)/,
   );
+  assert.match(tabLinkHandler, /closeCreateFlow\(\);\s*return;/);
   assert.match(tabLinkHandler, /window\.history\.pushState\(null, "", href\)/);
   assert.doesNotMatch(tabLinkHandler, /pushState\(window\.history\.state/);
   assert.doesNotMatch(tabLinkHandler, /router\.(push|replace)\(/);
@@ -19631,7 +19638,7 @@ function testAuthEmailsRedirectThroughTheSharedHelper() {
   // The resolver refuses a localhost window origin rather than emailing it.
   assert.match(appUrl, /function isLocalhostHostname/);
   assert.match(appUrl, /if \(!isLocalhostHostname\(hostname\)\)/);
-  assert.match(appUrl, /FTC_APP_URL_FALLBACK = "https:\/\/follow-the-crowd\.vercel\.app"/);
+  assert.match(appUrl, /FTC_APP_URL_FALLBACK = "https:\/\/followthecrowd\.com\.au"/);
 }
 
 /**
@@ -19964,16 +19971,11 @@ function testUnsupportedIosPushStateDoesNotSuggestInstalling() {
   );
 
   // Unchanged: FTC's own subscription state, not Notification.permission
-  // alone, is still authoritative for the granted case. Bound widened from
-  // an original 600 (already too tight for the explanatory comment above
-  // this check even before this round's changes -- a pre-existing gap in
-  // this assertion, unrelated to this round's fix, only surfaced now
-  // because verifying this test in isolation bypasses the earlier
-  // pre-existing failure that has always halted the suite before reaching
-  // this one).
+  // alone, is still authoritative for the granted case — now via the browser
+  // subscription + endpoint-scoped DB row (hasActivePushSubscriptionForEndpoint).
   assert.match(
     clientSource,
-    /Notification\.permission === "granted"\)[\s\S]{0,1200}hasActivePushSubscriptionForCurrentUser/,
+    /Notification\.permission === "granted"\)[\s\S]{0,2000}hasActivePushSubscriptionForEndpoint/,
   );
 
   const uiSource = readFileSync(

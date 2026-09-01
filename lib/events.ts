@@ -47,7 +47,11 @@ import {
   withEventFieldsFallback,
 } from "@/lib/events/eventQueryFields";
 
-export { isEventHistoryHideAvailable };
+export {
+  isEventHistoryHideAvailable,
+  markEventBrandColumnMissing,
+  resetEventBrandColumnMissingFlag,
+} from "@/lib/events/eventQueryFields";
 
 export type EventStatus = "draft" | "upcoming" | "completed" | "cancelled";
 

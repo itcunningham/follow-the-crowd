@@ -1,6 +1,17 @@
 # Current state (last updated: 2026-09-01)
-<<<<<<< HEAD
-=======
+
+## Regression suite halt — fixed (2026-09-01)
+
+**Harness-only fix. No product behaviour changed.** `npm run test:regressions` now runs all **305** tests to completion (`All regression checks passed`).
+
+**Root cause:** under tsx, module-level state in `lib/` could load twice when `scripts/test-regressions.mts` (ESM `.mts` entry) imported via `../lib/…` while the code under test imported the same file via `@/`. The badge cache and event-brand column-missing flags were the two cases that bit the suite.
+
+**Fix:**
+- `lib/navigation/regressionBadgeHarness.ts` — test entry re-exporting Gigs badge cache + resolver helpers through one `@/` graph.
+- `lib/events.ts` — re-export `markEventBrandColumnMissing` / `resetEventBrandColumnMissingFlag` so `mapEventInputToRow` and the test mutate the same `eventQueryFields` instance.
+- Stale assertions updated: canonical app URL fallback (`followthecrowd.com.au`), push granted-state check (`hasActivePushSubscriptionForEndpoint`), Events create-flow tab link handler comment.
+
+Full root-cause write-up: `docs/qa/bugs/BUG-2026-09-01-regression-suite-halt.md`.
 
 ## QA retest — the regression-suite halt is root-caused (2026-09-01)
 
@@ -45,7 +56,6 @@ or 1280px verification was performed and phone/desktop parity is not signed off*
 credentialed run is still required before release. `npm run lint` reports 179 errors /
 142 warnings, dominated by `react-hooks` ref/render rules in `app/`; whether that is
 pre-existing was not established, so it was flagged rather than filed.
->>>>>>> origin/claude/qa-retest-2j2077
 
 ## PUSH NOTIFICATIONS — WORKING ON BOTH PLATFORMS, CLOSED (2026-08-31)
 
@@ -79,7 +89,7 @@ Also fixed: presence suppression was account-wide; the service worker swallowed 
 
 - **`supabase/functions/push-send/index.ts` must be deployed by hand.** Vercel does not deploy Edge Functions: `supabase functions deploy push-send --project-ref gidplxriruttihfirvii --no-verify-jwt`
 - **Never log a full Web Push endpoint** — its path is the bearer credential. Host only (`fcm.googleapis.com` / `web.push.apple.com`); subscription id, `device_name`, status code and the push service's reason are all safe, and are what make a failure diagnosable.
-- **A test the suite cannot reach is not coverage.** The suite still halts at `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` (line 5103), so all push tests sit unreachable behind it and must be run by extraction. Three separate push tests were silently broken by refactors during this work and only caught that way. **Fixing that halt is the highest-value follow-up.** *(Root-caused 2026-09-01 — see the QA retest section at the top of this file and `docs/qa/bugs/BUG-2026-09-01-regression-suite-halt.md`. It is a tsx dual-module-instance defect in the harness, not a fault in the test's subject.)*
+- **The regression suite runs end-to-end again.** Fixed 2026-09-01 — see the section at the top of this file. Push tests and the other 219 previously stranded tests are reachable in the full ordered run.
 
 
 ## Handoff + QA reference indexes completed (docs only, 2026-09-01)
@@ -2160,7 +2170,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
-- `dc558eec` — cleanup: final push audit — logout hang, dead code, log hygiene, stale test
+- `d8aeb90a` — fix: regression suite runs all 305 tests (badge harness, event-brand dual-load, stale assertions)
 - `1891257f` — sw: a rejected showNotification must still surface something
 - `388112f3` — push-send: surface which device failed and why, instead of discarding it
 - `23453a08` — Merge: push endpoint ownership, dead-endpoint reaping, Android banners

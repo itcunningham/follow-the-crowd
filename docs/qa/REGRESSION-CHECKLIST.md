@@ -123,6 +123,8 @@ verified on either reference viewport, which `FTC_WORKFLOW.md` §7/§8 requires.
 | `npm run build` | Passed — all routes compiled |
 | `npm run qa:preflight` | Passed (credential-file ignore rules verified) |
 | `npm run test:regressions` | **Failed** — halts at test 86 of 305; 219 tests never run. See [BUG-2026-09-01-regression-suite-halt.md](./bugs/BUG-2026-09-01-regression-suite-halt.md) |
+
+**Follow-up (2026-09-01):** harness fix shipped — `npm run test:regressions` now completes all 305 tests. See `docs/handoff/CURRENT-STATE.md` (Regression suite halt — fixed).
 | `npm run qa:e2e:prod` | Blocked — no `.env.qa.local` |
 | `npm run lint` | 179 errors / 142 warnings, dominated by `react-hooks` ref/render rules in `app/`. Not a checklist gate, and this pass did **not** establish whether it is pre-existing — flagged for the Builder to baseline, not filed as a bug |
 
