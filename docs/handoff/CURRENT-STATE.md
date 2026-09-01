@@ -9,6 +9,7 @@ Verified on **Production** (`follow-the-crowd.vercel.app`), phone:
 - **Planner core loop** — create event → invite DJ → accept → run sheet → DM.
 - **DJ core loop** — incoming gig → accept → DM → back (**KN-02 resolved** on Production, 2026-09-01).
 - **R-24** — open offer → DJ counters rate → planner accepts.
+- **R-25** — cancel accepted booking (or event cancel path) → status/DM update OK.
 - **R-08** — Settings → sign out → login.
 - **R-42–R-43** — crew chat (2+ confirmed DJs) → message without refresh.
 
