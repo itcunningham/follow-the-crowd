@@ -22,8 +22,9 @@ The product is not affected. The **regression gate** is: `FTC_WORKFLOW.md` §8 r
 
 ## Testing status
 
-- [x] **Failed** (this report)
+- [ ] **Failed** (this report)
 - [ ] **Blocked** (cannot retest until fixed)
+- [x] **Fixed** — `a6881cac` (2026-09-01); `npm run test:regressions` completes all 305 tests
 
 ---
 

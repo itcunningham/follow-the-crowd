@@ -25,7 +25,7 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 | R-07a | Logged out → `/bookings` redirects to `/login` (no hooks crash) | Partial | Critical |
 | R-07b | Stale cached role without session → safe redirect (no fatal screen) | Partial | Critical |
 | R-07c | Planner / DJ / Both roles still reach correct Gigs experience | Not Started | Critical |
-| R-08 | Sign out from Settings → returns to login | Not Started | Critical |
+| R-08 | Sign out from Settings → returns to login | Passed | Critical |
 
 ---
 
@@ -45,12 +45,12 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 
 | # | Test | Status | Severity if failed |
 |---|------|--------|-------------------|
-| R-20 | Create event with required fields → appears in Active list | Not Started | Critical |
+| R-20 | Create event with required fields → appears in Active list | Passed | Critical |
 | R-21 | Create event validation: missing finish time shows inline error | Not Started | Medium |
-| R-22 | Invite DJs → booking request appears in DJ Gigs Incoming | Not Started | Critical |
-| R-23 | DJ accepts booking → status updates on event lineup + DM card | Not Started | Critical |
-| R-24 | Rate proposal: open offer → DJ can counter → accept flow | Not Started | High |
-| R-25 | Cancel accepted booking with reason → status cancelled | Not Started | High |
+| R-22 | Invite DJs → booking request appears in DJ Gigs Incoming | Passed | Critical |
+| R-23 | DJ accepts booking → status updates on event lineup + DM card | Passed | Critical |
+| R-24 | Rate proposal: open offer → DJ can counter → accept flow | Passed | High |
+| R-25 | Cancel accepted booking with reason → status cancelled | Passed | High |
 | R-26 | Edit event (booking-impacting field) → confirmation → crew chat update (if chat open) | Not Started | Medium |
 
 ---
@@ -73,11 +73,11 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 |---|------|--------|-------------------|
 | R-40 | DM booking card expands/collapses; timestamps visible | Not Started | Medium |
 | R-41 | View event from DM → Back returns to conversation | Not Started | Medium |
-| R-42 | Crew chat accessible when 2+ DJs confirmed | Not Started | High |
-| R-43 | Crew chat: new message appears without refresh | Not Started | High |
+| R-42 | Crew chat accessible when 2+ DJs confirmed | Passed | High |
+| R-43 | Crew chat: new message appears without refresh | Passed | High |
 | R-44 | Messages unread badge on nav icon (mobile top-right) | Not Started | Medium |
 | R-45 | Group tab in Messages inbox lists crew chats | Not Started | Medium |
-| R-46 | DM inbox realtime: no message payload/content logs in production console | Failed | Medium |
+| R-46 | DM inbox realtime: no message payload/content logs in production console | Partial | Medium |
 | R-47 | Marketing home: no visible AI generate button (private beta) | Partial | Medium |
 | R-48 | Manual create event via `/events?create=event` still works | Not Started | Critical |
 | R-49 | Production security audit 16/16 pass | Blocked | Critical |
@@ -171,18 +171,25 @@ Evidence is static (source + built output). Each still needs a live pass to move
 
 ## Regression sign-off
 
+### Coached beta — Isaac Production (2026-09-01) — authoritative
+
 | Field | Value |
 |-------|-------|
 | Date | 2026-09-01 |
-| Tester | Claude Code — automated QA retest (no live environment) |
-| Commit / deploy | `e1927a0` (branch `claude/qa-retest-2j2077`) |
-| Phone (~390px) | Not Started — no browser session available |
-| Desktop (~1280px) | Not Started — no browser session available |
-| Intentional responsive differences noted | None observed; no viewport testing performed |
-| Unintended parity failures | None observed; no viewport testing performed |
-| Overall status | Blocked |
-| Critical failures | None found. One High (regression suite halt, tooling) and one Medium (R-46 production console logging) filed under `docs/qa/bugs/` |
-| Notes | Code and build gates only. Phone/desktop parity per `FTC_WORKFLOW.md` §7 is **not** signed off by this pass — a credentialed run is still required before release |
+| Tester | Isaac (Product Owner) |
+| Commit / deploy | Production (`follow-the-crowd.vercel.app`); code on `main` through `c14d1560` |
+| Phone (~390px) | **Passed** — core loop both roles, R-24/25, crew chat, auth exit, push (see Production QA table above) |
+| Desktop (~1280px) | **Deferred** for coached beta — not tested this session |
+| Intentional responsive differences noted | Desktop parity explicitly deferred for first coached tester |
+| Unintended parity failures | None reported on phone |
+| Overall status | **Passed (phone)** — coached tester onboarding OK |
+| Critical failures | None |
+| Notes | Full checklist rows still open; let tester friction drive the rest. R-46 fixed in build (`03c34999`); live Production console not explicitly re-checked. R-49–R-51 still Blocked (production Supabase automated tests). |
 
-**Next step if Passed:** Proceed to [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md)  
+**Next step:** Onboard first coached beta tester; route friction via Bug Triage.
+
+### Superseded — automated retest (2026-09-01, no live environment)
+
+Claude Code pass at `e1927a0` found the regression-suite halt and R-46 logging; both **fixed** same day (`a6881cac`, `03c34999`). Harness now runs all 305 tests. This pass never had credentials or a browser — **do not use its Blocked sign-off**; Isaac Production row above is authoritative.
+
 **Next step if Failed:** File bugs via [BUG-TEMPLATE.md](./BUG-TEMPLATE.md)

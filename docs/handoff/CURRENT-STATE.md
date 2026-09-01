@@ -82,7 +82,7 @@ pre-existing was not established, so it was flagged rather than filed.
 
 **Pixel / Android presentation caveat (not an FTC bug):** a push can be delivered successfully, make a sound and appear in the notification shade while showing **no heads-up banner**, if the Android notification category is not set to Alerting / Pop on screen. This is OS-level presentation policy. FTC cannot override it from web code, and no attempt is made to. FTC's own options are correct for a normal visible notification: a `tag` with `renotify: true`, and `silent` never set.
 
-**Android Doze / locked-screen delay (fix pending deploy):** if a push only appears when the phone is unlocked, FCM was likely holding a **normal-urgency** message until wake. `push-send` now sets Web Push **`urgency: "high"`** (2026-09-01). **Requires manual Edge Function deploy** — Vercel does not deploy `supabase/functions/push-send`. Isaac reported booking-invite pushes (fixed/open offer) arriving only on unlock; retest after deploy.
+**Android Doze / locked-screen delay (fixed + deployed 2026-09-01):** FCM was holding **normal-urgency** messages until wake. `push-send` sets Web Push **`urgency: "high"`** (`260fbaf1`). Edge Function deployed manually (Vercel does not deploy `supabase/functions/push-send`). Isaac verified booking-invite push on **Android with screen locked** after deploy.
 
 ### The four real bugs, in the order they were peeled back
 

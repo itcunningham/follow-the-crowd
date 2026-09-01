@@ -24,8 +24,10 @@ own conversations — this is log hygiene, not a data leak to third parties.
 
 ## Testing status
 
-- [x] **Failed** (this report)
+- [ ] **Failed** (this report)
 - [ ] **Blocked** (cannot retest until fixed)
+- [x] **Fixed (build)** — `03c34999` (2026-09-01); gated logs absent from `.next/static` after `npm run build`
+- [ ] **Fixed (live Production console)** — Isaac has not explicitly re-checked post-fix
 
 ---
 
