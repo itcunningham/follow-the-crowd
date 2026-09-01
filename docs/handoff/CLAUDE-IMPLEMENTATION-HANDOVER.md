@@ -287,7 +287,7 @@ Accepted for beta in `docs/qa/KNOWN-ISSUES.md`:
 | ID | Topic | Honesty note |
 |----|--------|--------------|
 | KN-01 | Event detail Bookings row profile tap | Still listed as accepted |
-| KN-02 | Event → Open DM → Back goes to Messages | **May be outdated** — CURRENT-STATE documents `from=event-detail` return chains; verify before “fixing” |
+| KN-02 | Event → Open DM → Back goes to Messages | **Resolved** — Production verified 2026-09-01 (`from=event-detail` return chains) |
 | KN-03 | Profile tab latency | Accepted Low |
 | KN-04 | Crew chat View event return | Accepted Low |
 | KN-05 | Secondary return paths | Accepted Low |

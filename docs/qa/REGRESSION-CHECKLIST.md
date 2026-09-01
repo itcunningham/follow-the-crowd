@@ -135,7 +135,7 @@ Phone session on Production (`follow-the-crowd.vercel.app`):
 | Push disable survives relaunch | **Passed** |
 | Push re-enable + DM delivery | **Passed** |
 | Planner core loop (create → invite → accept → run sheet → DM) | **Passed** |
-| DJ incoming → accept → DM → back | **Passed** |
+| DJ incoming → accept → DM → back | **Passed** (KN-02 resolved) |
 | Desktop (~1280px) parity | Not tested this session |
 
 **Core loop (planner + DJ) passed on phone.** Ready to add the next coached beta tester; full `REGRESSION-CHECKLIST.md` sign-off still open.

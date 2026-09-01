@@ -6,7 +6,7 @@ Verified on **Production** (`follow-the-crowd.vercel.app`), phone:
 
 - **Push disable** — Settings → Disable → kill/reopen → stays on Enable (no silent re-enable); Enable again → DM push still arrives.
 - **Planner core loop** — create event → invite DJ → accept → run sheet → DM.
-- **DJ core loop** — incoming gig → accept → DM → back (return navigation OK; KN-02 treat as resolved unless a fresh repro).
+- **DJ core loop** — incoming gig → accept → DM → back (**KN-02 resolved** on Production, 2026-09-01).
 
 **Core loop signed off on phone (both roles).** Desktop (~1280px) parity not yet checked this round.
 
@@ -1794,7 +1794,7 @@ Verified in-browser via a throwaway route mounting the real `RunSheetEntry` (tem
 
 **App launch splash (2026-07-19):** Authenticated users opening `/` see `FtcAppSplashScreen` while auth resolves — no marketing landing flash before redirect to `/events` or `/dm`.
 
-**Accepted known issues (not fixing in beta):** KN-01 Bookings row profile tap; KN-02 Event→DM→Back; KN-03 Profile tab latency; KN-04 Crew chat return; KN-05 Secondary return paths; KN-06 Event name/venue caps — see `docs/qa/KNOWN-ISSUES.md`.
+**Accepted known issues (not fixing in beta):** KN-01 Bookings row profile tap; KN-03 Profile tab latency; KN-04 Crew chat return; KN-05 Secondary return paths; KN-06 Event name/venue caps — see `docs/qa/KNOWN-ISSUES.md`. **Resolved:** KN-02 Event→DM→Back (Production verified 2026-09-01).
 
 **Out of scope:** payments, AI generation, Discover expansion, social features, public launch.
 

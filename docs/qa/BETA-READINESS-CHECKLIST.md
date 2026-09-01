@@ -120,12 +120,12 @@ is not a check. Verify reachability before verifying correctness.
 | Authentication | Passed | — | | QA |
 | Profiles | Passed | Low | KN-03 latency | QA |
 | Discover | Passed | — | Existing scope only | QA |
-| Events | Passed | Medium | KN-01, KN-02, KN-06 | QA |
+| Events | Passed | Medium | KN-01, KN-06 | QA |
 | Event Plans | Passed | — | | QA |
 | Calendar | Passed | — | | QA |
 | Gigs | Passed | — | | QA |
 | Booking flow | Passed | — | | QA |
-| Messaging (DM) | Passed | Medium | KN-02 back nav | QA |
+| Messaging (DM) | Passed | Medium | — | QA |
 | Crew chat | Passed | Low | KN-04 | QA |
 | Realtime | Passed | — | | QA |
 | Permissions | Passed | — | | QA |
@@ -168,7 +168,7 @@ is not a check. Verify reachability before verifying correctness.
 | ID | Severity | Area | Summary | Status |
 |----|----------|------|---------|--------|
 | KN-01 | Medium | Events | Bookings row DJ profile tap | Accepted — see KNOWN-ISSUES.md |
-| KN-02 | Medium | Navigation | Event → DM → Back lands on Messages | Accepted |
+| KN-02 | Medium | Navigation | Event → DM → Back lands on Messages | **Resolved** 2026-09-01 (Production) |
 | KN-03 | Low | Profiles | Profile tab occasional slow response | Accepted |
 | KN-04 | Low | Crew chat | View event return not always origin-preserving | Accepted |
 | KN-05 | Low | Navigation | Secondary Run Sheet/profile return paths | Accepted |
@@ -208,7 +208,7 @@ See [PRIVATE-BETA-GO-LIVE.md](./PRIVATE-BETA-GO-LIVE.md) OP-01–OP-11. Complete
 | Item | Priority | Notes |
 |------|----------|-------|
 | KN-01 Bookings row profile tap | Medium | After beta feedback |
-| KN-02 Event → DM → Back | Medium | Origin-preserving return |
+| KN-02 Event → DM → Back | Medium | **Resolved** 2026-09-01 |
 | KN-03 Profile tab latency | Low | |
 | KN-04 Crew chat return path | Low | |
 | KN-05 Secondary return paths | Low | |

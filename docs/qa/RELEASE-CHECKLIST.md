@@ -110,7 +110,7 @@ Trigger rollback discussion if any of the following occur in production:
 | iPhone Safari smoke | 7/7 passed |
 | QA sign-off | Passed at GO |
 | Product Owner sign-off | Isaac — GO |
-| Known issues shipped | [KNOWN-ISSUES.md](./KNOWN-ISSUES.md) — KN-01 through KN-06 accepted |
+| Known issues shipped | [KNOWN-ISSUES.md](./KNOWN-ISSUES.md) — KN-01, KN-03–KN-06 accepted; KN-02 resolved |
 
 ---
 

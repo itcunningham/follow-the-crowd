@@ -6,6 +6,20 @@ Accepted limitations for the coached private beta (2026-07-16). **Not launch blo
 
 ---
 
+## Resolved
+
+### KN-02 — Event → Open DM → Back navigation
+
+| Field | Detail |
+|-------|--------|
+| Area | Events → Open DM → Back |
+| Was | Back returned to Messages instead of the originating event detail |
+| Fix | Origin-preserving return chains (`from=event-detail`, event-detail return params) — shipped before 2026-09-01 |
+| Verified | Production (`follow-the-crowd.vercel.app`), 2026-09-01 — Isaac, DJ core loop (incoming → accept → DM → back) |
+| Status | **Resolved** — reopen only on a fresh Production repro |
+
+---
+
 ## Medium (accepted)
 
 ### KN-01 — Event detail Bookings row: DJ profile tap
@@ -15,15 +29,6 @@ Accepted limitations for the coached private beta (2026-07-16). **Not launch blo
 | Area | Events → Event detail → Bookings |
 | Behaviour | Tapping the DJ profile on a booking row does not register |
 | Workaround | Open the DJ profile from Run Sheet, DM, or other supported surfaces |
-| Status | Accepted for beta |
-
-### KN-02 — Event → Open DM → Back navigation
-
-| Field | Detail |
-|-------|--------|
-| Area | Events → Open DM → Back |
-| Behaviour | Back returns to Messages instead of the originating event detail |
-| Workaround | Return to the event via Events list or workspace navigation |
 | Status | Accepted for beta |
 
 ---

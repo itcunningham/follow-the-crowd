@@ -266,7 +266,7 @@ None of these are a security or correctness risk — they're `console.log` noise
 
 **Cosmetic/deferred, already documented and accepted for this beta** (`docs/qa/KNOWN-ISSUES.md`, dated 2026-07-16 — re-read, not re-verified live this round, since several concern exactly the DM/crew-chat back-navigation paths this session's later rounds touched; **the incoming engineer should spot-check these are still accurate rather than trust the date**):
 - KN-01 — DJ profile tap on an event-detail Bookings row doesn't register (workaround: open profile from Run Sheet/DM instead).
-- KN-02 — Event → Open DM → Back returns to Messages instead of the originating event detail.
+- KN-02 — ~~Event → Open DM → Back~~ **Resolved** (Production verified 2026-09-01). See `docs/qa/KNOWN-ISSUES.md`.
 - KN-03 — Profile tab occasionally responds slower than Messages.
 - KN-04 — Crew chat → View event → Back is not always origin-preserving.
 - KN-05 — Some secondary Run Sheet/profile return paths land on event detail rather than the prior screen.
