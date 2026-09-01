@@ -76,7 +76,7 @@ export default function PushNotificationsSection() {
     setError(null);
 
     try {
-      await disableNotifications();
+      await disableNotifications({ persistDeviceOptOut: true });
       setState("prompt");
     } catch (disableError) {
       console.error("[push-settings] Failed to disable:", disableError);

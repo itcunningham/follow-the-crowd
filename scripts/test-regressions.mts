@@ -18889,6 +18889,7 @@ async function main() {
   testPushSendSuppressesActivePushForExactThread();
   testActiveChatPresenceMigrationScopesAccessToOwnRow();
   testServiceWorkerProviderSilentlyReconcilesStaleSubscription();
+  testPushDeviceOptOutSurvivesRelaunchWithoutSilentReconcile();
   console.log("All regression checks passed.");
 }
 
@@ -20175,7 +20176,7 @@ function testPushReconnectStateAndVapidKeyUrlSafeDecoding() {
     "sign-out must still deactivate the device subscription before signing out",
   );
 
-  assert.match(clientSource, /export async function disableNotifications\(\): Promise<void>/);
+  assert.match(clientSource, /export async function disableNotifications\(options\?: \{\s*\n?\s*persistDeviceOptOut\?: boolean;\s*\n?\s*\}\): Promise<void>/);
   assert.match(uiSource, /handleDisable/);
 }
 
@@ -24374,6 +24375,47 @@ function testActiveChatPresenceMigrationScopesAccessToOwnRow() {
  * re-subscribes (no user gesture needed once permission is already
  * "granted"), so this self-heals without requiring a manual re-toggle.
  */
+/**
+ * Settings "Disable notifications" unsubscribed the browser but permission
+ * stayed "granted", so relaunch read "reconnect" and ServiceWorkerProvider
+ * silently re-enabled. Per-device opt-out in localStorage must return "prompt"
+ * instead so reconcile never runs until the user explicitly taps Enable again.
+ */
+function testPushDeviceOptOutSurvivesRelaunchWithoutSilentReconcile() {
+  const clientSource = readFileSync(new URL("../lib/push/client.ts", import.meta.url), "utf8");
+  const settingsSource = readFileSync(
+    new URL("../app/components/settings/PushNotificationsSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(clientSource, /PUSH_DEVICE_OPT_OUT_KEY = "ftc-push-device-opt-out"/);
+  assert.match(clientSource, /function readPushDeviceOptOut\(\): boolean/);
+  assert.match(clientSource, /function writePushDeviceOptOut\(optedOut: boolean\)/);
+  assert.match(
+    clientSource,
+    /if \(readPushDeviceOptOut\(\)\) \{\s*\n\s*return "prompt";/,
+    "opt-out must short-circuit before the granted/reconnect branch",
+  );
+  assert.match(clientSource, /writePushDeviceOptOut\(false\);/);
+  assert.match(clientSource, /persistDeviceOptOut\?: boolean/);
+  assert.match(
+    settingsSource,
+    /disableNotifications\(\{ persistDeviceOptOut: true \}\)/,
+    "Settings disable must persist the opt-out across relaunch",
+  );
+
+  const currentUserSource = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(currentUserSource, /await disableNotifications\(\);/);
+  assert.doesNotMatch(
+    currentUserSource.slice(currentUserSource.indexOf("export async function signOut")),
+    /persistDeviceOptOut: true/,
+    "sign-out cleanup must not persist a device opt-out for the next account",
+  );
+}
+
 function testServiceWorkerProviderSilentlyReconcilesStaleSubscription() {
   const providerSource = readFileSync(
     new URL("../app/components/ServiceWorkerProvider.tsx", import.meta.url),

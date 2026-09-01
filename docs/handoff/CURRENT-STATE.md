@@ -76,9 +76,9 @@ Also fixed: presence suppression was account-wide; the service worker swallowed 
 
 `active_chat_presence` is keyed `user_id primary key` — **one row per account, with no record of which device is viewing**. Suppression is therefore applied only when the recipient has exactly one active subscription, where "you are looking at it" is certain. With several devices FTC delivers to all of them rather than guessing, so reading a thread on your phone will still push to your laptop. Making this genuinely per-device requires an `endpoint` column on `active_chat_presence` — **a migration, deliberately not done.**
 
-### Known defect — "Disable notifications" does not survive a relaunch
+### Disable notifications survives relaunch (fixed 2026-09-01)
 
-`disableNotifications()` unsubscribes the browser but leaves `Notification.permission === "granted"`. On the next launch `detectNotificationState()` sees permission granted with no browser subscription, returns `"reconnect"`, and `ServiceWorkerProvider` **silently re-enables**. Turning notifications off on a device does not stick. Not fixed: the honest fix is to persist an explicit per-device opt-out and have reconcile respect it, which is new state and a product decision. **Recommended as the next push task.**
+Settings → **Disable notifications on this device** now persists a per-device opt-out in `localStorage`. On relaunch, `detectNotificationState()` returns `"prompt"` instead of `"reconnect"`, so `ServiceWorkerProvider` does not silently re-subscribe. Explicit **Enable** clears the opt-out. Sign-out still runs subscription cleanup without persisting opt-out (next account on a shared device is unaffected).
 
 ### Lower-severity, logged not fixed
 
@@ -2170,7 +2170,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
-- `a6881cac` — fix: regression suite runs all 305 tests (badge harness, event-brand dual-load, stale assertions)
+- `f5e71a12` — fix: push disable survives relaunch (per-device localStorage opt-out)
 - `1891257f` — sw: a rejected showNotification must still surface something
 - `388112f3` — push-send: surface which device failed and why, instead of discarding it
 - `23453a08` — Merge: push endpoint ownership, dead-endpoint reaping, Android banners

@@ -30,6 +30,36 @@ export type NotificationState =
   | "unsupported_ios_version"
   | "ios_not_installed";
 
+const PUSH_DEVICE_OPT_OUT_KEY = "ftc-push-device-opt-out";
+
+function readPushDeviceOptOut(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(PUSH_DEVICE_OPT_OUT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writePushDeviceOptOut(optedOut: boolean): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (optedOut) {
+      window.localStorage.setItem(PUSH_DEVICE_OPT_OUT_KEY, "1");
+    } else {
+      window.localStorage.removeItem(PUSH_DEVICE_OPT_OUT_KEY);
+    }
+  } catch {
+    // Private mode / blocked storage — opt-out is best-effort.
+  }
+}
+
 export async function detectNotificationState(): Promise<NotificationState> {
   // Capability detection FIRST, before any install-flow guidance — no
   // amount of "Add to Home Screen" can fix a genuinely unsupported
@@ -58,6 +88,13 @@ export async function detectNotificationState(): Promise<NotificationState> {
   // Check permission
   if (Notification.permission === "denied") {
     return "denied";
+  }
+
+  // Explicit per-device opt-out in Settings must survive relaunch. Without
+  // this, permission stays "granted" after unsubscribe and the reconnect
+  // path (plus ServiceWorkerProvider's silent reconcile) re-enables push.
+  if (readPushDeviceOptOut()) {
+    return "prompt";
   }
 
   if (Notification.permission === "granted") {
@@ -153,6 +190,8 @@ async function hasActivePushSubscriptionForEndpoint(endpoint: string): Promise<b
  * Request notification permission and subscribe to push
  */
 export async function enableNotifications(): Promise<boolean> {
+  writePushDeviceOptOut(false);
+
   const state = await detectNotificationState();
 
   if (state === "unsupported") {
@@ -294,7 +333,9 @@ export async function enableNotifications(): Promise<boolean> {
  * - Failed browser unsubscribe = browser still has subscription but server row deleted,
  *   so push service will reject attempts to this endpoint for this user_id
  */
-export async function disableNotifications(): Promise<void> {
+export async function disableNotifications(options?: {
+  persistDeviceOptOut?: boolean;
+}): Promise<void> {
   // getRegistration() resolves with undefined when there is no worker;
   // navigator.serviceWorker.ready NEVER RESOLVES in that case. signOut()
   // awaits this function, and its surrounding try/catch cannot rescue a
@@ -306,6 +347,9 @@ export async function disableNotifications(): Promise<void> {
   const subscription = registration ? await registration.pushManager.getSubscription() : null;
 
   if (!subscription) {
+    if (options?.persistDeviceOptOut) {
+      writePushDeviceOptOut(true);
+    }
     return;
   }
 
@@ -344,6 +388,10 @@ export async function disableNotifications(): Promise<void> {
       databaseDelete: dbDeleteError ? dbDeleteError.message : "success",
       browserUnsubscribe: browserUnsubscribeError ? browserUnsubscribeError.message : "success",
     });
+  }
+
+  if (options?.persistDeviceOptOut) {
+    writePushDeviceOptOut(true);
   }
 }
 
