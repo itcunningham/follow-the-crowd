@@ -138,6 +138,7 @@ Phone session on Production (`follow-the-crowd.vercel.app`):
 | Planner core loop (create → invite → accept → run sheet → DM) | **Passed** |
 | DJ incoming → accept → DM → back | **Passed** (KN-02 resolved) |
 | R-24 Open offer → DJ counter → planner accept | **Passed** |
+| R-25 Cancel accepted booking | **Passed** |
 | R-08 Sign out → login | **Passed** |
 | R-42–R-43 Crew chat (2+ DJs) → message live | **Passed** |
 | Desktop (~1280px) parity | **Deferred** for coached beta (Isaac) |
