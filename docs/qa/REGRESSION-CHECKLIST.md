@@ -132,15 +132,15 @@ Phone session on Production (`follow-the-crowd.vercel.app`):
 
 | Check | Result |
 |-------|--------|
-| Push disable survives relaunch | **Passed** |
-| Push re-enable + DM delivery | **Passed** |
+| Push delivery (Android, screen locked) | **Passed** (after push-send urgency deploy) |
 | Planner core loop (create → invite → accept → run sheet → DM) | **Passed** |
 | DJ incoming → accept → DM → back | **Passed** (KN-02 resolved) |
-| Desktop (~1280px) parity | Not tested this session |
+| R-24 Open offer → DJ counter → planner accept | **Passed** |
+| R-08 Sign out → login | **Passed** |
+| R-42–R-43 Crew chat (2+ DJs) → message live | **Passed** |
+| Desktop (~1280px) parity | **Deferred** for coached beta (Isaac) |
 
-**Core loop (planner + DJ) passed on phone.** Ready to add the next coached beta tester; full `REGRESSION-CHECKLIST.md` sign-off still open.
-
-Maps informally to R-20–R-23, R-41 (back from DM), R-46 (push settings), and push delivery.
+**Beta phone sign-off complete** for coached tester onboarding. Full checklist rows still open; let tester friction drive the rest.
 
 | `npm run qa:e2e:prod` | Blocked — no `.env.qa.local` |
 | `npm run lint` | 179 errors / 142 warnings, dominated by `react-hooks` ref/render rules in `app/`. Not a checklist gate, and this pass did **not** establish whether it is pre-existing — flagged for the Builder to baseline, not filed as a bug |

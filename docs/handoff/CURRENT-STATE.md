@@ -5,10 +5,14 @@
 Verified on **Production** (`follow-the-crowd.vercel.app`), phone:
 
 - **Push disable** — Settings → Disable → kill/reopen → stays on Enable (no silent re-enable); Enable again → DM push still arrives.
+- **Push delivery (Android locked)** — booking invite push while screen off (after `push-send` urgency deploy).
 - **Planner core loop** — create event → invite DJ → accept → run sheet → DM.
 - **DJ core loop** — incoming gig → accept → DM → back (**KN-02 resolved** on Production, 2026-09-01).
+- **R-24** — open offer → DJ counters rate → planner accepts.
+- **R-08** — Settings → sign out → login.
+- **R-42–R-43** — crew chat (2+ confirmed DJs) → message without refresh.
 
-**Core loop signed off on phone (both roles).** Desktop (~1280px) parity not yet checked this round.
+**Beta phone sign-off:** core loop both roles + rate negotiation + crew chat + auth exit + push. Desktop (~1280px) **deferred for coached beta** (Isaac, 2026-09-01).
 
 ## R-46 production console logging — fixed (2026-09-01)
 
