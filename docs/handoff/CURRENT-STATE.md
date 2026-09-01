@@ -2101,6 +2101,14 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `dc558eec` — cleanup: final push audit — logout hang, dead code, log hygiene, stale test
+- `1891257f` — sw: a rejected showNotification must still surface something
+- `388112f3` — push-send: surface which device failed and why, instead of discarding it
+- `23453a08` — Merge: push endpoint ownership, dead-endpoint reaping, Android banners
+- `9ecfeb16` — push-send: make dead-endpoint retirement actually work; scope presence suppression
+- `723325f0` — fix: scope device push state to this endpoint, and re-alert tagged notifications
+- `6d8d755e` — fix: stop one device's push subscription deactivating the account's others
+- `3067ea3a` — fix: link manifest.json in metadata for Android PWA
 - `95536382` — fix: overnight finish times stick (wheel open-only seed)
 - `77d19d72` — docs: record Events nav stacking fix in handoff
 - `06f009fa` — fix: keep mobile nav above Events sticky header (header z-40; AppNavigation after chrome)
