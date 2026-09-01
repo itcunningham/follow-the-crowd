@@ -132,6 +132,8 @@ Phone session on Production (`follow-the-crowd.vercel.app`):
 
 | Check | Result |
 |-------|--------|
+| Push disable survives relaunch | **Passed** |
+| Push re-enable + DM delivery | **Passed** |
 | Push delivery (Android, screen locked) | **Passed** (after push-send urgency deploy) |
 | Planner core loop (create → invite → accept → run sheet → DM) | **Passed** |
 | DJ incoming → accept → DM → back | **Passed** (KN-02 resolved) |
