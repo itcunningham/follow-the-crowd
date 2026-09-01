@@ -2170,7 +2170,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
-- `f5e71a12` — fix: push disable survives relaunch (per-device localStorage opt-out)
+- `6d5e9f7f` — fix: push disable survives relaunch (per-device localStorage opt-out)
 - `1891257f` — sw: a rejected showNotification must still surface something
 - `388112f3` — push-send: surface which device failed and why, instead of discarding it
 - `23453a08` — Merge: push endpoint ownership, dead-endpoint reaping, Android banners
