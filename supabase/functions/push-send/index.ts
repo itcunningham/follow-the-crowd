@@ -349,6 +349,10 @@ async function sendWebPush(
           publicKey: VAPID_PUBLIC_KEY,
           privateKey: VAPID_PRIVATE_KEY,
         },
+        // Default urgency is "normal"; FCM/Android Doze can hold those until
+        // the device wakes (screen on), which matches "nothing while locked,
+        // banner on unlock". High asks the push service to deliver immediately.
+        urgency: "high",
       }
     );
 

@@ -23964,6 +23964,11 @@ function testPushSendForwardsMessageIdIntoLink() {
   assert.match(pushSendSource, /const VAPID_PRIVATE_KEY = Deno\.env\.get\("VAPID_PRIVATE_KEY"\) \|\| "";/);
   assert.match(pushSendSource, /const PUSH_WEBHOOK_SECRET = Deno\.env\.get\("PUSH_WEBHOOK_SECRET"\) \|\| "";/);
   assert.match(pushSendSource, /await sendWebPush\(/);
+  assert.match(
+    pushSendSource,
+    /urgency:\s*"high"/,
+    "FCM/Android Doze can defer normal-urgency pushes until the device wakes — booking/DM alerts must request high urgency",
+  );
 }
 
 /**
