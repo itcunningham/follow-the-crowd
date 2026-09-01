@@ -124,6 +124,10 @@ export function dedupeGroupChatsByEventId(
 }
 
 export function logGroupRenderedRowIds(groupChats: GroupChatListItem[]) {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
   console.log(
     "[Group rendered row ids]",
     groupChats.map((chat) => ({
@@ -505,7 +509,9 @@ export function applyInboxGroupMessage(
     };
   });
 
-  console.log("[Group matched", matched);
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[Group matched", matched);
+  }
 
   if (!matched) {
     return { rows: groupChats, matched: false };
@@ -515,12 +521,14 @@ export function applyInboxGroupMessage(
   const rows = sortGroupChatsByLatestActivity(dedupeGroupChatsByEventId(updated));
   const afterIds = rows.map((chat) => chat.eventId);
 
-  console.log("[Group sort before]", beforeIds);
-  console.log("[Group sort after]", afterIds, {
-    targetEventId: String(targetEventId).trim(),
-    messageId: newMessage.id,
-    latestActivityAt,
-  });
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[Group sort before]", beforeIds);
+    console.log("[Group sort after]", afterIds, {
+      targetEventId: String(targetEventId).trim(),
+      messageId: newMessage.id,
+      latestActivityAt,
+    });
+  }
 
   return { rows, matched: true };
 }

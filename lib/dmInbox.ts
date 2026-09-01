@@ -166,12 +166,14 @@ export function applyDmInboxRealtimeMessage(
   const sorted = sortDmInboxRows(updated);
   const afterIds = sorted.map((row) => row.conversationId);
 
-  console.log("[Inbox sort] DM before", beforeIds);
-  console.log("[Inbox sort] DM after", afterIds, {
-    chatId: newMessage.conversation_id,
-    messageId: newMessage.id,
-    created_at: newMessage.created_at,
-  });
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[Inbox sort] DM before", beforeIds);
+    console.log("[Inbox sort] DM after", afterIds, {
+      chatId: newMessage.conversation_id,
+      messageId: newMessage.id,
+      created_at: newMessage.created_at,
+    });
+  }
 
   return { rows: sorted, matched: true };
 }
@@ -326,6 +328,10 @@ export function logInboxRenderOrder(
   section: "DM" | "group",
   items: Array<{ id: string; latestActivityAt: string | null }>,
 ) {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
   console.log(
     `[Inbox render] ${section} rendered order`,
     items.map((item) => ({

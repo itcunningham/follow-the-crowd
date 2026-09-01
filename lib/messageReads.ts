@@ -196,25 +196,30 @@ export async function markConversationRead(
   const userId = await getCurrentUserId();
   const lastReadAt = resolveMarkReadTimestamp(options?.readThroughCreatedAt);
 
-  console.log("[reads] current user id", userId);
-  console.log("[reads] conversation id", conversationId);
-
   try {
     await upsertMessageRead({ conversation_id: conversationId }, lastReadAt);
     await markNotificationsReadForLink(userId, `/dm/${conversationId}`);
     notifyNavigationBadgesRefresh();
-    console.log("[reads] mark read result", {
-      conversationId,
-      userId,
-      lastReadAt,
-      readThroughCreatedAt: options?.readThroughCreatedAt ?? null,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[reads] current user id", userId);
+      console.log("[reads] conversation id", conversationId);
+      console.log("[reads] mark read result", {
+        conversationId,
+        userId,
+        lastReadAt,
+        readThroughCreatedAt: options?.readThroughCreatedAt ?? null,
+      });
+    }
   } catch (error) {
-    console.log("[reads] mark read result", {
-      conversationId,
-      userId,
-      error: getMessageReadsLoadErrorMessage(error),
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[reads] current user id", userId);
+      console.log("[reads] conversation id", conversationId);
+      console.log("[reads] mark read result", {
+        conversationId,
+        userId,
+        error: getMessageReadsLoadErrorMessage(error),
+      });
+    }
     throw error;
   }
 
@@ -298,16 +303,20 @@ export async function loadDmParticipantLastReadAt(
     .maybeSingle();
 
   if (error) {
-    console.log("[reads] other participant id", participantUserId);
-    console.log("[reads] loaded other last_read_at", null);
-    console.log("[reads] loaded other last_read_at error", getMessageReadsLoadErrorMessage(error));
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[reads] other participant id", participantUserId);
+      console.log("[reads] loaded other last_read_at", null);
+      console.log("[reads] loaded other last_read_at error", getMessageReadsLoadErrorMessage(error));
+    }
     throw error;
   }
 
   const lastReadAt = data?.last_read_at ?? null;
 
-  console.log("[reads] other participant id", participantUserId);
-  console.log("[reads] loaded other last_read_at", lastReadAt);
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[reads] other participant id", participantUserId);
+    console.log("[reads] loaded other last_read_at", lastReadAt);
+  }
 
   return lastReadAt;
 }

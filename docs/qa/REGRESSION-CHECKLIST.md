@@ -125,6 +125,20 @@ verified on either reference viewport, which `FTC_WORKFLOW.md` §7/§8 requires.
 | `npm run test:regressions` | **Failed** — halts at test 86 of 305; 219 tests never run. See [BUG-2026-09-01-regression-suite-halt.md](./bugs/BUG-2026-09-01-regression-suite-halt.md) |
 
 **Follow-up (2026-09-01):** harness fix shipped — `npm run test:regressions` now completes all 305 tests. See `docs/handoff/CURRENT-STATE.md` (Regression suite halt — fixed).
+
+### Production QA — Isaac (2026-09-01)
+
+Phone session on Production (`follow-the-crowd.vercel.app`):
+
+| Check | Result |
+|-------|--------|
+| Push disable survives relaunch | **Passed** |
+| Push re-enable + DM delivery | **Passed** |
+| Planner core loop (create → invite → accept → run sheet → DM) | **Passed** |
+| DJ incoming path | Not tested this session |
+| Desktop (~1280px) parity | Not tested this session |
+
+Maps informally to R-20–R-23, R-46 (push settings), and push delivery — not a full checklist sign-off.
 | `npm run qa:e2e:prod` | Blocked — no `.env.qa.local` |
 | `npm run lint` | 179 errors / 142 warnings, dominated by `react-hooks` ref/render rules in `app/`. Not a checklist gate, and this pass did **not** establish whether it is pre-existing — flagged for the Builder to baseline, not filed as a bug |
 
@@ -138,7 +152,7 @@ Evidence is static (source + built output). Each still needs a live pass to move
 | R-04b | Both invalid-ID paths are safe: a non-UUID `eventId` fails `looksLikeUserId()` and never reaches the database; a well-formed but unknown ID returns no row. Both render "Event not found or you do not have access" (`app/events/[eventId]/page.tsx:578`, `:604`, `:1393`). `getEventsLoadErrorMessage()` maps Postgres `22P02` to the same safe copy and collapses any other Supabase message to "Failed to load events" (`lib/events.ts:1068`) | Not exercised in a browser. Separately noted: the `42P01` / `PGRST205` / `42703` branches surface setup copy naming `scripts/*.sql`. Only reachable with a mis-provisioned database, so not filed — worth a Builder decision on whether that text should be user-facing at all |
 | R-07a / R-07b | `OnboardingGuard` keeps a stable hook order on every path (no early `return` before hooks) and redirects to `LOGIN_PATH` when `getCurrentAuthUser()` is empty, on a 15s timeout. Module-scope badge prefetches are gated on a real session via `readSupabaseSessionUserIdSync()`, so a stale cached role alone cannot drive `authenticated`-only queries | Not exercised in a browser. Noted: the `[auth-diagnostic]` `console.warn` at `OnboardingGuard.tsx` is marked TEMPORARY and fires in production on every logged-out guarded route |
 | R-47 | The marketing home's AI block, hero copy and "Generate AI Event Plan" button are all behind `isAiEventGenerationEnabled()` (`NEXT_PUBLIC_FTC_AI_EVENT_GENERATION_ENABLED === "true"`, absent by default). `POST /api/generate-event` independently returns 404 unless `FTC_AI_EVENT_GENERATION_ENABLED` is set | Cannot confirm the Vercel production env from here — needs someone to check the deployed env vars or load the live page |
-| R-46 | **Failed.** Message metadata (and in one case a message's `text`) still reaches the production console. See [BUG-2026-09-01-production-console-logging.md](./bugs/BUG-2026-09-01-production-console-logging.md) | — |
+| R-46 | **Fixed 2026-09-01.** See `docs/handoff/CURRENT-STATE.md` (R-46 section) | — |
 
 ### Items left untested
 

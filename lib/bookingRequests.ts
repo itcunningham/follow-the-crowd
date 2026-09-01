@@ -1048,18 +1048,27 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
   plannerUserId: string;
   bookings: BookingRequest[];
 }): Promise<void> {
-  console.log("[bookings] insertEventCancellationActivityMessagesIfNeeded called with event:", options.eventName);
-  console.log("[bookings] Event cancellation: processing", options.bookings.length, "bookings");
+  const debugLog =
+    process.env.NODE_ENV !== "production"
+      ? (...args: unknown[]) => console.log(...args)
+      : () => {};
+  const debugWarn =
+    process.env.NODE_ENV !== "production"
+      ? (...args: unknown[]) => console.warn(...args)
+      : () => {};
+
+  debugLog("[bookings] insertEventCancellationActivityMessagesIfNeeded called with event:", options.eventName);
+  debugLog("[bookings] Event cancellation: processing", options.bookings.length, "bookings");
 
   if (options.bookings.length === 0) {
-    console.warn("[bookings] No bookings to process for event cancellation");
+    debugWarn("[bookings] No bookings to process for event cancellation");
     return;
   }
 
   const seenConversationIds = new Set<string>();
 
   for (const booking of options.bookings) {
-    console.log("[bookings] ===== Processing booking:", booking.id);
+    debugLog("[bookings] ===== Processing booking:", booking.id);
 
     const idsAreSame = booking.conversation_id === booking.event_id;
     if (idsAreSame) {
@@ -1070,7 +1079,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       });
     }
 
-    console.log("[bookings] Booking details:", {
+    debugLog("[bookings] Booking details:", {
       id: booking.id,
       conversation_id: booking.conversation_id,
       recipient_id: booking.recipient_id,
@@ -1080,7 +1089,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     });
 
     if (!booking.conversation_id) {
-      console.warn("[bookings] ❌ SKIPPING: booking has NO conversation_id (null or empty):", {
+      debugWarn("[bookings] ❌ SKIPPING: booking has NO conversation_id (null or empty):", {
         id: booking.id,
         event_id: booking.event_id,
         recipient_id: booking.recipient_id,
@@ -1088,22 +1097,22 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       continue;
     }
 
-    console.log("[bookings] ✓ conversation_id exists");
+    debugLog("[bookings] ✓ conversation_id exists");
 
     if (!isBookingAffectedByWholeEventCancellation(booking)) {
-      console.log("[bookings] ❌ Skipping: booking not affected by event cancellation (status:", booking.status, ")");
+      debugLog("[bookings] ❌ Skipping: booking not affected by event cancellation (status:", booking.status, ")");
       continue;
     }
 
-    console.log("[bookings] ✓ booking is affected by event cancellation");
+    debugLog("[bookings] ✓ booking is affected by event cancellation");
 
     if (seenConversationIds.has(booking.conversation_id)) {
-      console.log("[bookings] ❌ Skipping: conversation already processed in this batch");
+      debugLog("[bookings] ❌ Skipping: conversation already processed in this batch");
       continue;
     }
 
     seenConversationIds.add(booking.conversation_id);
-    console.log("[bookings] ✓ conversation marked as processed");
+    debugLog("[bookings] ✓ conversation marked as processed");
 
     // Per-event text — never skip insert because an older cancel for a
     // different event already exists on this thread (that left the DJ's accept
@@ -1113,7 +1122,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       booking.event_id,
     );
 
-    console.log("[bookings] Checking for existing exact duplicate message...");
+    debugLog("[bookings] Checking for existing exact duplicate message...");
     const { data: existingRows, error: existingError } = await supabase
       .from("messages")
       .select("id")
@@ -1128,16 +1137,11 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       );
       // Still mark unread below — message check failure must not skip the badge.
     } else if (existingRows?.[0]) {
-      console.log(
+      debugLog(
         "[bookings] ⚠️  Exact cancellation message already exists - skipping insertion but marking unread",
       );
     } else {
-      console.log("[bookings] ✓ No existing message, inserting now...");
-      console.log("[bookings] Insert payload:", {
-        conversation_id: booking.conversation_id,
-        user_id: options.plannerUserId,
-        text: messageText,
-      });
+      debugLog("[bookings] ✓ No existing message, inserting now...");
 
       const { error: insertError } = await supabase.from("messages").insert({
         conversation_id: booking.conversation_id,
@@ -1151,7 +1155,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
           insertError,
         );
       } else {
-        console.log(
+        debugLog(
           "[bookings] ✅ Inserted event cancellation message for conversation:",
           booking.conversation_id,
         );

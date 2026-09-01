@@ -1,5 +1,18 @@
 # Current state (last updated: 2026-09-01)
 
+## Production QA — Isaac pass (2026-09-01)
+
+Verified on **Production** (`follow-the-crowd.vercel.app`), phone:
+
+- **Push disable** — Settings → Disable → kill/reopen → stays on Enable (no silent re-enable); Enable again → DM push still arrives.
+- **Planner core loop** — create event → invite DJ → accept → run sheet → DM.
+
+DJ-path and desktop parity not yet signed off this session.
+
+## R-46 production console logging — fixed (2026-09-01)
+
+Ungated debug `console.log` calls in `lib/dmInbox.ts`, `lib/groupChats.ts`, `lib/messageReads.ts`, `lib/notifications.ts`, `lib/bookingRequests.ts`, and event-cancellation paths in `lib/events.ts` are now behind `NODE_ENV !== "production"`. Removed `[bookings] Insert payload` (message text) entirely. Verified absent from `.next/static` after `npm run build`.
+
 ## Regression suite halt — fixed (2026-09-01)
 
 **Harness-only fix. No product behaviour changed.** `npm run test:regressions` now runs all **305** tests to completion (`All regression checks passed`).
@@ -47,8 +60,7 @@ production console — conversation and user UUIDs from `lib/dmInbox.ts`, `lib/g
 `lib/messageReads.ts`, notification titles from `lib/notifications.ts:255`, and at
 `lib/bookingRequests.ts:1136` a full `messages` insert payload **including its `text`**.
 Verified by grepping the built chunks, with gated logs confirmed absent as a control
-(`process.env.NODE_ENV` is inlined, so a gated call cannot survive the build). **R-46 is now
-recorded as Failed.**
+(`process.env.NODE_ENV` is inlined, so a gated call cannot survive the build). **R-46 fixed 2026-09-01** — see section at top of this file.
 
 **Gates this pass:** `tsc --noEmit`, `npm run build`, `npm run qa:preflight` all pass.
 `npm run qa:e2e:prod` blocked (no `.env.qa.local`). No browser was available, so **no 390px
@@ -2170,7 +2182,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
-- `6d5e9f7f` — fix: push disable survives relaunch (per-device localStorage opt-out)
+- `e46da0f9` — fix: gate R-46 production console debug logs in lib/
 - `1891257f` — sw: a rejected showNotification must still surface something
 - `388112f3` — push-send: surface which device failed and why, instead of discarding it
 - `23453a08` — Merge: push endpoint ownership, dead-endpoint reaping, Android banners

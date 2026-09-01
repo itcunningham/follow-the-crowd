@@ -18890,6 +18890,7 @@ async function main() {
   testActiveChatPresenceMigrationScopesAccessToOwnRow();
   testServiceWorkerProviderSilentlyReconcilesStaleSubscription();
   testPushDeviceOptOutSurvivesRelaunchWithoutSilentReconcile();
+  testProductionMessagingDebugLogsAreGatedInLibModules();
   console.log("All regression checks passed.");
 }
 
@@ -24413,6 +24414,65 @@ function testPushDeviceOptOutSurvivesRelaunchWithoutSilentReconcile() {
     currentUserSource.slice(currentUserSource.indexOf("export async function signOut")),
     /persistDeviceOptOut: true/,
     "sign-out cleanup must not persist a device opt-out for the next account",
+  );
+}
+
+/**
+ * R-46 / GO blocker #4: lib/ debug logs must not ship in production bundles.
+ * Next inlines NODE_ENV, so gated calls are dead-code-eliminated from chunks.
+ */
+function testProductionMessagingDebugLogsAreGatedInLibModules() {
+  const dmInboxSource = readFileSync(new URL("../lib/dmInbox.ts", import.meta.url), "utf8");
+  assert.match(
+    dmInboxSource,
+    /if \(process\.env\.NODE_ENV !== "production"\) \{\s*\n\s*console\.log\("\[Inbox sort\] DM before"/,
+  );
+  assert.match(
+    dmInboxSource,
+    /export function logInboxRenderOrder[\s\S]*?if \(process\.env\.NODE_ENV === "production"\) \{\s*\n\s*return;/,
+  );
+
+  const groupChatsSource = readFileSync(new URL("../lib/groupChats.ts", import.meta.url), "utf8");
+  assert.match(
+    groupChatsSource,
+    /export function logGroupRenderedRowIds[\s\S]*?if \(process\.env\.NODE_ENV === "production"\) \{\s*\n\s*return;/,
+  );
+  assert.match(groupChatsSource, /if \(process\.env\.NODE_ENV !== "production"\) \{\s*\n\s*console\.log\("\[Group sort before\]"/);
+
+  const messageReadsSource = readFileSync(new URL("../lib/messageReads.ts", import.meta.url), "utf8");
+  assert.match(
+    messageReadsSource,
+    /if \(process\.env\.NODE_ENV !== "production"\) \{\s*\n\s*console\.log\("\[reads\] current user id"/,
+  );
+  assert.match(
+    messageReadsSource,
+    /if \(process\.env\.NODE_ENV !== "production"\) \{\s*\n\s*console\.log\("\[reads\] other participant id"/,
+  );
+
+  const notificationsSource = readFileSync(new URL("../lib/notifications.ts", import.meta.url), "utf8");
+  assert.match(
+    notificationsSource,
+    /if \(process\.env\.NODE_ENV !== "production"\) \{\s*\n\s*console\.log\(\s*\n\s*"\[notifications\] Unread notifications for"/,
+  );
+
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /insertEventCancellationActivityMessagesIfNeeded[\s\S]*?process\.env\.NODE_ENV !== "production"/,
+  );
+  assert.doesNotMatch(bookingRequestsSource, /Insert payload:/);
+
+  const eventsSource = readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8");
+  assert.match(
+    eventsSource,
+    /if \(process\.env\.NODE_ENV !== "production"\) \{\s*\n\s*console\.log\("\[events\] cancelEvent called with eventId:"/,
+  );
+  assert.match(
+    eventsSource,
+    /if \(process\.env\.NODE_ENV !== "production"\) \{\s*\n\s*console\.log\("\[events\] Notifying DJ of event cancellation for"/,
   );
 }
 

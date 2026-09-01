@@ -796,21 +796,27 @@ function parseCancelEventRpcResult(data: unknown): CancelEventResult {
 async function notifyCancelledBookingsFromEventCancellation(
   cancelledBookings: BookingRequest[],
 ): Promise<void> {
-  console.log("[events] Notifying DJ of event cancellation for", cancelledBookings.length, "bookings");
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[events] Notifying DJ of event cancellation for", cancelledBookings.length, "bookings");
+  }
 
   const plannerProfile = await getCurrentUserProfile();
   const plannerName = resolveUserDisplayName(plannerProfile, { fallback: "Someone" });
 
   await Promise.all(
     cancelledBookings.map(async (booking) => {
-      console.log("[events] Processing cancelled booking notification:", {
-        id: booking.id,
-        recipient_id: booking.recipient_id,
-        conversation_id: booking.conversation_id,
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[events] Processing cancelled booking notification:", {
+          id: booking.id,
+          recipient_id: booking.recipient_id,
+          conversation_id: booking.conversation_id,
+        });
+      }
 
       if (!booking.recipient_id || !booking.conversation_id) {
-        console.log("[events] Skipping: missing recipient_id or conversation_id");
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[events] Skipping: missing recipient_id or conversation_id");
+        }
         return;
       }
 
@@ -824,7 +830,9 @@ async function notifyCancelledBookingsFromEventCancellation(
       // removed rather than deduped, since it was pure copy of this one, not
       // a materially different notice.
       try {
-        console.log("[events] Creating booking_update notification");
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[events] Creating booking_update notification");
+        }
         await createNotification(
           booking.recipient_id,
           "booking_update",
@@ -832,7 +840,9 @@ async function notifyCancelledBookingsFromEventCancellation(
           booking.event_name,
           `/dm/${booking.conversation_id}`,
         );
-        console.log("[events] booking_update notification created");
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[events] booking_update notification created");
+        }
       } catch (notificationError) {
         console.error(
           "[events] Failed to notify DJ of event cancellation:",
@@ -845,13 +855,17 @@ async function notifyCancelledBookingsFromEventCancellation(
 }
 
 export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
-  console.log("[events] cancelEvent called with eventId:", eventId);
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[events] cancelEvent called with eventId:", eventId);
+  }
 
   // Fetch bookings BEFORE calling cancel_event RPC, since the RPC may modify them
   let eventBookings: BookingRequest[] = [];
   try {
     eventBookings = await listBookingRequestsForEvent(eventId);
-    console.log("[events] Fetched", eventBookings.length, "bookings before RPC call");
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[events] Fetched", eventBookings.length, "bookings before RPC call");
+    }
   } catch (fetchError) {
     console.error("[events] Failed to fetch bookings before RPC call:", fetchError);
     eventBookings = [];

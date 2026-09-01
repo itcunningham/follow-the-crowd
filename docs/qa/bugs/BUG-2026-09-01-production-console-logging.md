@@ -152,11 +152,11 @@ None needed by users; the logs are noise rather than a broken flow.
 
 ## Retest checklist (after fix)
 
-- [ ] Original steps no longer reproduce the issue — none of the table's prefixes appear in `.next/static` after `npm run build`
-- [ ] Negative control still holds (a deliberately gated log is absent; an opt-in diagnostic like `[ftc-dm-layout-trace]` may remain)
-- [ ] `/dm` inbox, open conversation, and event-cancellation flows produce a clean production console
+- [x] Original steps no longer reproduce the issue — none of the table's prefixes appear in `.next/static` after `npm run build`
+- [x] Negative control still holds (a deliberately gated log is absent; an opt-in diagnostic like `[ftc-dm-layout-trace]` may remain)
+- [ ] `/dm` inbox, open conversation, and event-cancellation flows produce a clean production console (Isaac: not explicitly re-checked post-fix)
 - [ ] Related regression cases in `REGRESSION-CHECKLIST.md` still pass — R-40 to R-46 messaging rows
 - [ ] Phone (~390px) verified
 - [ ] Desktop (~1280px) verified
 - [ ] Behavioural parity confirmed per `FTC_WORKFLOW.md` §7 — logging is bundle-level, so both viewports must come back identical
-- [ ] Intentional responsive differences documented (if any) — none expected
+- [x] Intentional responsive differences documented (if any) — none expected

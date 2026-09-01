@@ -252,17 +252,19 @@ export async function getUnreadNotifications(
 
   const notifications = (data ?? []) as Notification[];
 
-  console.log(
-    "[notifications] Unread notifications for",
-    userId,
-    notifications.map((notification) => ({
-      id: notification.id,
-      type: notification.type,
-      title: notification.title,
-      read: notification.read,
-      link: notification.link,
-    })),
-  );
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      "[notifications] Unread notifications for",
+      userId,
+      notifications.map((notification) => ({
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        read: notification.read,
+        link: notification.link,
+      })),
+    );
+  }
 
   return notifications;
 }
