@@ -135,10 +135,13 @@ Phone session on Production (`follow-the-crowd.vercel.app`):
 | Push disable survives relaunch | **Passed** |
 | Push re-enable + DM delivery | **Passed** |
 | Planner core loop (create → invite → accept → run sheet → DM) | **Passed** |
-| DJ incoming path | Not tested this session |
+| DJ incoming → accept → DM → back | **Passed** |
 | Desktop (~1280px) parity | Not tested this session |
 
-Maps informally to R-20–R-23, R-46 (push settings), and push delivery — not a full checklist sign-off.
+**Core loop (planner + DJ) passed on phone.** Ready to add the next coached beta tester; full `REGRESSION-CHECKLIST.md` sign-off still open.
+
+Maps informally to R-20–R-23, R-41 (back from DM), R-46 (push settings), and push delivery.
+
 | `npm run qa:e2e:prod` | Blocked — no `.env.qa.local` |
 | `npm run lint` | 179 errors / 142 warnings, dominated by `react-hooks` ref/render rules in `app/`. Not a checklist gate, and this pass did **not** establish whether it is pre-existing — flagged for the Builder to baseline, not filed as a bug |
 

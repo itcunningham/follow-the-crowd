@@ -6,8 +6,9 @@ Verified on **Production** (`follow-the-crowd.vercel.app`), phone:
 
 - **Push disable** — Settings → Disable → kill/reopen → stays on Enable (no silent re-enable); Enable again → DM push still arrives.
 - **Planner core loop** — create event → invite DJ → accept → run sheet → DM.
+- **DJ core loop** — incoming gig → accept → DM → back (return navigation OK; KN-02 treat as resolved unless a fresh repro).
 
-DJ-path and desktop parity not yet signed off this session.
+**Core loop signed off on phone (both roles).** Desktop (~1280px) parity not yet checked this round.
 
 ## R-46 production console logging — fixed (2026-09-01)
 
