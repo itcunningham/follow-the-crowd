@@ -1,4 +1,51 @@
 # Current state (last updated: 2026-09-01)
+<<<<<<< HEAD
+=======
+
+## QA retest — the regression-suite halt is root-caused (2026-09-01)
+
+**Docs-only pass. No product code changed.** Full record in `docs/qa/REGRESSION-CHECKLIST.md`
+("Retest record — 2026-09-01"); two bugs filed under `docs/qa/bugs/`.
+
+**The halt at `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` finally has a cause,
+and it is not the test's subject.** Under tsx, `lib/navigationBadgeCache.ts` is loaded
+**twice from the same URL** — once through Node's ESM translator (which is what
+`scripts/test-regressions.mts`, an `.mts` entry, imports) and once through the CJS loader
+(which is what a `lib/` module's own import resolves to). Its module-level badge state
+therefore exists in two copies. The test's `clearWorkspaceGigsDisplaySession()` and
+authoritative-zero write land on one copy; `resolveWorkspaceGigsPendingDisplayCount` reads
+the other, which still holds the session count `1` the test's own earlier assertions put
+there. Instrumented, the two views at the failing assertion are
+`test: cached=0 session=null` vs `resolver: cached=null session=1`.
+
+**The product logic is correct.** Re-running the identical three-step scenario with every
+import resolving through `@/` — one instance, the way webpack bundles it — returns exactly
+what the test asserts: `{ s1: 1, s2: 1, s3: 0 }`. Nothing user-facing is wrong; this is a
+harness defect. It also reconciles the contradictory notes in earlier rounds: in isolation
+the split is harmless, so the test genuinely passes there.
+
+**Cost:** the runner aborts on call **86 of 305** in `main()` — **219 tests never execute**,
+including the push tests previous rounds had to verify by extraction. Also found: **Node 20
+cannot run the suite at all** (`@supabase/realtime-js` demands Node 22+ for native
+WebSocket), and **no CI job runs `test:regressions`**, so nothing catches this
+automatically. Fix suggestions are in the bug report; QA did not write code.
+
+**Second finding (Medium):** GO blocker #4 ("Message metadata logging") was only ever fixed
+in the four files it named. The `lib/` modules those pages call still log ungated to the
+production console — conversation and user UUIDs from `lib/dmInbox.ts`, `lib/groupChats.ts`,
+`lib/messageReads.ts`, notification titles from `lib/notifications.ts:255`, and at
+`lib/bookingRequests.ts:1136` a full `messages` insert payload **including its `text`**.
+Verified by grepping the built chunks, with gated logs confirmed absent as a control
+(`process.env.NODE_ENV` is inlined, so a gated call cannot survive the build). **R-46 is now
+recorded as Failed.**
+
+**Gates this pass:** `tsc --noEmit`, `npm run build`, `npm run qa:preflight` all pass.
+`npm run qa:e2e:prod` blocked (no `.env.qa.local`). No browser was available, so **no 390px
+or 1280px verification was performed and phone/desktop parity is not signed off** — a
+credentialed run is still required before release. `npm run lint` reports 179 errors /
+142 warnings, dominated by `react-hooks` ref/render rules in `app/`; whether that is
+pre-existing was not established, so it was flagged rather than filed.
+>>>>>>> origin/claude/qa-retest-2j2077
 
 ## PUSH NOTIFICATIONS — WORKING ON BOTH PLATFORMS, CLOSED (2026-08-31)
 
@@ -32,7 +79,7 @@ Also fixed: presence suppression was account-wide; the service worker swallowed 
 
 - **`supabase/functions/push-send/index.ts` must be deployed by hand.** Vercel does not deploy Edge Functions: `supabase functions deploy push-send --project-ref gidplxriruttihfirvii --no-verify-jwt`
 - **Never log a full Web Push endpoint** — its path is the bearer credential. Host only (`fcm.googleapis.com` / `web.push.apple.com`); subscription id, `device_name`, status code and the push service's reason are all safe, and are what make a failure diagnosable.
-- **A test the suite cannot reach is not coverage.** The suite still halts at `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` (line 5103), so all push tests sit unreachable behind it and must be run by extraction. Three separate push tests were silently broken by refactors during this work and only caught that way. **Fixing that halt is the highest-value follow-up.**
+- **A test the suite cannot reach is not coverage.** The suite still halts at `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` (line 5103), so all push tests sit unreachable behind it and must be run by extraction. Three separate push tests were silently broken by refactors during this work and only caught that way. **Fixing that halt is the highest-value follow-up.** *(Root-caused 2026-09-01 — see the QA retest section at the top of this file and `docs/qa/bugs/BUG-2026-09-01-regression-suite-halt.md`. It is a tsx dual-module-instance defect in the harness, not a fault in the test's subject.)*
 
 
 ## Handoff + QA reference indexes completed (docs only, 2026-09-01)
