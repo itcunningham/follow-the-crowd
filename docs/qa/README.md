@@ -17,6 +17,7 @@ Official QA documentation for Follow The Crowd (FTC) coached private beta.
 | [TEST-PLAN.md](./TEST-PLAN.md) | Detailed test cases with steps and expected results |
 | [REGRESSION-CHECKLIST.md](./REGRESSION-CHECKLIST.md) | Focused smoke + regression pass before each release |
 | [BUG-TEMPLATE.md](./BUG-TEMPLATE.md) | Standard format for filing bugs |
+| [bugs/](./bugs/) | Filed bug reports, one file per defect (`BUG-YYYY-MM-DD-slug.md`) |
 | [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) | Pre-release, operational, and release-day steps |
 | [AUTHENTICATED-E2E.md](./AUTHENTICATED-E2E.md) | Playwright authenticated production harness |
 

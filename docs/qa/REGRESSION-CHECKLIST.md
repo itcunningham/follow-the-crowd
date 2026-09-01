@@ -77,7 +77,7 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 | R-43 | Crew chat: new message appears without refresh | Not Started | High |
 | R-44 | Messages unread badge on nav icon (mobile top-right) | Not Started | Medium |
 | R-45 | Group tab in Messages inbox lists crew chats | Not Started | Medium |
-| R-46 | DM inbox realtime: no message payload/content logs in production console | Partial | Medium |
+| R-46 | DM inbox realtime: no message payload/content logs in production console | Failed | Medium |
 | R-47 | Marketing home: no visible AI generate button (private beta) | Partial | Medium |
 | R-48 | Manual create event via `/events?create=event` still works | Not Started | Critical |
 | R-49 | Production security audit 16/16 pass | Blocked | Critical |
@@ -107,20 +107,59 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 
 ---
 
+## Retest record — 2026-09-01 (code + build gates only)
+
+Retest pass at commit `e1927a0`, run in a container with **no beta credentials and no live
+environment**. `.env.qa.local` is absent, so `npm run qa:e2e:prod` blocks before any test
+(by design — see `AUTHENTICATED-E2E.md`), and no browser session at 390px or 1280px was
+possible. **No row below was moved to Passed**, because nothing here was behaviourally
+verified on either reference viewport, which `FTC_WORKFLOW.md` §7/§8 requires.
+
+### Automated gates
+
+| Gate | Result |
+|------|--------|
+| `npx tsc --noEmit` | Passed |
+| `npm run build` | Passed — all routes compiled |
+| `npm run qa:preflight` | Passed (credential-file ignore rules verified) |
+| `npm run test:regressions` | **Failed** — halts at test 86 of 305; 219 tests never run. See [BUG-2026-09-01-regression-suite-halt.md](./bugs/BUG-2026-09-01-regression-suite-halt.md) |
+| `npm run qa:e2e:prod` | Blocked — no `.env.qa.local` |
+| `npm run lint` | 179 errors / 142 warnings, dominated by `react-hooks` ref/render rules in `app/`. Not a checklist gate, and this pass did **not** establish whether it is pre-existing — flagged for the Builder to baseline, not filed as a bug |
+
+### Items carrying "Partial" — what the code shows
+
+Evidence is static (source + built output). Each still needs a live pass to move to Passed.
+
+| # | Code-level finding | Residual gap |
+|---|--------------------|--------------|
+| R-04a | `app/events/create/page.tsx` redirects to `/events?create=event`, preserving an `eventDate` param. Route present in the build manifest | Not exercised in a browser |
+| R-04b | Both invalid-ID paths are safe: a non-UUID `eventId` fails `looksLikeUserId()` and never reaches the database; a well-formed but unknown ID returns no row. Both render "Event not found or you do not have access" (`app/events/[eventId]/page.tsx:578`, `:604`, `:1393`). `getEventsLoadErrorMessage()` maps Postgres `22P02` to the same safe copy and collapses any other Supabase message to "Failed to load events" (`lib/events.ts:1068`) | Not exercised in a browser. Separately noted: the `42P01` / `PGRST205` / `42703` branches surface setup copy naming `scripts/*.sql`. Only reachable with a mis-provisioned database, so not filed — worth a Builder decision on whether that text should be user-facing at all |
+| R-07a / R-07b | `OnboardingGuard` keeps a stable hook order on every path (no early `return` before hooks) and redirects to `LOGIN_PATH` when `getCurrentAuthUser()` is empty, on a 15s timeout. Module-scope badge prefetches are gated on a real session via `readSupabaseSessionUserIdSync()`, so a stale cached role alone cannot drive `authenticated`-only queries | Not exercised in a browser. Noted: the `[auth-diagnostic]` `console.warn` at `OnboardingGuard.tsx` is marked TEMPORARY and fires in production on every logged-out guarded route |
+| R-47 | The marketing home's AI block, hero copy and "Generate AI Event Plan" button are all behind `isAiEventGenerationEnabled()` (`NEXT_PUBLIC_FTC_AI_EVENT_GENERATION_ENABLED === "true"`, absent by default). `POST /api/generate-event` independently returns 404 unless `FTC_AI_EVENT_GENERATION_ENABLED` is set | Cannot confirm the Vercel production env from here — needs someone to check the deployed env vars or load the live page |
+| R-46 | **Failed.** Message metadata (and in one case a message's `text`) still reaches the production console. See [BUG-2026-09-01-production-console-logging.md](./bugs/BUG-2026-09-01-production-console-logging.md) | — |
+
+### Items left untested
+
+* **R-49 / R-50 / R-51** stay **Blocked** — production Supabase access required.
+* Every remaining row stays **Not Started**: all need an authenticated session with a
+  planner, a DJ and ideally a "both" account, on both reference viewports.
+
+---
+
 ## Regression sign-off
 
 | Field | Value |
 |-------|-------|
-| Date | |
-| Tester | |
-| Commit / deploy | |
-| Phone (~390px) | Not Started · Passed · Failed |
-| Desktop (~1280px) | Not Started · Passed · Failed |
-| Intentional responsive differences noted | |
-| Unintended parity failures | |
-| Overall status | Not Started |
-| Critical failures | |
-| Notes | |
+| Date | 2026-09-01 |
+| Tester | Claude Code — automated QA retest (no live environment) |
+| Commit / deploy | `e1927a0` (branch `claude/qa-retest-2j2077`) |
+| Phone (~390px) | Not Started — no browser session available |
+| Desktop (~1280px) | Not Started — no browser session available |
+| Intentional responsive differences noted | None observed; no viewport testing performed |
+| Unintended parity failures | None observed; no viewport testing performed |
+| Overall status | Blocked |
+| Critical failures | None found. One High (regression suite halt, tooling) and one Medium (R-46 production console logging) filed under `docs/qa/bugs/` |
+| Notes | Code and build gates only. Phone/desktop parity per `FTC_WORKFLOW.md` §7 is **not** signed off by this pass — a credentialed run is still required before release |
 
 **Next step if Passed:** Proceed to [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md)  
 **Next step if Failed:** File bugs via [BUG-TEMPLATE.md](./BUG-TEMPLATE.md)
