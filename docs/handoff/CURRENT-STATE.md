@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-08-31)
+# Current state (last updated: 2026-09-01)
 
 ## PUSH NOTIFICATIONS — WORKING ON BOTH PLATFORMS, CLOSED (2026-08-31)
 
@@ -33,6 +33,18 @@ Also fixed: presence suppression was account-wide; the service worker swallowed 
 - **`supabase/functions/push-send/index.ts` must be deployed by hand.** Vercel does not deploy Edge Functions: `supabase functions deploy push-send --project-ref gidplxriruttihfirvii --no-verify-jwt`
 - **Never log a full Web Push endpoint** — its path is the bearer credential. Host only (`fcm.googleapis.com` / `web.push.apple.com`); subscription id, `device_name`, status code and the push service's reason are all safe, and are what make a failure diagnosable.
 - **A test the suite cannot reach is not coverage.** The suite still halts at `testWorkspaceGigsPendingDisplayCountPreservesLastKnown` (line 5103), so all push tests sit unreachable behind it and must be run by extraction. Three separate push tests were silently broken by refactors during this work and only caught that way. **Fixing that halt is the highest-value follow-up.**
+
+
+## Handoff + QA reference indexes completed (docs only, 2026-09-01)
+
+`docs/handoff/README.md` and `docs/qa/README.md` now index **every** file in their own folder, so neither has an unlisted doc.
+
+- **Handoff:** added `CLAUDE-NAV-BUG-HANDOVER.md` (was unlisted; the bug it describes was fixed 2026-08-26 — kept as the diagnosis record). Table regrouped into Start here / Product and brand / How we work / Engineering, with relative links.
+- **QA:** added `FTC-BETA-ENVIRONMENT-RESET.md` (was unlisted).
+- **Not indexed, deliberately:** `START-HERE-GPT.md` (deprecated) and `CLAUDE-CODE-BUILDER-HANDOVER.md` (superseded by `CLAUDE-FULL-HANDOVER.md`). Both files remain in the folder and are listed under a "Not indexed" heading with the reason.
+- The two READMEs now cross-link to each other instead of each keeping its own partial copy of the other's file list — that partial QA list in the handoff README was the source of the drift.
+
+No code changed; no build, route, or UX impact.
 
 
 ## Push: endpoint ownership, dead-endpoint reaping, Android banners (`723325f0` + `9ecfeb16`, 2026-08-31)

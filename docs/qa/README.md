@@ -8,6 +8,8 @@ Official QA documentation for Follow The Crowd (FTC) coached private beta.
 
 ## Documents
 
+Every file in this folder.
+
 | File | Purpose |
 |------|---------|
 | [TESTER-ONBOARDING.md](./TESTER-ONBOARDING.md) | Coached beta tester welcome, version line, bug-report instructions |
@@ -19,6 +21,7 @@ Official QA documentation for Follow The Crowd (FTC) coached private beta.
 | [BUG-TEMPLATE.md](./BUG-TEMPLATE.md) | Standard format for filing bugs |
 | [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) | Pre-release, operational, and release-day steps |
 | [AUTHENTICATED-E2E.md](./AUTHENTICATED-E2E.md) | Playwright authenticated production harness |
+| [FTC-BETA-ENVIRONMENT-RESET.md](./FTC-BETA-ENVIRONMENT-RESET.md) | Resetting QA account data between passes — `npm run qa:reset`, detection rules, what is preserved, edge cases |
 
 ## Beta scope (approved)
 
@@ -72,5 +75,5 @@ Any new **Critical** or **High** production defect **pauses tester onboarding** 
 ## Related docs
 
 - `FTC_WORKFLOW.md` — Builder / Reviewer / QA roles; **§7 phone/desktop parity (authoritative)**
-- `docs/handoff/` — Product context and shipped features
+- [docs/handoff/README.md](../handoff/README.md) — **Full handoff index** — product context, engineering handover, and shipped features
 - `docs/design/FTC_DESIGN_SYSTEM.md` — Visual and UX conventions
