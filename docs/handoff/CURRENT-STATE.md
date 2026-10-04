@@ -1,4 +1,8 @@
-# Current state (last updated: 2026-09-01)
+# Current state (last updated: 2026-10-04)
+
+## Marketing leave-behind — Capability Brief (2026-10-04)
+
+Printable **4-page A4** pitch leave-behind for in-person conversations (promoters / DJ contacts): `docs/marketing/CAPABILITY-BRIEF.html` (export via Chrome → Print → Save as PDF). How-to: `docs/marketing/README.md`. Lean private-beta brief — not a full corporate capability pack. Replace email + QR before handing out.
 
 ## Production QA — Isaac pass (2026-09-01)
 
