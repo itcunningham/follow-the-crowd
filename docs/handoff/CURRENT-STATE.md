@@ -1,5 +1,9 @@
 # Current state (last updated: 2026-10-05)
 
+## Capability brief pack folder (2026-10-05)
+
+Pitch assets live in `docs/marketing/capability-brief/` — Canva one-pager, HTML source, and annotated screenshots (create → book → accept → run sheet → crew chat → calendar). Index: `docs/marketing/capability-brief/README.md`.
+
 ## Support email → followthecrowdsupport@gmail.com (2026-10-05)
 
 Help “Send support email”, account-deletion mailto, and Terms/Privacy contact now use `followthecrowdsupport@gmail.com` (`lib/supportContact.ts`, `lib/legal.ts`). Placeholder / legacy personal `itcunningham99@gmail.com` env values fall through to the dedicated inbox.

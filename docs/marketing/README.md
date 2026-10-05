@@ -1,22 +1,36 @@
 # Marketing leave-behinds
 
-## Capability Brief
+## Capability Brief pack (preferred)
+
+**Folder:** [`capability-brief/`](./capability-brief/)
+
+One place for the private-beta pitch:
+
+- Canva one-pager exports
+- Annotated workflow screenshots (create → book → accept → run sheet → crew chat → calendar)
+- HTML source for PDF print
+- How-to-use notes for mate / promoter intros
+
+Start at [`capability-brief/README.md`](./capability-brief/README.md).
+
+---
+
+## Capability Brief HTML (legacy path)
 
 **File:** [`CAPABILITY-BRIEF.html`](./CAPABILITY-BRIEF.html)
 
-A short **4-page A4** leave-behind for in-person pitches (promoters, DJ contacts, partners).  
-Inspired by corporate capability statements, but kept lean for FTC’s private-beta stage — not a 9-page enterprise pack.
+Same printable HTML also copied under `capability-brief/`. Prefer the folder pack above so screenshots don’t get lost.
 
 ### Export to PDF
 
-1. Open `CAPABILITY-BRIEF.html` in Chrome (or Edge).
+1. Open `capability-brief/CAPABILITY-BRIEF.html` (or this file) in Chrome (or Edge).
 2. **File → Print** (or ⌘P).
 3. Destination: **Save as PDF**.
 4. Paper size: **A4**, margins default / none as needed.
 5. Enable **Background graphics** so navy/cyan blocks print.
 6. Before handing out:
-   - Replace `your-email@example.com` with your real support email.
-   - Replace the QR placeholder boxes with a real QR to `https://www.followthecrowd.com.au` (or a private invite link).
+   - Confirm support email is `followthecrowdsupport@gmail.com`.
+   - Confirm QR points to `https://www.followthecrowd.com.au` (or a private invite link).
 
 ### What it covers
 
