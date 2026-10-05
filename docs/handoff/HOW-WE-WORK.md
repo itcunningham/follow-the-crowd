@@ -4,25 +4,25 @@
 
 | Who | Job |
 |-----|-----|
-| **Isaac** | Founder / product owner. Final UX and release decisions. Runs SQL in Supabase. Real-device QA. Talks to users. |
-| **Cursor Agent** | **Product Owner assistant, UX reviewer, technical planning partner, and agent coordinator** (took over the former ChatGPT product role). Also implements in-repo when acting as Builder: terminal/build, SQL files, commits when asked. Decides what to build vs wait, challenges feature creep, assigns Builder/QA/Release work, verifies diagnoses before trusting them. |
-| **Qwen** | Team member — product critic / planning partner; Builder when given repo work. Day-one paste: `QWEN-FULL-HANDOVER.md`. Same preferences as Cursor/Claude: brutal honesty, short answers, no feature creep. |
-| **Claude / Builder agents** | Inspect repo, implement, test, commit/push feature branches (often via worktrees). |
+| **Isaac** | Founder / product owner. Final UX and release decisions. Runs SQL in Supabase. Real-device QA. Talks to users. Speaks ideas with **Qwen**, then pastes Builder prompts into **Cursor**. |
+| **Qwen** | **Coordinator** — product critic, UX/priority partner, prompt author for Cursor. Day-one paste: `QWEN-FULL-HANDOVER.md`. Shapes ideas → clear build/fix tasks. Brutal honesty. Does not need to touch the repo for every task. |
+| **Cursor Agent** | **Primary Builder** (and Release when shipping). Implements in-repo from Isaac/Qwen prompts: inspect, build, test, commit, ship to `main`. May still challenge weak scope if a prompt would break workflow-first rules. Summons native `@` agent rules when the task names them. |
+| **Claude / other Builder agents** | Optional extra implementers (often worktrees) when Cursor is busy or Isaac assigns a parallel lane. |
 | **QA Reviewer** | Independent break-testing. Does not implement fixes. |
-| **Release Agent** | Integrates approved branches to `main`, proves Production. |
-| **ChatGPT** | **Deprecated for FTC product work.** Historical specs may exist; do not treat ChatGPT as the live product partner. Use Cursor + `docs/handoff/`. |
+| **Release Agent** | Integrates approved branches to `main`, proves Production. (Cursor often does this for small ships.) |
+| **ChatGPT** | **Deprecated for FTC product work.** Historical specs may exist; do not treat ChatGPT as the live product partner. |
 
 Day-one handover: `PRODUCT-HANDOVER.md`. Brand: `BRAND-PHILOSOPHY.md`. Qwen: `QWEN-FULL-HANDOVER.md`.
 
 ## Typical flow
 
-1. Idea or bug → shape with **Cursor** (product/UX/priority)
-2. Cursor (or Isaac) assigns Builder task; use `START-HERE-CURSOR.md` in new Builder chats
-3. Builder codes in a worktree + `npm run build` / regressions
-4. QA Reviewer when the task warrants it
+1. Idea or bug → shape with **Qwen** (product/UX/priority / prompt)
+2. Isaac pastes the Qwen prompt into **Cursor** (Builder); use `START-HERE-CURSOR.md` in new Builder chats when needed
+3. Cursor builds/fixes in-repo + `npm run build` / regressions
+4. QA Reviewer when the task warrants it (or `@qa-retest`)
 5. If `supabase/migrations/` added: Isaac runs SQL in Supabase **before** relying on it in prod
 6. Isaac tests on device when needed
-7. Release Agent merges/pushes `main` and verifies Production
+7. Cursor / Release Agent merges/pushes `main` and verifies Production
 8. **Update `docs/handoff/`** per `HANDOFF-UPDATE.md` before closing the task
 
 ## What agents should never assume
@@ -37,7 +37,7 @@ Day-one handover: `PRODUCT-HANDOVER.md`. Brand: `BRAND-PHILOSOPHY.md`. Qwen: `QW
 
 ## New chat recovery
 
-Always point agents at `docs/handoff/` first (`PRODUCT-HANDOVER.md` + `BRAND-PHILOSOPHY.md` + `CURRENT-STATE.md`).
+Always point agents at `docs/handoff/` first (`PRODUCT-HANDOVER.md` + `BRAND-PHILOSOPHY.md` + `CURRENT-STATE.md`). Qwen: `QWEN-FULL-HANDOVER.md`.
 
 After shipping, update handoff per `HANDOFF-UPDATE.md`.
 
@@ -55,4 +55,4 @@ Summon via `@filename` in chat:
 | Security Review | `@security-review` → `.cursor/rules/security-review.md` |
 | Product Gate | `@product-gate` → `.cursor/rules/product-gate.md` |
 
-**Coordinator Agent** manages these rules; do not use external tools.
+**Qwen (Coordinator)** authors the task; **Cursor** executes the named `@` rule / build. Do not use external Claude Projects.

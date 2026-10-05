@@ -1,5 +1,9 @@
 # Current state (last updated: 2026-10-05)
 
+## Qwen is Coordinator; Cursor is Primary Builder (2026-10-05)
+
+Operating model: Isaac talks ideas with **Qwen (Coordinator)** → Qwen returns a Cursor-ready prompt → Isaac pastes into **Cursor (Builder)** to fix/build and ship `main`. Updated in `HOW-WE-WORK.md`, `QWEN-FULL-HANDOVER.md`, `START-HERE-CURSOR.md`.
+
 ## Qwen team handover (2026-10-05)
 
 Day-one paste for Qwen: `docs/handoff/QWEN-FULL-HANDOVER.md` (prefs, product stage, future plans, native agents, traps). Wired into `HOW-WE-WORK.md` + handoff README.

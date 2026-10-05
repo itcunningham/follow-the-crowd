@@ -27,6 +27,7 @@ Every file in this folder, grouped by what you need it for.
 | File | Purpose |
 |------|---------|
 | [PRODUCT-HANDOVER.md](./PRODUCT-HANDOVER.md) | **Day-one complete product/strategy handover** — stage, beta, metrics, roles, roadmap layers |
+| [HOW-WE-WORK.md](./HOW-WE-WORK.md) | Who does what — **Qwen Coordinator**, Cursor Builder, native `@` rules |
 | [QWEN-FULL-HANDOVER.md](./QWEN-FULL-HANDOVER.md) | **Full Qwen day-one paste** — prefs, product, stage, future plans, agents, traps |
 | [CLAUDE-FULL-HANDOVER.md](./CLAUDE-FULL-HANDOVER.md) | **Full Claude day-one paste** — product, brand, Isaac prefs, stack, ship rules, traps |
 | [START-HERE-CURSOR.md](./START-HERE-CURSOR.md) | Paste into a new Cursor chat |
