@@ -14,6 +14,10 @@ Read docs/handoff/PRODUCT-HANDOVER.md and docs/handoff/BRAND-PHILOSOPHY.md, then
 
 Read docs/handoff/CLAUDE-FULL-HANDOVER.md fully, then docs/handoff/CURRENT-STATE.md. Follow FTC_WORKFLOW.md. Ship finished work to main. My task: [your task]
 
+**Qwen (any session):** paste or open:
+
+Read docs/handoff/QWEN-FULL-HANDOVER.md fully. Obey Isaac preferences. Brutal honesty. Short answers. My task: [your task]
+
 ## Files
 
 Every file in this folder, grouped by what you need it for.
@@ -23,6 +27,7 @@ Every file in this folder, grouped by what you need it for.
 | File | Purpose |
 |------|---------|
 | [PRODUCT-HANDOVER.md](./PRODUCT-HANDOVER.md) | **Day-one complete product/strategy handover** — stage, beta, metrics, roles, roadmap layers |
+| [QWEN-FULL-HANDOVER.md](./QWEN-FULL-HANDOVER.md) | **Full Qwen day-one paste** — prefs, product, stage, future plans, agents, traps |
 | [CLAUDE-FULL-HANDOVER.md](./CLAUDE-FULL-HANDOVER.md) | **Full Claude day-one paste** — product, brand, Isaac prefs, stack, ship rules, traps |
 | [START-HERE-CURSOR.md](./START-HERE-CURSOR.md) | Paste into a new Cursor chat |
 | [CURRENT-STATE.md](./CURRENT-STATE.md) | **What is already built** — update after every completed ship |

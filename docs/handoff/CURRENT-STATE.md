@@ -1,5 +1,9 @@
 # Current state (last updated: 2026-10-05)
 
+## Qwen team handover (2026-10-05)
+
+Day-one paste for Qwen: `docs/handoff/QWEN-FULL-HANDOVER.md` (prefs, product stage, future plans, native agents, traps). Wired into `HOW-WE-WORK.md` + handoff README.
+
 ## Native Cursor agent rules (2026-10-05)
 
 External Claude Projects deprecated for beta bug response. Five summonable rules in `.cursor/rules/`: `bug-triage`, `hotfix-builder`, `qa-retest`, `security-review`, `product-gate`. Coordinator workflow documented in `HOW-WE-WORK.md` § Native Agent Workflow.

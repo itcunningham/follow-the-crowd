@@ -6,12 +6,13 @@
 |-----|-----|
 | **Isaac** | Founder / product owner. Final UX and release decisions. Runs SQL in Supabase. Real-device QA. Talks to users. |
 | **Cursor Agent** | **Product Owner assistant, UX reviewer, technical planning partner, and agent coordinator** (took over the former ChatGPT product role). Also implements in-repo when acting as Builder: terminal/build, SQL files, commits when asked. Decides what to build vs wait, challenges feature creep, assigns Builder/QA/Release work, verifies diagnoses before trusting them. |
+| **Qwen** | Team member — product critic / planning partner; Builder when given repo work. Day-one paste: `QWEN-FULL-HANDOVER.md`. Same preferences as Cursor/Claude: brutal honesty, short answers, no feature creep. |
 | **Claude / Builder agents** | Inspect repo, implement, test, commit/push feature branches (often via worktrees). |
 | **QA Reviewer** | Independent break-testing. Does not implement fixes. |
 | **Release Agent** | Integrates approved branches to `main`, proves Production. |
 | **ChatGPT** | **Deprecated for FTC product work.** Historical specs may exist; do not treat ChatGPT as the live product partner. Use Cursor + `docs/handoff/`. |
 
-Day-one handover: `PRODUCT-HANDOVER.md`. Brand: `BRAND-PHILOSOPHY.md`.
+Day-one handover: `PRODUCT-HANDOVER.md`. Brand: `BRAND-PHILOSOPHY.md`. Qwen: `QWEN-FULL-HANDOVER.md`.
 
 ## Typical flow
 
