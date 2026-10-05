@@ -39,11 +39,11 @@ Every file in this folder, grouped by what you need it for.
 
 | File | Purpose |
 |------|---------|
-| [HOW-WE-WORK.md](./HOW-WE-WORK.md) | Who does what (Isaac / Cursor / Builder / QA / Release) |
+| [HOW-WE-WORK.md](./HOW-WE-WORK.md) | Who does what; **native Cursor agent rules** (`@bug-triage` etc.) |
 | [MULTI-AGENT-WORKFLOW.md](./MULTI-AGENT-WORKFLOW.md) | **Authoritative** — worktrees, branch ownership, collision rules, release checklist |
 | [USER-PREFERENCES.md](./USER-PREFERENCES.md) | How Isaac wants work done |
 | [HANDOFF-UPDATE.md](./HANDOFF-UPDATE.md) | **Checklist — update handoff when a job completes** |
-| [BETA-BUG-AGENTS.md](./BETA-BUG-AGENTS.md) | **Beta bug-fix agent setup** — Claude Projects, prompts, severity routing |
+| [BETA-BUG-AGENTS.md](./BETA-BUG-AGENTS.md) | Legacy Claude Projects prompts (deprecated — use `.cursor/rules/` + HOW-WE-WORK) |
 
 ### Engineering
 
