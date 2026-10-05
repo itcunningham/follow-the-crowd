@@ -13,7 +13,7 @@
 /** Operated by an individual. FTC is not a registered company — do not imply otherwise. */
 export const LEGAL_OPERATOR = "Isaac Cunningham";
 
-export const LEGAL_CONTACT_EMAIL = "itcunningham99@gmail.com";
+export const LEGAL_CONTACT_EMAIL = "followthecrowdsupport@gmail.com";
 
 export const LEGAL_LAST_UPDATED = "8 August 2026";
 

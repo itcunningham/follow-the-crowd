@@ -1,14 +1,23 @@
-const SUPPORT_EMAIL_DEV_FALLBACK = "your-email@example.com";
+export const SUPPORT_EMAIL = "followthecrowdsupport@gmail.com";
 
-// Vercel production must set NEXT_PUBLIC_SUPPORT_EMAIL to the real private-beta inbox.
+const PLACEHOLDER_OR_LEGACY_SUPPORT_EMAILS = new Set([
+  "your-email@example.com",
+  "itcunningham99@gmail.com",
+]);
+
+// Dedicated support inbox is the product default. Env may override for staging,
+// but placeholder / personal-legacy values fall through to SUPPORT_EMAIL.
 export function getSupportEmail(): string {
   const configuredEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim();
 
-  if (configuredEmail) {
+  if (
+    configuredEmail &&
+    !PLACEHOLDER_OR_LEGACY_SUPPORT_EMAILS.has(configuredEmail)
+  ) {
     return configuredEmail;
   }
 
-  return SUPPORT_EMAIL_DEV_FALLBACK;
+  return SUPPORT_EMAIL;
 }
 
 export function buildAccountDeletionRequestMailto(options: {
