@@ -39,3 +39,19 @@ Day-one handover: `PRODUCT-HANDOVER.md`. Brand: `BRAND-PHILOSOPHY.md`.
 Always point agents at `docs/handoff/` first (`PRODUCT-HANDOVER.md` + `BRAND-PHILOSOPHY.md` + `CURRENT-STATE.md`).
 
 After shipping, update handoff per `HANDOFF-UPDATE.md`.
+
+## 🤖 Native Agent Workflow (Updated Oct 2026)
+
+External Claude Projects are **deprecated**. Bug triage, hotfix, QA retest, security review, and product gate now run as native Cursor rules under `.cursor/rules/`.
+
+Summon via `@filename` in chat:
+
+| Agent | Rule file |
+|-------|-----------|
+| Bug Triage | `@bug-triage` → `.cursor/rules/bug-triage.md` |
+| Hotfix Builder | `@hotfix-builder` → `.cursor/rules/hotfix-builder.md` |
+| QA Retest | `@qa-retest` → `.cursor/rules/qa-retest.md` |
+| Security Review | `@security-review` → `.cursor/rules/security-review.md` |
+| Product Gate | `@product-gate` → `.cursor/rules/product-gate.md` |
+
+**Coordinator Agent** manages these rules; do not use external tools.

@@ -1,4 +1,8 @@
-# Current state (last updated: 2026-10-04)
+# Current state (last updated: 2026-10-05)
+
+## Native Cursor agent rules (2026-10-05)
+
+External Claude Projects deprecated for beta bug response. Five summonable rules in `.cursor/rules/`: `bug-triage`, `hotfix-builder`, `qa-retest`, `security-review`, `product-gate`. Coordinator workflow documented in `HOW-WE-WORK.md` § Native Agent Workflow.
 
 ## Marketing leave-behind — Capability Brief (2026-10-04)
 
