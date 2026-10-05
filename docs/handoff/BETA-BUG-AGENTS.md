@@ -1,5 +1,17 @@
 # FTC Beta — bug-fix agent setup
 
+> **⚠️ SUPERSEDED (2026-10-05).** The five agents below no longer run as external
+> Claude Projects. They are native Cursor rules in `.cursor/rules/`, summoned with
+> `@bug-triage`, `@hotfix-builder`, `@qa-retest`, `@security-review`,
+> `@product-gate`.
+>
+> **Authoritative:** `docs/handoff/HOW-WE-WORK.md` § Native Agent Workflow.
+>
+> Ignore §2 (create five Projects), §3 (paste system prompts) and §8 (Claude
+> Projects setup) — those describe the retired external-Projects setup. §5
+> (who reads what), §6 (severity routing), §7 (tester docs) and §9 (end-to-end
+> flow) are still accurate and still used.
+
 **Purpose:** One place to set up Claude agents + handoff reads for **coached private beta** bug response.  
 **Audience:** Isaac (setup), Claude Projects, Cursor coordinator.  
 **Last updated:** 2026-08-26
