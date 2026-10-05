@@ -6,17 +6,17 @@ Use this folder when starting a **new chat** so you do not re-explain the projec
 
 ## Fastest start
 
-**Cursor (product + Builder):**
+**Cursor (Primary Builder):**
 
-Read docs/handoff/PRODUCT-HANDOVER.md and docs/handoff/BRAND-PHILOSOPHY.md, then docs/handoff/CURRENT-STATE.md. Follow HOW-WE-WORK.md. My task: [your task]
+Read docs/handoff/START-HERE-CURSOR.md (or PRODUCT-HANDOVER + BRAND-PHILOSOPHY + CURRENT-STATE). Follow HOW-WE-WORK.md. Ship finished work to main. My task: [paste Qwen prompt / your task]
 
 **Claude (any session):** open the FTC repo and say:
 
 Read docs/handoff/CLAUDE-FULL-HANDOVER.md fully, then docs/handoff/CURRENT-STATE.md. Follow FTC_WORKFLOW.md. Ship finished work to main. My task: [your task]
 
-**Qwen (any session):** paste or open:
+**Qwen (Coordinator):** paste or open:
 
-Read docs/handoff/QWEN-FULL-HANDOVER.md fully. Obey Isaac preferences. Brutal honesty. Short answers. My task: [your task]
+Read docs/handoff/QWEN-FULL-HANDOVER.md fully. You are Coordinator — critique, prioritize, return Cursor-ready prompts. Brutal honesty. Short answers. My task: [your task]
 
 ## Files
 
@@ -45,7 +45,7 @@ Every file in this folder, grouped by what you need it for.
 
 | File | Purpose |
 |------|---------|
-| [HOW-WE-WORK.md](./HOW-WE-WORK.md) | Who does what; **native Cursor agent rules** (`@bug-triage` etc.) |
+| [HOW-WE-WORK.md](./HOW-WE-WORK.md) | **Qwen Coordinator** + Cursor Builder + native `@` agent rules |
 | [MULTI-AGENT-WORKFLOW.md](./MULTI-AGENT-WORKFLOW.md) | **Authoritative** — worktrees, branch ownership, collision rules, release checklist |
 | [USER-PREFERENCES.md](./USER-PREFERENCES.md) | How Isaac wants work done |
 | [HANDOFF-UPDATE.md](./HANDOFF-UPDATE.md) | **Checklist — update handoff when a job completes** |
