@@ -107,7 +107,7 @@ export default function SettingsPage() {
       >
         <AppNavigation />
 
-        <header className="border-b border-ftc-border px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6 md:pt-4">
+        <header className="border-b border-ftc-border px-4 pt-[max(3rem,env(safe-area-inset-top))] pb-4 sm:px-6 md:pt-4">
           <Link
             href={myProfilePath}
             className="inline-block text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-primary"

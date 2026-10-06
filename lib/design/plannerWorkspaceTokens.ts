@@ -18,9 +18,22 @@ export const PLANNER_WORKSPACE_SHELL_WIDE_CLASS = `mx-auto w-full max-w-6xl bg-f
 
 export const PLANNER_WORKSPACE_PAGE_INSET_CLASS = "px-4 sm:px-6";
 
-/** Above page content (`z-0`); below mobile bottom nav (`z-50`) so chrome never covers tab taps.
- * Top padding includes iOS PWA safe-area so titles/actions sit below the status bar. */
-export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header sticky top-0 z-40 isolate bg-ftc-bg ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pt-[max(1rem,env(safe-area-inset-top))] md:pt-4`;
+/**
+ * Top padding for sticky page headers.
+ * iOS Home Screen (opaque status bar) often reports `safe-area-inset-top: 0`
+ * while Safari still reports ~47–59px — a 1rem floor left PWA titles flush under
+ * the clock. Floor at 3rem so standalone matches Safari breathing room; Safari
+ * keeps the larger inset when present.
+ */
+export const APP_SAFE_TOP_HEADER_PADDING_CLASS =
+  "pt-[max(3rem,env(safe-area-inset-top))]";
+
+/** Compact chat/profile headers — same floor, slightly tighter than page titles. */
+export const APP_SAFE_TOP_COMPACT_HEADER_PADDING_CLASS =
+  "pt-[max(2.75rem,env(safe-area-inset-top))]";
+
+/** Above page content (`z-0`); below mobile bottom nav (`z-50`) so chrome never covers tab taps. */
+export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header sticky top-0 z-40 isolate bg-ftc-bg ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} ${APP_SAFE_TOP_HEADER_PADDING_CLASS} md:pt-4`;
 
 export const PLANNER_WORKSPACE_TITLE_CLASS = "text-xl font-semibold leading-tight text-ftc-text";
 

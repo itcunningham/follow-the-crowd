@@ -19,6 +19,8 @@ export {
   APP_PAGE_SHELL_CLASS,
   APP_PAGE_TITLE_CLASS,
   APP_PAGE_TITLE_ROW_CLASS,
+  APP_SAFE_TOP_COMPACT_HEADER_PADDING_CLASS,
+  APP_SAFE_TOP_HEADER_PADDING_CLASS,
 } from "@/lib/design/plannerWorkspaceTokens";
 
 export function AppPageShell({ children }: { children: ReactNode }) {

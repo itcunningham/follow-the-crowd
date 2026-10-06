@@ -1409,7 +1409,7 @@ function EventDetailPageView() {
         <AppNavigation />
 
         <header
-          className={`ftc-page-header border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pt-[max(0.75rem,env(safe-area-inset-top))] pb-3`}
+          className={`ftc-page-header border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pt-[max(3rem,env(safe-area-inset-top))] pb-3 md:pt-3`}
         >
           <div className={PLANNER_EVENT_DETAIL_HEADER_CONTROLS_ROW_CLASS}>
             <div className="shrink-0">

@@ -49,7 +49,7 @@ export default function ProfilePageHeader({
     <>
       <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md md:top-12">
         <div
-          className={`flex items-center justify-between gap-3 ${APP_PAGE_INSET_CLASS} pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 md:py-2.5`}
+          className={`flex items-center justify-between gap-3 ${APP_PAGE_INSET_CLASS} pt-[max(2.75rem,env(safe-area-inset-top))] pb-2.5 md:py-2.5`}
         >
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {backHref ? <ProfileBackButton href={backHref} label={backLabel} /> : null}

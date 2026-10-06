@@ -2,7 +2,7 @@
 
 ## iOS PWA header safe-area (2026-10-06)
 
-Home Screen standalone was drawing Events/Messages titles under the status bar after `appleWebApp.statusBarStyle: black-translucent`. Switched to opaque `black` and added `env(safe-area-inset-top)` top padding on shared planner/DM headers (+ event detail, profile, notifications).
+Home Screen standalone was drawing Events/Messages titles under the status bar after `appleWebApp.statusBarStyle: black-translucent`. Switched to opaque `black`. **Follow-up:** opaque PWA reports `safe-area-inset-top: 0` while Safari still reports ~47–59px, so a 1rem floor left Home Screen titles flush under the clock. Header top padding now floors at **3rem** (`max(3rem, env(safe-area-inset-top))`) so standalone matches Safari breathing room.
 
 ## App icon — cyan FTC mark (2026-10-06)
 
