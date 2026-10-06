@@ -22,7 +22,8 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Follow The Crowd",
-    statusBarStyle: "black-translucent",
+    // Opaque black status bar — do NOT use black-translucent (draws under the clock).
+    statusBarStyle: "black",
   },
   icons: {
     icon: [

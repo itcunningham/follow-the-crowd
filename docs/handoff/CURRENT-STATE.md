@@ -1,5 +1,9 @@
 # Current state (last updated: 2026-10-06)
 
+## iOS PWA header safe-area (2026-10-06)
+
+Home Screen standalone was drawing Events/Messages titles under the status bar after `appleWebApp.statusBarStyle: black-translucent`. Switched to opaque `black` and added `env(safe-area-inset-top)` top padding on shared planner/DM headers (+ event detail, profile, notifications).
+
 ## App icon — cyan FTC mark (2026-10-06)
 
 Home Screen / PWA icons replaced with Canva cyan **FTC** mark (`public/icon-*.png`, `apple-touch-icon.png`, `app/icon.png`, `app/favicon.ico`). Manifest theme `#0a0e14`. Source archived at `docs/marketing/capability-brief/brand/ftc-mark-1080.png`. **iOS:** delete old Home Screen icon and re-Add to Home Screen after deploy.

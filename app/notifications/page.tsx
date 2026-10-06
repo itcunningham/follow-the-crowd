@@ -167,7 +167,7 @@ export default function NotificationsPage() {
         className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
-        <header className="sticky top-0 z-10 border-b border-ftc-border bg-ftc-bg/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
+        <header className="sticky top-0 z-10 border-b border-ftc-border bg-ftc-bg/95 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 backdrop-blur-md sm:px-6 md:top-12 md:pt-4">
           <div>
             <h1 className="text-xl font-semibold text-ftc-text">Notifications</h1>
             <p className="mt-0.5 text-xs text-ftc-text-muted">

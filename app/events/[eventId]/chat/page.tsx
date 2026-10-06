@@ -1495,7 +1495,7 @@ export default function EventCrewChatPage() {
         >
           <header
             data-chat-header
-            className="z-10 shrink-0 overflow-visible border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4"
+            className="z-10 shrink-0 overflow-visible border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 backdrop-blur-md sm:px-4 md:pt-2.5"
           >
             {accessLoading ? (
               <ChatHeaderSkeleton />
