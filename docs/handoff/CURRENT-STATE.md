@@ -1,4 +1,8 @@
-# Current state (last updated: 2026-10-05)
+# Current state (last updated: 2026-10-06)
+
+## App icon — cyan FTC mark (2026-10-06)
+
+Home Screen / PWA icons replaced with Canva cyan **FTC** mark (`public/icon-*.png`, `apple-touch-icon.png`, `app/icon.png`, `app/favicon.ico`). Manifest theme `#0a0e14`. Source archived at `docs/marketing/capability-brief/brand/ftc-mark-1080.png`. **iOS:** delete old Home Screen icon and re-Add to Home Screen after deploy.
 
 ## Capability brief pack folder (2026-10-05)
 

@@ -17,6 +17,7 @@
 | [`canva-one-pager-phone.jpg`](./canva-one-pager-phone.jpg) | Earlier phone screenshot of the Canva brief |
 | [`CAPABILITY-BRIEF.html`](./CAPABILITY-BRIEF.html) | Printable HTML source (Chrome → Print → PDF, A4, background graphics on) |
 | [`screenshots/`](./screenshots/) | Annotated Production screenshots for the workflow story |
+| [`brand/ftc-mark-1080.png`](./brand/ftc-mark-1080.png) | Canonical cyan **FTC** mark (also used for PWA / Home Screen icons) |
 
 Also kept at parent level for older links: [`../CAPABILITY-BRIEF.html`](../CAPABILITY-BRIEF.html) (same HTML family — prefer this folder going forward).
 

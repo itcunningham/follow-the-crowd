@@ -18,6 +18,19 @@ export const metadata: Metadata = {
   description:
     "Event planning and crowd intelligence for promoters, DJs, venues, artists, festivals and organisers.",
   manifest: "/manifest.json",
+  applicationName: "Follow The Crowd",
+  appleWebApp: {
+    capable: true,
+    title: "Follow The Crowd",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
