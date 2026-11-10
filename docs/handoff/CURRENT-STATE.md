@@ -1,4 +1,8 @@
-# Current state (last updated: 2026-10-06)
+# Current state (last updated: 2026-11-10)
+
+## Stem Visual side tool (2026-11-10)
+
+Standalone Ableton **stem → 9:16 visual** app in `stem-visual/` (Vite + React). Not wired into FTC product routes. Load stem WAVs (or demo), map roles (drums/bass/melody/vocal/fx), preview, record WebM for Instagram. Run: `cd stem-visual && npm install && npm run dev`.
 
 ## iOS PWA header safe-area (2026-10-06)
 
