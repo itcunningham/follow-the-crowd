@@ -2227,6 +2227,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **Event cancel → DJ DM unread badge** | **⚠️ `scripts/setupMessageReadsRpc.sql`** — creates `mark_conversation_unread` (SECURITY DEFINER). Without it, cancel never badges the DJ DM (RLS 403). |
 
 ## Recent commits (reference)
+- `dbfacc67` — add standalone stem-visual tool (Ableton stems → 9:16 Instagram video)
 - `b9108758` — docs: QA checklist/sign-off aligned with Isaac Production pass; push-send deploy verified
 - `260fbaf1` — fix(push-send): urgency high for immediate Android/FCM delivery (Doze)
 - `1891257f` — sw: a rejected showNotification must still surface something
